@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -e
+
+# we need ais user
+
+if [ "$1" = "configure" ]; then
+	adduser --quiet --group --system --no-create-home ais
+fi
+
+#DEBHELPER#

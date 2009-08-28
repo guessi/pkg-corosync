@@ -14,22 +14,21 @@ export COROSYNC_BUILD=$(if $(findstring debug,$(DEB_BUILD_OPTIONS)),DEBUG,RELEAS
 
 setup: $(STAMPS_DIR)/setup
 
-configure-stamp:
+configure-stamp: patch
 	dh_testdir
 	./configure --prefix=/usr \
 		    --libexecdir=/usr/lib/ \
 		    --localstatedir=/var \
 		    --sysconfdir=/etc \
-		    --with-lcrso-dir=/usr/lib/corosync/lcrso \
 		    --with-socket-dir=/var/run/corosync
 	touch configure-stamp
 
-build: patch configure-stamp
+build: configure-stamp
 	$(MAKE)
 
 clean: unpatch
 	dh_testdir
-	-$(MAKE) clean
+	-$(MAKE) distclean
 	dh_clean configure-stamp
 
 maintainerclean:
@@ -50,12 +49,12 @@ install: build
 	dh_installlogrotate
 	dh_strip --dbg-package=corosync-dbg
 ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
-	strip --remove-section=.comment --remove-section=.note --strip-unneeded debian/corosync/usr/lib/corosync/lcrso/*
+	strip --remove-section=.comment --remove-section=.note --strip-unneeded debian/corosync/usr/lib/lcrso/*
 endif
 	# install example configuration file
-	cp -ax $(CURDIR)/debian/corosync.example-config $(CURDIR)/debian/tmp/etc/corosync/corosync.conf
+	cp -ax $(CURDIR)/debian/corosync.example-config $(CURDIR)/debian/corosync/etc/corosync/corosync.conf
 	dh_compress
-	chmod 644 debian/corosync/usr/lib/corosync/lcrso/*.lcrso
+	chmod 644 debian/corosync/usr/lib/lcrso/*.lcrso
 	dh_fixperms
 	dh_makeshlibs -V
 	dh_installdeb

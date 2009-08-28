@@ -1,6 +1,6 @@
 usr/sbin
 usr/share/man/man5
 usr/share/man/man8
-usr/lib/corosync/lcrso
+usr/lib/lcrso
 usr/share/doc/corosync/html/
 etc/corosync/

@@ -1,0 +1,13 @@
+Index: corosync/include/corosync/corodefs.h
+===================================================================
+--- corosync.orig/include/corosync/corodefs.h	2009-07-16 07:33:59.000000000 +0200
++++ corosync/include/corosync/corodefs.h	2009-07-16 07:34:18.000000000 +0200
+@@ -50,7 +50,7 @@
+ 	CFG_SERVICE = 7,
+ 	CPG_SERVICE = 8,
+ 	CMAN_SERVICE = 9,
+-	CRM_SERVICE = 10,
++	PCMK_SERVICE = 10,
+ 	CONFDB_SERVICE = 11,
+ 	QUORUM_SERVICE = 12,
+ 	PLOAD_SERVICE = 13,

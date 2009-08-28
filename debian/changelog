@@ -1,3 +1,20 @@
+corosync (1.0.0-5) experimental; urgency=low
+
+  [ Ante Karamatić ]
+  * [8cac11c] fix corodefs for pacemaker
+  * [2d84b1e] don't install config file as example
+  * [4cc60fc] Fix patching and cleaning
+
+  [ Guido Günther ]
+  * [51b386c] install lcrso into default location
+  * [dbb6b6b] bump standards version
+  * [53e63e0] add README.source
+  * [0fb550e] use QUIT to terminate processes uset pidfile to avoid
+    sending SIGQUIT to the init script itself
+  * [b8424d7] fix init script logging
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 28 Aug 2009 07:56:27 +0200
+
 corosync (1.0.0-4) experimental; urgency=low
 
   * [5b1180a] fix debian-ha address

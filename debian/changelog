@@ -1,3 +1,10 @@
+corosync (1.0.0-6) unstable; urgency=low
+
+  * upload to unstable
+  * [dbac633] Stop corosync in runlevels 0 and 6
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 03 Oct 2009 19:10:31 +0200
+
 corosync (1.0.0-5) experimental; urgency=low
 
   [ Ante Karamatić ]

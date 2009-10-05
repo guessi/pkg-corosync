@@ -23,6 +23,7 @@ Conflicts: openais <= 0.89, openais-devel <= 0.89
 BuildRequires: autoconf automake
 %endif
 BuildRequires: nss-devel
+BuildRequires: libibverbs-devel librdmacm-devel
 
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
@@ -33,11 +34,13 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 ./autogen.sh
 %endif
 
-%{_configure}	CFLAGS="$(echo '%{optflags}')" \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--libdir=%{_libdir}
+export ibverbs_CFLAGS=-I/usr/include/infiniband \
+export ibverbs_LIBS=-libverbs \
+export rdmacm_CFLAGS=-I/usr/include/rdma \
+export rdmacm_LIBS=-lrdmacm \
+%{configure} \
+	--enable-nss \
+	--enable-rdma
 
 %build
 make %{_smp_mflags}
@@ -83,9 +86,11 @@ fi
 %{_sbindir}/corosync-cfgtool
 %{_sbindir}/corosync-fplay
 %{_sbindir}/corosync-pload
-%dir /etc/corosync
-%dir /etc/corosync/uidgid.d
-%config(noreplace) /etc/corosync/corosync.conf.example
+%{_sbindir}/corosync-cpgtool
+%{_sbindir}/corosync-quorumtool
+%dir %{_sysconfdir}/corosync
+%dir %{_sysconfdir}/corosync/uidgid.d
+%config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example
 %{_initddir}/corosync
 %dir %{_libexecdir}/lcrso
 %{_libexecdir}/lcrso/coroparse.lcrso
@@ -99,6 +104,7 @@ fi
 %{_libexecdir}/lcrso/quorum_testquorum.lcrso
 %{_libexecdir}/lcrso/vsf_quorum.lcrso
 %{_libexecdir}/lcrso/vsf_ykd.lcrso
+%dir %{_localstatedir}/lib/corosync
 %{_mandir}/man8/corosync_overview.8*
 %{_mandir}/man8/corosync-objctl.8*
 %{_mandir}/man5/corosync.conf.5*

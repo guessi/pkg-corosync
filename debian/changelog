@@ -1,3 +1,11 @@
+corosync (1.1.0-1) experimental; urgency=low
+
+  * Upload to experimental
+  * [3cbe5b0] Imported Upstream version 1.1.0
+  * [8d4f362] Drop patches applied upstream
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 05 Oct 2009 20:57:27 +0200
+
 corosync (1.0.0-7) unstable; urgency=low
 
   * [a300993] Conflict on openais (Closes: #549634)

@@ -1,5 +1,8 @@
 /* include/corosync/config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* building in place */
+#undef BUILDING_IN_PLACE
+
 /* Define to 1 if the `closedir' function returns void instead of `int'. */
 #undef CLOSEDIR_VOID
 
@@ -171,6 +174,9 @@
 /* Define to 1 if you have the `pthread_spin_unlock' function. */
 #undef HAVE_PTHREAD_SPIN_UNLOCK
 
+/* have rdmacm */
+#undef HAVE_RDMA
+
 /* Define to 1 if your system has a GNU libc compatible `realloc' function,
    and to 0 otherwise. */
 #undef HAVE_REALLOC
@@ -181,8 +187,14 @@
 /* Define to 1 if you have the `sched_get_priority_max' function. */
 #undef HAVE_SCHED_GET_PRIORITY_MAX
 
+/* Define to 1 if you have the `sched_setscheduler' function. */
+#undef HAVE_SCHED_SETSCHEDULER
+
 /* Define to 1 if you have the `select' function. */
 #undef HAVE_SELECT
+
+/* have small_memory_footprint */
+#undef HAVE_SMALL_MEMORY_FOOTPRINT
 
 /* Define to 1 if you have the `socket' function. */
 #undef HAVE_SOCKET
@@ -306,6 +318,9 @@
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
 
+/* corosync built-in features */
+#undef PACKAGE_FEATURES
+
 /* Define to the full name of this package. */
 #undef PACKAGE_NAME
 
@@ -346,6 +361,9 @@
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
+
+/* SVN revision */
+#undef SVN_REVISION
 
 /* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
 #undef TIME_WITH_SYS_TIME

@@ -122,14 +122,43 @@ enum cpd_state {
 	CPD_STATE_JOIN_COMPLETED
 };
 
+enum cpg_sync_state {
+	CPGSYNC_DOWNLIST,
+	CPGSYNC_JOINLIST
+};
+
+
 struct cpg_pd {
 	void *conn;
  	mar_cpg_name_t group_name;
 	uint32_t pid;
 	enum cpd_state cpd_state;
 	struct list_head list;
+	struct list_head iteration_instance_list_head;
 };
+
+struct cpg_iteration_instance {
+	hdb_handle_t handle;
+	struct list_head list;
+	struct list_head items_list_head; /* List of process_info */
+	struct list_head *current_pointer;
+};
+
+DECLARE_HDB_DATABASE(cpg_iteration_handle_t_db,NULL);
+
 DECLARE_LIST_INIT(cpg_pd_list_head);
+
+static unsigned int my_member_list[PROCESSOR_COUNT_MAX];
+
+static unsigned int my_member_list_entries;
+
+static unsigned int my_old_member_list[PROCESSOR_COUNT_MAX];
+
+static unsigned int my_old_member_list_entries = 0;
+
+static struct corosync_api_v1 *api = NULL;
+
+static enum cpg_sync_state my_sync_state = CPGSYNC_DOWNLIST;
 
 struct process_info {
 	unsigned int nodeid;
@@ -144,18 +173,9 @@ struct join_list_entry {
 	mar_cpg_name_t group_name;
 };
 
-static struct corosync_api_v1 *api = NULL;
-
 /*
  * Service Interfaces required by service_message_handler struct
  */
-static void cpg_confchg_fn (
-	enum totem_configuration_type configuration_type,
-	const unsigned int *member_list, size_t member_list_entries,
-	const unsigned int *left_list, size_t left_list_entries,
-	const unsigned int *joined_list, size_t joined_list_entries,
-	const struct memb_ring_id *ring_id);
-
 static int cpg_exec_init_fn (struct corosync_api_v1 *);
 
 static int cpg_lib_init_fn (void *conn);
@@ -202,7 +222,21 @@ static void message_handler_req_lib_cpg_membership (void *conn,
 static void message_handler_req_lib_cpg_local_get (void *conn,
 						   const void *message);
 
+static void message_handler_req_lib_cpg_iteration_initialize (
+	void *conn,
+	const void *message);
+
+static void message_handler_req_lib_cpg_iteration_next (
+	void *conn,
+	const void *message);
+
+static void message_handler_req_lib_cpg_iteration_finalize (
+	void *conn,
+	const void *message);
+
 static int cpg_node_joinleave_send (unsigned int pid, const mar_cpg_name_t *group_name, int fn, int reason);
+
+static int cpg_exec_send_downlist(void);
 
 static int cpg_exec_send_joinlist(void);
 
@@ -212,8 +246,11 @@ static void cpg_sync_init (
 	const struct memb_ring_id *ring_id);
 
 static int  cpg_sync_process (void);
+
 static void cpg_sync_activate (void);
+
 static void cpg_sync_abort (void);
+
 /*
  * Library Handler Definition
  */
@@ -238,7 +275,19 @@ static struct corosync_lib_handler cpg_lib_engine[] =
 	{ /* 4 */
 		.lib_handler_fn				= message_handler_req_lib_cpg_local_get,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
-	}
+	},
+	{ /* 5 */
+		.lib_handler_fn				= message_handler_req_lib_cpg_iteration_initialize,
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 6 */
+		.lib_handler_fn				= message_handler_req_lib_cpg_iteration_next,
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 7 */
+		.lib_handler_fn				= message_handler_req_lib_cpg_iteration_finalize,
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
 };
 
 static struct corosync_exec_handler cpg_exec_engine[] =
@@ -280,7 +329,6 @@ struct corosync_service_engine cpg_service_engine = {
 	.exec_dump_fn				= NULL,
 	.exec_engine				= cpg_exec_engine,
 	.exec_engine_count		        = sizeof (cpg_exec_engine) / sizeof (struct corosync_exec_handler),
-	.confchg_fn                             = cpg_confchg_fn,
 	.sync_mode				= CS_SYNC_V1,
 	.sync_init                              = cpg_sync_init,
 	.sync_process                           = cpg_sync_process,
@@ -363,20 +411,71 @@ static void cpg_sync_init (
 	size_t member_list_entries,
 	const struct memb_ring_id *ring_id)
 {
+	unsigned int lowest_nodeid = 0xffffffff;
+	int entries;
+	int i, j;
+	int found;
+
+	my_sync_state = CPGSYNC_DOWNLIST;
+
+	memcpy (my_member_list, member_list, member_list_entries *
+		sizeof (unsigned int));
+	my_member_list_entries = member_list_entries;
+
+	for (i = 0; i < my_member_list_entries; i++) {
+		if (my_member_list[i] < lowest_nodeid) {
+			lowest_nodeid = my_member_list[i];
+		}
+	}
+
+	entries = 0;
+	if (lowest_nodeid == api->totem_nodeid_get()) {
+		/*
+		 * Determine list of nodeids for downlist message
+		 */
+		for (i = 0; i < my_old_member_list_entries; i++) {
+			found = 0;
+			for (j = 0; j < my_member_list_entries; j++) {
+				if (my_old_member_list[i] == my_member_list[j]) {
+					found = 1;
+					break;
+				}
+			}
+			if (found == 0) {
+				g_req_exec_cpg_downlist.nodeids[entries++] =
+					my_old_member_list[i];
+			}
+		}
+	}
+	g_req_exec_cpg_downlist.left_nodes = entries;
 }
 
 static int cpg_sync_process (void)
 {
-	return cpg_exec_send_joinlist();
+	int res = -1;
+
+	if (my_sync_state == CPGSYNC_DOWNLIST) {
+		res = cpg_exec_send_downlist();
+		if (res == -1) {
+			return (-1);
+		}
+		my_sync_state = CPGSYNC_JOINLIST;
+	}
+	if (my_sync_state == CPGSYNC_JOINLIST) {
+		res = cpg_exec_send_joinlist();
+	}
+	return (res);
 }
 
 static void cpg_sync_activate (void)
 {
-
+	memcpy (my_old_member_list, my_member_list,
+		my_member_list_entries * sizeof (unsigned int));
+	my_old_member_list_entries = my_member_list_entries;
 }
+
 static void cpg_sync_abort (void)
 {
-
 }
 
 
@@ -507,6 +606,45 @@ static int cpg_exec_init_fn (struct corosync_api_v1 *corosync_api)
 	return (0);
 }
 
+static void cpg_iteration_instance_finalize (struct cpg_iteration_instance *cpg_iteration_instance)
+{
+	struct list_head *iter, *iter_next;
+	struct process_info *pi;
+
+	for (iter = cpg_iteration_instance->items_list_head.next;
+		iter != &cpg_iteration_instance->items_list_head;
+		iter = iter_next) {
+
+		iter_next = iter->next;
+
+		pi = list_entry (iter, struct process_info, list);
+		list_del (&pi->list);
+		free (pi);
+	}
+
+	list_del (&cpg_iteration_instance->list);
+	hdb_handle_destroy (&cpg_iteration_handle_t_db, cpg_iteration_instance->handle);
+}
+
+static void cpg_pd_finalize (struct cpg_pd *cpd)
+{
+	struct list_head *iter, *iter_next;
+	struct cpg_iteration_instance *cpii;
+
+	for (iter = cpd->iteration_instance_list_head.next;
+		iter != &cpd->iteration_instance_list_head;
+		iter = iter_next) {
+
+		iter_next = iter->next;
+
+		cpii = list_entry (iter, struct cpg_iteration_instance, list);
+
+		cpg_iteration_instance_finalize (cpii);
+	}
+
+	list_del (&cpd->list);
+}
+
 static int cpg_lib_exit_fn (void *conn)
 {
 	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
@@ -517,7 +655,9 @@ static int cpg_lib_exit_fn (void *conn)
 		cpg_node_joinleave_send (cpd->pid, &cpd->group_name,
 				MESSAGE_REQ_EXEC_CPG_PROCLEAVE, CONFCHG_CPG_REASON_LEAVE);
 	}
-	list_del (&cpd->list);
+
+	cpg_pd_finalize (cpd);
+
 	api->ipc_refcnt_dec (conn);
 	return (0);
 }
@@ -543,56 +683,6 @@ static int cpg_node_joinleave_send (unsigned int pid, const mar_cpg_name_t *grou
 	return (result);
 }
 
-static void cpg_confchg_fn (
-	enum totem_configuration_type configuration_type,
-	const unsigned int *member_list, size_t member_list_entries,
-	const unsigned int *left_list, size_t left_list_entries,
-	const unsigned int *joined_list, size_t joined_list_entries,
-	const struct memb_ring_id *ring_id)
-{
-	int i;
-	uint32_t lowest_nodeid = 0xffffffff;
-	struct iovec req_exec_cpg_iovec;
-
-	/* We don't send the library joinlist in here because it can end up
-	   out of order with the rest of the messages (which are totem ordered).
-	   So we get the lowest nodeid to send out a list of left nodes instead.
-	   On receipt of that message, all nodes will then notify their local clients
-	   of the new joinlist */
-
-	if (left_list_entries) {
-		for (i = 0; i < member_list_entries; i++) {
-			if (member_list[i] < lowest_nodeid)
-				lowest_nodeid = member_list[i];
-		}
-
-		log_printf(LOGSYS_LEVEL_DEBUG, "confchg, low nodeid=%d, us = %d\n", lowest_nodeid, api->totem_nodeid_get());
-		if (lowest_nodeid == api->totem_nodeid_get()) {
-
-			g_req_exec_cpg_downlist.header.id = SERVICE_ID_MAKE(CPG_SERVICE, MESSAGE_REQ_EXEC_CPG_DOWNLIST);
-			g_req_exec_cpg_downlist.header.size = sizeof(struct req_exec_cpg_downlist);
-
-			g_req_exec_cpg_downlist.left_nodes = left_list_entries;
-			for (i = 0; i < left_list_entries; i++) {
-				g_req_exec_cpg_downlist.nodeids[i] = left_list[i];
-			}
-			log_printf(LOGSYS_LEVEL_DEBUG,
-				   "confchg, build downlist: %lu nodes\n",
-				   (long unsigned int) left_list_entries);
-		}
-	}
-
-	/* Don't send this message until we get the final configuration message */
-	if (configuration_type == TOTEM_CONFIGURATION_REGULAR && g_req_exec_cpg_downlist.left_nodes) {
-		req_exec_cpg_iovec.iov_base = (char *)&g_req_exec_cpg_downlist;
-		req_exec_cpg_iovec.iov_len = g_req_exec_cpg_downlist.header.size;
-
-		api->totem_mcast (&req_exec_cpg_iovec, 1, TOTEM_AGREED);
-		g_req_exec_cpg_downlist.left_nodes = 0;
-		log_printf(LOGSYS_LEVEL_DEBUG, "confchg, sent downlist\n");
-	}
-}
-
 /* Can byteswap join & leave messages */
 static void exec_cpg_procjoin_endian_convert (void *msg)
 {
@@ -609,7 +699,7 @@ static void exec_cpg_joinlist_endian_convert (void *msg_v)
 	coroipc_response_header_t *res = (coroipc_response_header_t *)msg;
 	struct join_list_entry *jle = (struct join_list_entry *)(msg + sizeof(coroipc_response_header_t));
 
-	/* XXX shouldn't mar_res_header be swabbed? */
+	swab_mar_int32_t (&res->size);
 
 	while ((const char*)jle < msg + res->size) {
 		jle->pid = swab32(jle->pid);
@@ -874,6 +964,19 @@ static void message_handler_req_exec_cpg_mcast (
 }
 
 
+static int cpg_exec_send_downlist(void)
+{
+	struct iovec iov;
+
+	g_req_exec_cpg_downlist.header.id = SERVICE_ID_MAKE(CPG_SERVICE, MESSAGE_REQ_EXEC_CPG_DOWNLIST);
+	g_req_exec_cpg_downlist.header.size = sizeof(struct req_exec_cpg_downlist);
+
+	iov.iov_base = (void *)&g_req_exec_cpg_downlist;
+	iov.iov_len = g_req_exec_cpg_downlist.header.size;
+
+	return (api->totem_mcast (&iov, 1, TOTEM_AGREED));
+}
+
 static int cpg_exec_send_joinlist(void)
 {
 	int count = 0;
@@ -930,6 +1033,8 @@ static int cpg_lib_init_fn (void *conn)
 	cpd->conn = conn;
 	list_add (&cpd->list, &cpg_pd_list_head);
 
+	list_init (&cpd->iteration_instance_list_head);
+
 	api->ipc_refcnt_inc (conn);
 	log_printf(LOGSYS_LEVEL_DEBUG, "lib_init_fn: conn=%p, cpd=%p\n", conn, cpd);
 	return (0);
@@ -942,6 +1047,20 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
 	struct res_lib_cpg_join res_lib_cpg_join;
 	cs_error_t error = CPG_OK;
+	struct list_head *iter;
+
+	/* Test, if we don't have same pid and group name joined */
+	for (iter = cpg_pd_list_head.next; iter != &cpg_pd_list_head; iter = iter->next) {
+		struct cpg_pd *cpd_item = list_entry (iter, struct cpg_pd, list);
+
+		if (cpd_item->pid == req_lib_cpg_join->pid &&
+			mar_name_compare(&req_lib_cpg_join->group_name, &cpd_item->group_name) == 0) {
+
+			/* We have same pid and group name joined -> return error */
+			error = CPG_ERR_EXIST;
+			goto response_send;
+		}
+	}
 
 	switch (cpd->cpd_state) {
 	case CPD_STATE_UNJOINED:
@@ -966,6 +1085,7 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 		break;
 	}
 
+response_send:
 	res_lib_cpg_join.header.size = sizeof(res_lib_cpg_join);
         res_lib_cpg_join.header.id = MESSAGE_RES_CPG_JOIN;
         res_lib_cpg_join.header.error = error;
@@ -1113,4 +1233,237 @@ static void message_handler_req_lib_cpg_local_get (void *conn,
 
 	api->ipc_response_send (conn, &res_lib_cpg_local_get,
 		sizeof (res_lib_cpg_local_get));
+}
+
+static void message_handler_req_lib_cpg_iteration_initialize (
+	void *conn,
+	const void *message)
+{
+	const struct req_lib_cpg_iterationinitialize *req_lib_cpg_iterationinitialize = message;
+	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
+	hdb_handle_t cpg_iteration_handle = 0;
+	struct res_lib_cpg_iterationinitialize res_lib_cpg_iterationinitialize;
+	struct list_head *iter, *iter2;
+	struct cpg_iteration_instance *cpg_iteration_instance;
+	cs_error_t error = CS_OK;
+	int res;
+
+	log_printf (LOGSYS_LEVEL_DEBUG, "cpg iteration initialize\n");
+
+	/* Because between calling this function and *next can be some operations which will
+	 * change list, we must do full copy.
+	 */
+
+	/*
+	 * Create new iteration instance
+	 */
+	res = hdb_handle_create (&cpg_iteration_handle_t_db, sizeof (struct cpg_iteration_instance),
+			&cpg_iteration_handle);
+
+	if (res != 0) {
+		error = CS_ERR_NO_MEMORY;
+		goto response_send;
+	}
+
+	res = hdb_handle_get (&cpg_iteration_handle_t_db, cpg_iteration_handle, (void *)&cpg_iteration_instance);
+
+	if (res != 0) {
+		error = CS_ERR_BAD_HANDLE;
+		goto error_destroy;
+	}
+
+	list_init (&cpg_iteration_instance->items_list_head);
+	cpg_iteration_instance->handle = cpg_iteration_handle;
+
+	/*
+	 * Create copy of process_info list "grouped by" group name
+	 */
+	for (iter = process_info_list_head.next; iter != &process_info_list_head; iter = iter->next) {
+		struct process_info *pi = list_entry (iter, struct process_info, list);
+		struct process_info *new_pi;
+
+		if (req_lib_cpg_iterationinitialize->iteration_type == CPG_ITERATION_NAME_ONLY) {
+			/*
+			 * Try to find processed group name in our list new list
+			 */
+			int found = 0;
+
+			for (iter2 = cpg_iteration_instance->items_list_head.next;
+			     iter2 != &cpg_iteration_instance->items_list_head;
+			     iter2 = iter2->next) {
+				 struct process_info *pi2 = list_entry (iter2, struct process_info, list);
+
+				 if (mar_name_compare (&pi2->group, &pi->group) == 0) {
+					found = 1;
+					break;
+				 }
+			}
+
+			if (found) {
+				/*
+				 * We have this name in list -> don't add
+				 */
+				continue ;
+			}
+		} else if (req_lib_cpg_iterationinitialize->iteration_type == CPG_ITERATION_ONE_GROUP) {
+			/*
+			 * Test pi group name with request
+			 */
+			if (mar_name_compare (&pi->group, &req_lib_cpg_iterationinitialize->group_name) != 0)
+				/*
+				 * Not same -> don't add
+				 */
+				continue ;
+		}
+
+		new_pi = malloc (sizeof (struct process_info));
+		if (!new_pi) {
+			log_printf(LOGSYS_LEVEL_WARNING, "Unable to allocate process_info struct");
+
+			error = CS_ERR_NO_MEMORY;
+
+			goto error_put_destroy;
+		}
+
+		memcpy (new_pi, pi, sizeof (struct process_info));
+		list_init (&new_pi->list);
+
+		if (req_lib_cpg_iterationinitialize->iteration_type == CPG_ITERATION_NAME_ONLY) {
+			/*
+			 * pid and nodeid -> undefined
+			 */
+			new_pi->pid = new_pi->nodeid = 0;
+		}
+
+		/*
+		 * We will return list "grouped" by "group name", so try to find right place to add
+		 */
+		for (iter2 = cpg_iteration_instance->items_list_head.next;
+		     iter2 != &cpg_iteration_instance->items_list_head;
+		     iter2 = iter2->next) {
+			 struct process_info *pi2 = list_entry (iter2, struct process_info, list);
+
+			 if (mar_name_compare (&pi2->group, &pi->group) == 0) {
+				break;
+			 }
+		}
+
+		list_add (&new_pi->list, iter2);
+	}
+
+	/*
+	 * Now we have a full "grouped by" copy of process_info list
+	 */
+
+	/*
+	 * Add instance to current cpd list
+	 */
+	list_init (&cpg_iteration_instance->list);
+	list_add (&cpg_iteration_instance->list, &cpd->iteration_instance_list_head);
+
+	cpg_iteration_instance->current_pointer = &cpg_iteration_instance->items_list_head;
+
+error_put_destroy:
+	hdb_handle_put (&cpg_iteration_handle_t_db, cpg_iteration_handle);
+error_destroy:
+	if (error != CS_OK) {
+		hdb_handle_destroy (&cpg_iteration_handle_t_db, cpg_iteration_handle);
+	}
+
+response_send:
+	res_lib_cpg_iterationinitialize.header.size = sizeof (res_lib_cpg_iterationinitialize);
+	res_lib_cpg_iterationinitialize.header.id = MESSAGE_RES_CPG_ITERATIONINITIALIZE;
+	res_lib_cpg_iterationinitialize.header.error = error;
+	res_lib_cpg_iterationinitialize.iteration_handle = cpg_iteration_handle;
+
+	api->ipc_response_send (conn, &res_lib_cpg_iterationinitialize,
+		sizeof (res_lib_cpg_iterationinitialize));
+}
+
+static void message_handler_req_lib_cpg_iteration_next (
+	void *conn,
+	const void *message)
+{
+	const struct req_lib_cpg_iterationnext *req_lib_cpg_iterationnext = message;
+	struct res_lib_cpg_iterationnext res_lib_cpg_iterationnext;
+	struct cpg_iteration_instance *cpg_iteration_instance;
+	cs_error_t error = CS_OK;
+	int res;
+	struct process_info *pi;
+
+	log_printf (LOGSYS_LEVEL_DEBUG, "cpg iteration next\n");
+
+	res = hdb_handle_get (&cpg_iteration_handle_t_db,
+			req_lib_cpg_iterationnext->iteration_handle,
+			(void *)&cpg_iteration_instance);
+
+	if (res != 0) {
+		error = CS_ERR_LIBRARY;
+		goto error_exit;
+	}
+
+	assert (cpg_iteration_instance);
+
+	cpg_iteration_instance->current_pointer = cpg_iteration_instance->current_pointer->next;
+
+	if (cpg_iteration_instance->current_pointer == &cpg_iteration_instance->items_list_head) {
+		error = CS_ERR_NO_SECTIONS;
+		goto error_put;
+	}
+
+	pi = list_entry (cpg_iteration_instance->current_pointer, struct process_info, list);
+
+	/*
+	 * Copy iteration data
+	 */
+	res_lib_cpg_iterationnext.description.nodeid = pi->nodeid;
+	res_lib_cpg_iterationnext.description.pid = pi->pid;
+	memcpy (&res_lib_cpg_iterationnext.description.group,
+			&pi->group,
+			sizeof (mar_cpg_name_t));
+
+error_put:
+	hdb_handle_put (&cpg_iteration_handle_t_db, req_lib_cpg_iterationnext->iteration_handle);
+error_exit:
+	res_lib_cpg_iterationnext.header.size = sizeof (res_lib_cpg_iterationnext);
+	res_lib_cpg_iterationnext.header.id = MESSAGE_RES_CPG_ITERATIONNEXT;
+	res_lib_cpg_iterationnext.header.error = error;
+
+	api->ipc_response_send (conn, &res_lib_cpg_iterationnext,
+		sizeof (res_lib_cpg_iterationnext));
+}
+
+static void message_handler_req_lib_cpg_iteration_finalize (
+	void *conn,
+	const void *message)
+{
+	const struct req_lib_cpg_iterationfinalize *req_lib_cpg_iterationfinalize = message;
+	struct res_lib_cpg_iterationfinalize res_lib_cpg_iterationfinalize;
+	struct cpg_iteration_instance *cpg_iteration_instance;
+	cs_error_t error = CS_OK;
+	int res;
+
+	log_printf (LOGSYS_LEVEL_DEBUG, "cpg iteration finalize\n");
+
+	res = hdb_handle_get (&cpg_iteration_handle_t_db,
+			req_lib_cpg_iterationfinalize->iteration_handle,
+			(void *)&cpg_iteration_instance);
+
+	if (res != 0) {
+		error = CS_ERR_LIBRARY;
+		goto error_exit;
+	}
+
+	assert (cpg_iteration_instance);
+
+	cpg_iteration_instance_finalize (cpg_iteration_instance);
+	hdb_handle_put (&cpg_iteration_handle_t_db, cpg_iteration_instance->handle);
+
+error_exit:
+	res_lib_cpg_iterationfinalize.header.size = sizeof (res_lib_cpg_iterationfinalize);
+	res_lib_cpg_iterationfinalize.header.id = MESSAGE_RES_CPG_ITERATIONFINALIZE;
+	res_lib_cpg_iterationfinalize.header.error = error;
+
+	api->ipc_response_send (conn, &res_lib_cpg_iterationfinalize,
+		sizeof (res_lib_cpg_iterationfinalize));
 }

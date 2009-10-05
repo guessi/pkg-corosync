@@ -1,6 +1,5 @@
-
 /*
- * Copyright (c) 2002-2003 MontaVista Software, Inc.
+ * Copyright (c) 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -33,34 +32,87 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AIS_UTIL_H_DEFINED
-#define AIS_UTIL_H_DEFINED
+#include <config.h>
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <errno.h>
+#include <string.h>
+#include <corosync/corotypes.h>
+#include <corosync/cpg.h>
+#include <signal.h>
+#include "../exec/crypto.h"
 
-static inline cs_error_t hdb_error_to_cs (int res)		\
-{								\
-	if (res == 0) {						\
-		return (CS_OK);					\
-	} else {						\
-		if (errno == EBADF) {				\
-			return (CS_ERR_BAD_HANDLE);		\
-		} else						\
-		if (errno == ENOMEM) {				\
-			return (CS_ERR_NO_MEMORY);		\
-		}						\
-		return (CS_ERR_LIBRARY);			\
-	}							\
+struct my_msg {
+	unsigned int msg_size;
+	unsigned char sha1[20];
+	unsigned char buffer[0];
+};
+
+static void cpg_deliver_fn (
+        cpg_handle_t handle,
+        const struct cpg_name *group_name,
+        uint32_t nodeid,
+        uint32_t pid,
+        void *m,
+        size_t msg_len)
+{
 }
 
-#ifdef HAVE_SMALL_MEMORY_FOOTPRINT
-#define IPC_REQUEST_SIZE        1024*64
-#define IPC_RESPONSE_SIZE       1024*64
-#define IPC_DISPATCH_SIZE       1024*64
-#else
-#define IPC_REQUEST_SIZE        8192*128
-#define IPC_RESPONSE_SIZE       8192*128
-#define IPC_DISPATCH_SIZE       8192*128
-#endif /* HAVE_SMALL_MEMORY_FOOTPRINT */
+static void cpg_confchg_fn (
+        cpg_handle_t handle,
+        const struct cpg_name *group_name,
+        const struct cpg_address *member_list, size_t member_list_entries,
+        const struct cpg_address *left_list, size_t left_list_entries,
+        const struct cpg_address *joined_list, size_t joined_list_entries)
+{
+}
 
-#endif /* AIS_UTIL_H_DEFINED */
+static cpg_callbacks_t callbacks = {
+	cpg_deliver_fn,
+	cpg_confchg_fn
+};
+
+static void sigintr_handler (int num)
+{
+	exit (1);
+}
+
+
+#define ITERATIONS (1000*2000)
+
+int main (void)
+{
+	cpg_handle_t handle;
+	cs_error_t res;
+	int original_fd;
+	int i;
+	int fd;
+
+	signal (SIGINT, sigintr_handler);
+	res = cpg_initialize (&handle, &callbacks);
+	if (res != CS_OK) {
+		printf ("FAIL %d\n", res);
+		exit (-1);
+	}
+
+	res = cpg_fd_get (handle, &original_fd);
+	if (res != CS_OK) {
+		printf ("FAIL %d\n", res);
+	}
+	for (i = 0; i < ITERATIONS; i++) {
+		res = cpg_fd_get (handle, &fd);
+		if (original_fd != fd) {
+			printf ("FAIL\n");
+			exit (-1);
+		}
+	}
+	
+	cpg_finalize (handle);
+
+	printf ("PASS\n");
+	return (0);
+}

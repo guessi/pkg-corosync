@@ -4,7 +4,7 @@
 # bootstrap / init
 AC_PREREQ([2.61])
 
-AC_INIT([corosync], [1.0.0], [openais@lists.osdl.org])
+AC_INIT([corosync], [1.1.0], [openais@lists.osdl.org])
 AM_INIT_AUTOMAKE([-Wno-portability])
 
 AC_CONFIG_SRCDIR([lib/coroipcc.c])
@@ -13,6 +13,11 @@ AC_CONFIG_HEADER([include/corosync/config.h include/corosync/cs_config.h])
 AC_CANONICAL_HOST
 
 AC_LANG([C])
+
+# Define SVN revision
+AC_DEFINE([SVN_REVISION],["m4_esyscmd([svnversion >/dev/null 2>&1 && \
+				       svnversion -n || \
+				       echo -n exported])"], [SVN revision])
 
 dnl Fix default variables - "prefix" variable if not specified
 if test "$prefix" = "NONE"; then
@@ -34,6 +39,13 @@ if test "$prefix" = "NONE"; then
 			libdir="/usr/lib"
 		fi
 	fi
+fi
+
+if test "$srcdir" = "."; then
+	AC_MSG_NOTICE([building in place srcdir:$srcdir])
+	AC_DEFINE([BUILDING_IN_PLACE], 1, [building in place])
+else
+	AC_MSG_NOTICE([building out of tree srcdir:$srcdir])
 fi
 
 # Checks for programs.
@@ -105,7 +117,7 @@ AC_CHECK_FUNCS([alarm alphasort atexit bzero dup2 endgrent endpwent fcntl \
 		memset mkdir scandir select socket strcasecmp strchr strdup \
 		strerror strrchr strspn strstr pthread_spin_lock \
 		pthread_spin_unlock pthread_setschedparam \
-		sched_get_priority_max])
+		sched_get_priority_max sched_setscheduler])
 
 AC_CONFIG_FILES([Makefile
 		 exec/Makefile
@@ -159,6 +171,9 @@ SOMAJOR="4"
 SOMINOR="0"
 SOMICRO="0"
 SONAME="${SOMAJOR}.${SOMINOR}.${SOMICRO}"
+# Special for libcpg
+CPG_SOMICRO="1"
+CPG_SONAME="${SOMAJOR}.${SOMINOR}.${CPG_SOMICRO}"
 
 # local options
 AC_ARG_ENABLE([ansi],
@@ -177,9 +192,18 @@ AC_ARG_ENABLE([coverage],
 	[  --enable-coverage       : coverage analysis of the codebase. ],
 	[ default="no" ])
 
+AC_ARG_ENABLE([small-memory-footprint],
+	[  --enable-small-memory-footprint : Use small message queues and small messages sizes. ],
+	[ default="no" ])
+
 AC_ARG_ENABLE([nss],
 	[  --enable-nss            : Network Security Services encryption. ],,
 	[ enable_nss="yes" ])
+
+AC_ARG_ENABLE([rdma],
+	[  --enable-rdma           : Infiniband RDMA transport support ],,
+	[ enable_rdma="no" ])
+AM_CONDITIONAL(BUILD_RDMA, test x$enable_rdma = xyes)
 
 AC_ARG_WITH([lcrso-dir],
 	[  --with-lcrso-dir=DIR    : corosync lcrso files. ],
@@ -215,7 +239,7 @@ case "$host_os" in
 		OS_DYFLAGS=""
 		DARWIN_OPTS="-dynamiclib -bind_at_load \
 			     -current_version ${SONAME} \
-			     -compatibility_version ${SONAME}"
+			     -compatibility_version ${SONAME} -install_name \$(libdir)/\$(@)"
 		AC_DEFINE_UNQUOTED([MAP_ANONYMOUS], [MAP_ANON],
 				   [Shared memory define for Darwin platform])
 		AC_DEFINE_UNQUOTED([PATH_MAX], [4096],
@@ -285,6 +309,13 @@ if test "x${enable_nss}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES nss"
 fi
 
+if test "x${enable_rdma}" = xyes; then
+	PKG_CHECK_MODULES([rdmacm],[rdmacm])
+	PKG_CHECK_MODULES([ibverbs],[ibverbs])
+	AC_DEFINE_UNQUOTED([HAVE_RDMA], 1, [have rdmacm])
+	PACKAGE_FEATURES="$PACKAGE_FEATURES rdma"
+fi
+
 # extra warnings
 EXTRA_WARNINGS=""
 
@@ -328,6 +359,12 @@ else
 	COVERAGE_LDFLAGS=""
 fi
 
+
+if test "x${enable_small_memory_footprint}" = xyes ; then
+	AC_DEFINE_UNQUOTED([HAVE_SMALL_MEMORY_FOOTPRINT], 1, [have small_memory_footprint])
+	PACKAGE_FEATURES="$PACKAGE_FEATURES small-memory-footprint"
+fi
+
 if test "x${enable_ansi}" = xyes && \
 		cc_supports_flag -std=iso9899:199409 ; then
 	AC_MSG_NOTICE([Enabling ANSI Compatibility])
@@ -360,6 +397,7 @@ AC_SUBST([SOMAJOR])
 AC_SUBST([SOMINOR])
 AC_SUBST([SOMICRO])
 AC_SUBST([SONAME])
+AC_SUBST([CPG_SONAME])
 
 AC_SUBST([OS_DYFLAGS])
 
@@ -384,6 +422,8 @@ COROSYSCONFDIR=${sysconfdir}/corosync
 AC_SUBST([COROSYSCONFDIR])
 AC_DEFINE_UNQUOTED([COROSYSCONFDIR], "$(eval echo ${COROSYSCONFDIR})", [corosync config directory])
 
+AC_DEFINE_UNQUOTED([PACKAGE_FEATURES], "${PACKAGE_FEATURES}", [corosync built-in features])
+
 AC_OUTPUT
 
 AC_MSG_RESULT([])
@@ -405,6 +445,7 @@ AC_MSG_RESULT([  Features                 =${PACKAGE_FEATURES}])
 AC_MSG_RESULT([])
 AC_MSG_RESULT([$PACKAGE build info:])
 AC_MSG_RESULT([  Library SONAME           = ${SONAME}])
+AC_MSG_RESULT([  CPG Library SONAME       = ${CPG_SONAME}])
 AC_MSG_RESULT([  Default optimization     = ${OPT_CFLAGS}])
 AC_MSG_RESULT([  Default debug options    = ${GDB_CFLAGS}])
 AC_MSG_RESULT([  Extra compiler warnings  = ${EXTRA_WARNING}])

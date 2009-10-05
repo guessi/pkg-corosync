@@ -1,3 +1,12 @@
+corosync (1.0.0-7) unstable; urgency=low
+
+  * [a300993] Conflict on openais (Closes: #549634)
+  * [00d0531] Conflict openais-legacy-dev (Closes: #549636)
+  * [64f4fa2] Add missing init script dependency on $remote_fs since we use
+    files in /usr/. (Closes: #549571) - thanks to Petter Reinholdtsen
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 05 Oct 2009 17:54:22 +0200
+
 corosync (1.0.0-6) unstable; urgency=low
 
   * upload to unstable

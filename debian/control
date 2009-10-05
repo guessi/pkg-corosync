@@ -12,7 +12,7 @@ Package: corosync
 Section: admin
 Architecture: any
 Depends: ${shlibs:Depends}, lsb-base (>= 3.0-6), libcorosync4 (>= ${binary:Verson}), adduser
-Conflicts: openais (<< 0.85)
+Conflicts: openais (<< 0.85), openais-legacy (<< 1.0.0)
 Description: Standards-based cluster framework (daemon and modules)
  The corosync project is a project to implement a production quality
  "Revised BSD" licensed implementation of all core functionalities
@@ -70,7 +70,7 @@ Package: libcorosync-dev
 Section: libdevel
 Architecture: any
 Depends: libcorosync4 (= ${binary:Version})
-Conflicts: libopenais-dev (<< 0.85)
+Conflicts: libopenais-dev (<< 0.85), libopenais-legacy-dev (<< 1.0.0)
 Description: Standards-based cluster framework (developer files)
  The corosync project is a project to implement a production quality
  "Revised BSD" licensed implementation of all core functionalities

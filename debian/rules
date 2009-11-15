@@ -5,14 +5,9 @@
 
 include /usr/share/quilt/quilt.make
 
-SOURCE  := $(shell dpkg-parsechangelog | sed -ne 's,^Source: *\(.*\)$$,\1,p')
-VERSION := $(shell dpkg-parsechangelog | perl -ne '/^Version:\s+(\S+)-[^-]+$$/ && print $$1;')
-
 STAMPS_DIR = debian/stamps
 
 export COROSYNC_BUILD=$(if $(findstring debug,$(DEB_BUILD_OPTIONS)),DEBUG,RELEASE)
-
-setup: $(STAMPS_DIR)/setup
 
 configure-stamp: patch
 	dh_testdir
@@ -30,9 +25,6 @@ clean: unpatch
 	dh_testdir
 	-$(MAKE) distclean
 	dh_clean configure-stamp
-
-maintainerclean:
-	rm -rf $(filter-out .svn debian, $(wildcard * .[^.]*))
 
 install: build
 	dh_testdir

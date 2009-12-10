@@ -1,3 +1,10 @@
+corosync (1.1.2-1) unstable; urgency=low
+
+  * [993b951] Imported Upstream version 1.1.2
+  * [899b956] add watch file
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 10 Dec 2009 10:50:11 +0100
+
 corosync (1.1.0-2) unstable; urgency=low
 
   * upload to unstable

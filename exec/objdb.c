@@ -53,6 +53,7 @@ struct object_key {
 	size_t key_len;
 	void *value;
 	size_t value_len;
+	objdb_value_types_t value_type;
 	struct list_head list;
 };
 
@@ -204,9 +205,9 @@ static int _object_notify_deleted_children(struct object_instance *parent_pt)
 			if ((tracker_pt != NULL) &&
 				(tracker_pt->object_destroy_notify_fn != NULL))
 				tracker_pt->object_destroy_notify_fn(parent_pt->object_handle,
-													 obj_pt->object_name,
-													 obj_pt->object_name_len,
-													 tracker_pt->data_pt);
+					obj_pt->object_name,
+					obj_pt->object_name_len,
+					tracker_pt->data_pt);
 		}
 	}
 
@@ -236,9 +237,10 @@ static void object_created_notification(
 			if (((obj_handle == parent_object_handle) ||
 				 (tracker_pt->depth == OBJECT_TRACK_DEPTH_RECURSIVE)) &&
 				(tracker_pt->object_create_notify_fn != NULL)) {
-				tracker_pt->object_create_notify_fn(object_handle, parent_object_handle,
-									 name_pt, name_len,
-									 tracker_pt->data_pt);
+				tracker_pt->object_create_notify_fn(object_handle,
+					parent_object_handle,
+					name_pt, name_len,
+					tracker_pt->data_pt);
 			}
 		}
 
@@ -452,9 +454,9 @@ static int object_create (
 
 	hdb_handle_put (&object_instance_database, parent_object_handle);
 	object_created_notification(object_instance->object_handle,
-								object_instance->parent_handle,
-								object_instance->object_name,
-								object_instance->object_name_len);
+		object_instance->parent_handle,
+		object_instance->object_name,
+		object_instance->object_name_len);
 	objdb_rdunlock();
 	return (0);
 
@@ -498,12 +500,12 @@ error_exit:
 	return (-1);
 }
 
-static int object_key_create (
+static int object_key_create_typed(
 	hdb_handle_t object_handle,
-	const void *key_name,
-	size_t key_len,
+	const char *key_name,
 	const void *value,
-	size_t value_len)
+	size_t value_len,
+	objdb_value_types_t value_type)
 {
 	struct object_instance *instance;
 	struct object_key *object_key;
@@ -511,13 +513,53 @@ static int object_key_create (
 	struct list_head *list;
 	int found = 0;
 	int i;
+	size_t key_len = strlen(key_name);
+	size_t expected_size;
+	int test_size_by_type = CS_TRUE;
 
 	objdb_rdlock();
 
 	res = hdb_handle_get (&object_instance_database,
-		object_handle, (void *)&instance);
+			  object_handle, (void *)&instance);
 	if (res != 0) {
 		goto error_exit;
+	}
+
+	switch (value_type) {
+	case OBJDB_VALUETYPE_INT16:
+		expected_size = sizeof (int16_t);
+		break;
+	case OBJDB_VALUETYPE_UINT16:
+		expected_size = sizeof (uint16_t);
+		break;
+	case OBJDB_VALUETYPE_INT32:
+		expected_size = sizeof (int32_t);
+		break;
+	case OBJDB_VALUETYPE_UINT32:
+		expected_size = sizeof (uint32_t);
+		break;
+	case OBJDB_VALUETYPE_INT64:
+		expected_size = sizeof (int64_t);
+		break;
+	case OBJDB_VALUETYPE_UINT64:
+		expected_size = sizeof (uint64_t);
+		break;
+	case OBJDB_VALUETYPE_FLOAT:
+		expected_size = sizeof (float);
+		break;
+	case OBJDB_VALUETYPE_DOUBLE:
+		expected_size = sizeof (double);
+		break;
+	case OBJDB_VALUETYPE_ANY:
+	default:
+		test_size_by_type = CS_FALSE;
+		break;
+	}
+	if (test_size_by_type) {
+		if (expected_size != value_len) {
+			//printf ("%s exp:%d != len:%d\n", key_name, expected_size, value_len);
+			goto error_put;
+		}
 	}
 
 	/*
@@ -574,11 +616,11 @@ static int object_key_create (
 		if (object_key == 0) {
 			goto error_put;
 		}
-		object_key->key_name = malloc (key_len);
+		object_key->key_name = malloc (key_len + 1);
 		if (object_key->key_name == 0) {
 			goto error_put_object;
 		}
-		memcpy (object_key->key_name, key_name, key_len);
+		memcpy (object_key->key_name, key_name, key_len + 1);
 		list_init (&object_key->list);
 		list_add_tail (&object_key->list, &instance->key_head);
 	}
@@ -590,9 +632,11 @@ static int object_key_create (
 
 	object_key->key_len = key_len;
 	object_key->value_len = value_len;
+	object_key->value_type = value_type;
 
 	object_key_changed_notification(object_handle, key_name, key_len,
-					value, value_len, OBJECT_KEY_CREATED);
+		value, value_len, OBJECT_KEY_CREATED);
+	hdb_handle_put (&object_instance_database, object_handle);
 	objdb_rdunlock();
 	return (0);
 
@@ -608,6 +652,32 @@ error_put:
 error_exit:
 	objdb_rdunlock();
 	return (-1);
+}
+
+static int object_key_create (
+	hdb_handle_t object_handle,
+	const void *key_name,
+	size_t key_len,
+	const void *value,
+	size_t value_len)
+{
+	char *key_name_terminated = NULL;
+	char *key_name_str = (char*)key_name;
+	int ret;
+
+	if (key_name_str[key_len-1] != '\0') {
+		key_name_terminated = malloc (key_len + 1);
+		memcpy (key_name_terminated, key_name, key_len);
+		key_name_terminated[key_len] = '\0';
+		key_name_str = key_name_terminated;
+	}
+
+	ret = object_key_create_typed (object_handle, key_name_str,
+		value, value_len, OBJDB_VALUETYPE_ANY);
+	if (key_name_terminated) {
+		free (key_name_terminated);
+	}
+	return ret;
 }
 
 static int _clear_object(struct object_instance *instance)
@@ -628,6 +698,7 @@ static int _clear_object(struct object_instance *instance)
 		list_del(&object_key->list);
 		free(object_key->key_name);
 		free(object_key->value);
+		free(object_key);
 	}
 
 	for (list = instance->child_head.next;
@@ -674,7 +745,8 @@ static int object_destroy (
 
 	list_del(&instance->child_list);
 	free(instance->object_name);
-	free(instance);
+	hdb_handle_put (&object_instance_database, object_handle);
+	hdb_handle_destroy (&object_instance_database, object_handle);
 
 	objdb_rdunlock();
 	return (res);
@@ -861,18 +933,19 @@ error_exit:
 	return (-1);
 }
 
-static int object_key_get (
+static int object_key_get_typed (
 	hdb_handle_t object_handle,
-	const void *key_name,
-	size_t key_len,
+	const char *key_name,
 	void **value,
-	size_t *value_len)
+	size_t *value_len,
+	objdb_value_types_t * type)
 {
 	unsigned int res = 0;
 	struct object_instance *instance;
 	struct object_key *object_key = NULL;
 	struct list_head *list;
 	int found = 0;
+	size_t key_len = strlen(key_name);
 
 	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
@@ -896,6 +969,7 @@ static int object_key_get (
 		if (value_len) {
 			*value_len = object_key->value_len;
 		}
+		*type = object_key->value_type;
 	}
 	else {
 		res = -1;
@@ -908,6 +982,34 @@ static int object_key_get (
 error_exit:
 	objdb_rdunlock();
 	return (-1);
+}
+
+static int object_key_get (
+	hdb_handle_t object_handle,
+	const void *key_name,
+	size_t key_len,
+	void **value,
+	size_t *value_len)
+{
+	objdb_value_types_t t;
+	int ret;
+	char *key_name_str = (char*)key_name;
+	char *key_name_terminated = NULL;
+
+	if (key_name_str[key_len-1] != '\0') {
+		key_name_terminated = malloc (key_len + 1);
+		memcpy (key_name_terminated, key_name, key_len);
+		key_name_terminated[key_len] = '\0';
+		key_name_str = key_name_terminated;
+	}
+
+	ret = object_key_get_typed(object_handle,
+		key_name_str,
+		value, value_len, &t);
+	if (key_name_terminated) {
+		free (key_name_terminated);
+	}
+	return ret;
 }
 
 static int object_key_increment (
@@ -939,9 +1041,45 @@ static int object_key_increment (
 			break;
 		}
 	}
-	if (found && object_key->value_len == sizeof(int)) {
-		(*(int *)object_key->value)++;
-		*value = *(int *)object_key->value;
+
+	if (found) {
+		switch (object_key->value_type) {
+		case OBJDB_VALUETYPE_INT16:
+			(*(int16_t *)object_key->value)++;
+			break;
+		case OBJDB_VALUETYPE_UINT16:
+			(*(uint16_t *)object_key->value)++;
+			break;
+		case OBJDB_VALUETYPE_INT32:
+			(*(int32_t *)object_key->value)++;
+			break;
+		case OBJDB_VALUETYPE_UINT32:
+			(*(uint32_t *)object_key->value)++;
+			break;
+		case OBJDB_VALUETYPE_INT64:
+			(*(int64_t *)object_key->value)++;
+			break;
+		case OBJDB_VALUETYPE_UINT64:
+			(*(uint64_t *)object_key->value)++;
+			break;
+		case OBJDB_VALUETYPE_ANY:
+			/* for backwards compatibilty */
+			if (object_key->value_len == sizeof(int)) {
+				(*(int *)object_key->value)++;
+			}
+			else {
+				res = -1;
+			}
+			break;
+		default:
+			res = -1;
+			break;
+		}
+		if (res == 0) {
+			/* nasty, not sure why we need to return this typed
+			 * instead of void* */
+			*value = *(int *)object_key->value;
+		}
 	}
 	else {
 		res = -1;
@@ -985,9 +1123,46 @@ static int object_key_decrement (
 			break;
 		}
 	}
-	if (found && object_key->value_len == sizeof(int)) {
-		(*(int *)object_key->value)--;
-		*value = *(int *)object_key->value;
+
+
+	if (found) {
+		switch (object_key->value_type) {
+		case OBJDB_VALUETYPE_INT16:
+			(*(int16_t *)object_key->value)--;
+			break;
+		case OBJDB_VALUETYPE_UINT16:
+			(*(uint16_t *)object_key->value)--;
+			break;
+		case OBJDB_VALUETYPE_INT32:
+			(*(int32_t *)object_key->value)--;
+			break;
+		case OBJDB_VALUETYPE_UINT32:
+			(*(uint32_t *)object_key->value)--;
+			break;
+		case OBJDB_VALUETYPE_INT64:
+			(*(int64_t *)object_key->value)--;
+			break;
+		case OBJDB_VALUETYPE_UINT64:
+			(*(uint64_t *)object_key->value)--;
+			break;
+		case OBJDB_VALUETYPE_ANY:
+			/* for backwards compatibilty */
+			if (object_key->value_len == sizeof(int)) {
+				(*(int *)object_key->value)--;
+			}
+			else {
+				res = -1;
+			}
+			break;
+		default:
+			res = -1;
+			break;
+		}
+		if (res == 0) {
+			/* nasty, not sure why we need to return this typed
+			 * instead of void* */
+			*value = *(int *)object_key->value;
+		}
 	}
 	else {
 		res = -1;
@@ -1043,9 +1218,10 @@ static int object_key_delete (
 	}
 
 	hdb_handle_put (&object_instance_database, object_handle);
-	if (ret == 0)
+	if (ret == 0) {
 		object_key_changed_notification(object_handle, key_name, key_len,
-										NULL, 0, OBJECT_KEY_DELETED);
+			NULL, 0, OBJECT_KEY_DELETED);
+	}
 	objdb_rdunlock();
 	return (ret);
 
@@ -1140,9 +1316,10 @@ static int object_key_replace (
 	}
 
 	hdb_handle_put (&object_instance_database, object_handle);
-	if (ret == 0)
-		object_key_changed_notification(object_handle, key_name, key_len,
-										new_value, new_value_len, OBJECT_KEY_REPLACED);
+	if (ret == 0) {
+		object_key_changed_notification (object_handle, key_name, key_len,
+			new_value, new_value_len, OBJECT_KEY_REPLACED);
+	}
 	objdb_rdunlock();
 	return (ret);
 
@@ -1205,8 +1382,39 @@ static int _dump_object(struct object_instance *instance, FILE *file, int depth)
 
 		memcpy(stringbuf1, object_key->key_name, object_key->key_len);
 		stringbuf1[object_key->key_len] = '\0';
-		memcpy(stringbuf2, object_key->value, object_key->value_len);
-		stringbuf2[object_key->value_len] = '\0';
+
+		switch (object_key->value_type) {
+		case OBJDB_VALUETYPE_INT16:
+			snprintf (stringbuf2, sizeof(int), "%hd",
+				*(unsigned int*)object_key->value);
+			break;
+		case OBJDB_VALUETYPE_UINT16:
+			snprintf (stringbuf2, sizeof(int), "%hu",
+				*(unsigned int*)object_key->value);
+			break;
+		case OBJDB_VALUETYPE_INT32:
+			snprintf (stringbuf2, sizeof(int), "%d",
+				*(int*)object_key->value);
+			break;
+		case OBJDB_VALUETYPE_UINT32:
+			snprintf (stringbuf2, sizeof(int), "%u",
+				*(unsigned int*)object_key->value);
+			break;
+		case OBJDB_VALUETYPE_INT64:
+			snprintf (stringbuf2, sizeof(int), "%ld",
+				*(long int*)object_key->value);
+			break;
+		case OBJDB_VALUETYPE_UINT64:
+			snprintf (stringbuf2, sizeof(int), "%lu",
+				*(unsigned long int*)object_key->value);
+			break;
+		default:
+		case OBJDB_VALUETYPE_STRING:
+		case OBJDB_VALUETYPE_ANY:
+			memcpy(stringbuf2, object_key->value, object_key->value_len);
+			stringbuf2[object_key->value_len] = '\0';
+			break;
+		}
 
 		for (i=0; i<depth+1; i++)
 			fprintf(file, "    ");
@@ -1255,12 +1463,11 @@ error_exit:
 	return (-1);
 }
 
-
-static int object_key_iter(hdb_handle_t parent_object_handle,
-			   void **key_name,
-			   size_t *key_len,
-			   void **value,
-			   size_t *value_len)
+static int object_key_iter_typed (hdb_handle_t parent_object_handle,
+	char **key_name,
+	void **value,
+	size_t *value_len,
+	objdb_value_types_t *type)
 {
 	unsigned int res;
 	struct object_instance *instance;
@@ -1284,9 +1491,8 @@ static int object_key_iter(hdb_handle_t parent_object_handle,
 	instance->iter_key_list = list;
 	if (found) {
 		*key_name = find_key->key_name;
-		if (key_len)
-			*key_len = find_key->key_len;
 		*value = find_key->value;
+		*type = find_key->value_type;
 		if (value_len)
 			*value_len = find_key->value_len;
 		res = 0;
@@ -1302,6 +1508,22 @@ static int object_key_iter(hdb_handle_t parent_object_handle,
 error_exit:
 	objdb_rdunlock();
 	return (-1);
+}
+
+static int object_key_iter(hdb_handle_t parent_object_handle,
+			   void **key_name,
+			   size_t *key_len,
+			   void **value,
+			   size_t *value_len)
+{
+	objdb_value_types_t t;
+	int ret;
+	char *str;
+	ret = object_key_iter_typed (parent_object_handle,
+		(char**)key_name, value, value_len, &t);
+	str = *key_name;
+	*key_len = strlen(str);
+	return ret;
 }
 
 static int object_key_iter_from(hdb_handle_t parent_object_handle,
@@ -1599,6 +1821,9 @@ struct objdb_iface_ver0 objdb_iface = {
 	.object_reload_config   = object_reload_config,
 	.object_key_increment   = object_key_increment,
 	.object_key_decrement   = object_key_decrement,
+	.object_key_create_typed	= object_key_create_typed,
+	.object_key_get_typed		= object_key_get_typed,
+	.object_key_iter_typed		= object_key_iter_typed,
 };
 
 struct lcr_iface objdb_iface_ver0[1] = {
@@ -1631,3 +1856,4 @@ __attribute__ ((constructor)) static void corosync_lcr_component_register (void)
 
 	lcr_component_register (&objdb_comp_ver0);
 }
+

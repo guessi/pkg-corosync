@@ -1,3 +1,9 @@
+corosync (1.2.0-1) unstable; urgency=low
+
+  * [0538e91] Imported Upstream version 1.2.0
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 14 Jan 2010 13:11:26 +0100
+
 corosync (1.1.2-1) unstable; urgency=low
 
   * [993b951] Imported Upstream version 1.1.2

@@ -50,6 +50,7 @@ int totemsrp_initialize (
 	hdb_handle_t poll_handle,
 	void **srp_context,
 	struct totem_config *totem_config,
+	totemmrp_stats_t *stats,
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
@@ -91,7 +92,7 @@ void totemsrp_callback_token_destroy (
 	void *srp_context,
 	void **handle_out);
 
-int totemsrp_new_msg_signal (void *srp_context);
+void totemsrp_event_signal (void *srp_context, enum totem_event_type type, int value);
 
 extern void totemsrp_net_mtu_adjust (struct totem_config *totem_config);
 

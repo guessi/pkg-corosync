@@ -89,8 +89,9 @@ corosync_cfgtool_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(corosync_cfgtool_LDFLAGS) $(LDFLAGS) -o $@
 corosync_cpgtool_SOURCES = corosync-cpgtool.c
 corosync_cpgtool_OBJECTS = corosync-cpgtool.$(OBJEXT)
-corosync_cpgtool_DEPENDENCIES = ../lib/libcfg.a ../lib/libcpg.a \
-	../lib/libcoroipcc.a
+corosync_cpgtool_DEPENDENCIES =
+corosync_cpgtool_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(corosync_cpgtool_LDFLAGS) $(LDFLAGS) -o $@
 corosync_fplay_SOURCES = corosync-fplay.c
 corosync_fplay_OBJECTS = corosync-fplay.$(OBJEXT)
 corosync_fplay_LDADD = $(LDADD)
@@ -155,6 +156,7 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 GREP = @GREP@
 GROFF = @GROFF@
+INITDDIR = @INITDDIR@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -257,7 +259,8 @@ corosync_objctl_LDADD = -lconfdb ../lcr/liblcr.a -lcoroipcc
 corosync_objctl_LDFLAGS = -L../lib
 corosync_cfgtool_LDADD = -lcfg -lcoroipcc
 corosync_cfgtool_LDFLAGS = -L../lib
-corosync_cpgtool_LDADD = ../lib/libcfg.a ../lib/libcpg.a ../lib/libcoroipcc.a
+corosync_cpgtool_LDADD = -lcfg -lcpg -lcoroipcc
+corosync_cpgtool_LDFLAGS = -L../lib
 corosync_quorumtool_LDADD = -lconfdb -lcfg -lquorum \
 			    -lvotequorum -lcoroipcc ../lcr/liblcr.a
 
@@ -338,7 +341,7 @@ corosync-cfgtool$(EXEEXT): $(corosync_cfgtool_OBJECTS) $(corosync_cfgtool_DEPEND
 	$(corosync_cfgtool_LINK) $(corosync_cfgtool_OBJECTS) $(corosync_cfgtool_LDADD) $(LIBS)
 corosync-cpgtool$(EXEEXT): $(corosync_cpgtool_OBJECTS) $(corosync_cpgtool_DEPENDENCIES) 
 	@rm -f corosync-cpgtool$(EXEEXT)
-	$(LINK) $(corosync_cpgtool_OBJECTS) $(corosync_cpgtool_LDADD) $(LIBS)
+	$(corosync_cpgtool_LINK) $(corosync_cpgtool_OBJECTS) $(corosync_cpgtool_LDADD) $(LIBS)
 corosync-fplay$(EXEEXT): $(corosync_fplay_OBJECTS) $(corosync_fplay_DEPENDENCIES) 
 	@rm -f corosync-fplay$(EXEEXT)
 	$(LINK) $(corosync_fplay_OBJECTS) $(corosync_fplay_LDADD) $(LIBS)

@@ -49,11 +49,11 @@
 #include "timer.h"
 #include "sync.h"
 #include "quorum.h"
-#include "service.h"
 #include "schedwrk.h"
 #include "main.h"
-#include <corosync/engine/coroapi.h>
 #include "apidef.h"
+#include <corosync/engine/coroapi.h>
+#include "service.h"
 
 LOGSYS_DECLARE_SUBSYS ("APIDEF");
 
@@ -117,6 +117,7 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.totem_ip_print = totemip_print,
 	.totem_crypto_set = totempg_crypto_set,
 	.totem_callback_token_create = totempg_callback_token_create,
+	.totem_get_stats = totempg_get_stats,
 	.tpg_init = totempg_groups_initialize,
 	.tpg_exit = NULL, /* missing from totempg api */
 	.tpg_join = (typedef_tpg_join)totempg_groups_join,
@@ -172,6 +173,9 @@ void apidef_init (struct objdb_iface_ver0 *objdb) {
 	apidef_corosync_api_v1.object_reload_config = objdb->object_reload_config;
 	apidef_corosync_api_v1.object_key_increment = objdb->object_key_increment;
 	apidef_corosync_api_v1.object_key_decrement = objdb->object_key_decrement;
+	apidef_corosync_api_v1.object_key_create_typed = objdb->object_key_create_typed;
+	apidef_corosync_api_v1.object_key_get_typed = objdb->object_key_get_typed;
+	apidef_corosync_api_v1.object_key_iter_typed = objdb->object_key_iter_typed;
 }
 
 struct corosync_api_v1 *apidef_get (void)

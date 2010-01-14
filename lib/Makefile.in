@@ -132,6 +132,10 @@ libquorum_a_AR = $(AR) $(ARFLAGS)
 libquorum_a_LIBADD =
 am_libquorum_a_OBJECTS = quorum.$(OBJEXT)
 libquorum_a_OBJECTS = $(am_libquorum_a_OBJECTS)
+libsam_a_AR = $(AR) $(ARFLAGS)
+libsam_a_LIBADD =
+am_libsam_a_OBJECTS = sam.$(OBJEXT)
+libsam_a_OBJECTS = $(am_libsam_a_OBJECTS)
 libvotequorum_a_AR = $(AR) $(ARFLAGS)
 libvotequorum_a_LIBADD =
 am_libvotequorum_a_OBJECTS = votequorum.$(OBJEXT)
@@ -147,11 +151,13 @@ LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 SOURCES = $(libcfg_a_SOURCES) $(libconfdb_a_SOURCES) \
 	$(libcoroipcc_a_SOURCES) $(libcpg_a_SOURCES) \
 	$(libevs_a_SOURCES) $(libpload_a_SOURCES) \
-	$(libquorum_a_SOURCES) $(libvotequorum_a_SOURCES)
+	$(libquorum_a_SOURCES) $(libsam_a_SOURCES) \
+	$(libvotequorum_a_SOURCES)
 DIST_SOURCES = $(libcfg_a_SOURCES) $(libconfdb_a_SOURCES) \
 	$(libcoroipcc_a_SOURCES) $(libcpg_a_SOURCES) \
 	$(libevs_a_SOURCES) $(libpload_a_SOURCES) \
-	$(libquorum_a_SOURCES) $(libvotequorum_a_SOURCES)
+	$(libquorum_a_SOURCES) $(libsam_a_SOURCES) \
+	$(libvotequorum_a_SOURCES)
 HEADERS = $(noinst_HEADERS)
 ETAGS = etags
 CTAGS = ctags
@@ -182,6 +188,7 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 GREP = @GREP@
 GROFF = @GROFF@
+INITDDIR = @INITDDIR@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -281,7 +288,7 @@ AM_CFLAGS = -fPIC
 AM_LDFLAGS = -lpthread
 INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include
 lib_LIBRARIES = libcpg.a libconfdb.a libevs.a libcfg.a libquorum.a \
-			  libvotequorum.a libpload.a libcoroipcc.a
+			  libvotequorum.a libpload.a libcoroipcc.a libsam.a
 
 SHARED_LIBS = $(filter-out libcpg.so.$(SONAME), $(lib_LIBRARIES:%.a=%.so.$(SONAME))) libcpg.so.$(CPG_SONAME)
 SHARED_LIBS_SO = $(lib_LIBRARIES:%.a=%.so)
@@ -294,11 +301,13 @@ libquorum_a_SOURCES = quorum.c
 libvotequorum_a_SOURCES = votequorum.c
 libconfdb_a_SOURCES = confdb.c sa-confdb.c
 libcoroipcc_a_SOURCES = coroipcc.c
+libsam_a_SOURCES = sam.c
 noinst_HEADERS = sa-confdb.h util.h \
 			  libcfg.versions libconfdb.versions \
 			  libcoroipcc.versions libcpg.versions \
 			  libevs.versions libpload.versions \
-			  libquorum.versions libvotequorum.versions
+			  libquorum.versions libvotequorum.versions \
+			  libsam.versions
 
 all: all-am
 
@@ -394,6 +403,10 @@ libquorum.a: $(libquorum_a_OBJECTS) $(libquorum_a_DEPENDENCIES)
 	-rm -f libquorum.a
 	$(libquorum_a_AR) libquorum.a $(libquorum_a_OBJECTS) $(libquorum_a_LIBADD)
 	$(RANLIB) libquorum.a
+libsam.a: $(libsam_a_OBJECTS) $(libsam_a_DEPENDENCIES) 
+	-rm -f libsam.a
+	$(libsam_a_AR) libsam.a $(libsam_a_OBJECTS) $(libsam_a_LIBADD)
+	$(RANLIB) libsam.a
 libvotequorum.a: $(libvotequorum_a_OBJECTS) $(libvotequorum_a_DEPENDENCIES) 
 	-rm -f libvotequorum.a
 	$(libvotequorum_a_AR) libvotequorum.a $(libvotequorum_a_OBJECTS) $(libvotequorum_a_LIBADD)
@@ -413,6 +426,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pload.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/quorum.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sa-confdb.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sam.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/votequorum.Po@am__quote@
 
 .c.o:

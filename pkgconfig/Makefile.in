@@ -103,6 +103,7 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 GREP = @GREP@
 GROFF = @GROFF@
+INITDDIR = @INITDDIR@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -112,7 +113,7 @@ LCRSODIR = @LCRSODIR@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
 LIBS = cfg confdb coroipcc coroipcs cpg evs logsys pload quorum \
-	  totem_pg votequorum
+	  totem_pg votequorum sam
 
 LINT_FLAGS = @LINT_FLAGS@
 LN_S = @LN_S@

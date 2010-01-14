@@ -68,7 +68,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 subdir = init
-DIST_COMMON = README $(srcdir)/Makefile.am $(srcdir)/Makefile.in
+DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -107,6 +107,7 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 GREP = @GREP@
 GROFF = @GROFF@
+INITDDIR = @INITDDIR@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -202,7 +203,8 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 MAINTAINERCLEANFILES = Makefile.in
-EXTRA_DIST = generic mvlcge README redhat
+EXTRA_DIST = generic.in
+target_INIT = generic
 all: all-am
 
 .SUFFIXES:
@@ -275,7 +277,7 @@ distdir: $(DISTFILES)
 	done
 check-am: all-am
 check: check-am
-all-am: Makefile
+all-am: Makefile all-local
 installdirs:
 install: install-am
 install-exec: install-exec-am
@@ -305,7 +307,7 @@ maintainer-clean-generic:
 	-test -z "$(MAINTAINERCLEANFILES)" || rm -f $(MAINTAINERCLEANFILES)
 clean: clean-am
 
-clean-am: clean-generic mostlyclean-am
+clean-am: clean-generic clean-local mostlyclean-am
 
 distclean: distclean-am
 	-rm -f Makefile
@@ -329,7 +331,7 @@ install-dvi: install-dvi-am
 
 install-dvi-am:
 
-install-exec-am:
+install-exec-am: install-exec-local
 
 install-html: install-html-am
 
@@ -367,20 +369,46 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am:
+uninstall-am: uninstall-local
 
 .MAKE: install-am install-strip
 
-.PHONY: all all-am check check-am clean clean-generic distclean \
-	distclean-generic distdir dvi dvi-am html html-am info info-am \
-	install install-am install-data install-data-am install-dvi \
-	install-dvi-am install-exec install-exec-am install-html \
+.PHONY: all all-am all-local check check-am clean clean-generic \
+	clean-local distclean distclean-generic distdir dvi dvi-am \
+	html html-am info info-am install install-am install-data \
+	install-data-am install-dvi install-dvi-am install-exec \
+	install-exec-am install-exec-local install-html \
 	install-html-am install-info install-info-am install-man \
 	install-pdf install-pdf-am install-ps install-ps-am \
 	install-strip installcheck installcheck-am installdirs \
 	maintainer-clean maintainer-clean-generic mostlyclean \
-	mostlyclean-generic pdf pdf-am ps ps-am uninstall uninstall-am
+	mostlyclean-generic pdf pdf-am ps ps-am uninstall uninstall-am \
+	uninstall-local
 
+
+%: %.in Makefile
+	rm -f $@-t $@
+	sed \
+		-e 's#@''SBINDIR@#$(sbindir)#g' \
+		-e 's#@''SYSCONFDIR@#$(sysconfdir)#g' \
+		-e 's#@''INITDDIR@#$(INITDDIR)#g' \
+		-e 's#@''LOCALSTATEDIR@#$(localstatedir)#g' \
+	    $< > $@-t
+	chmod 0755 $@-t
+	mv $@-t $@
+
+all-local: $(target_INIT)
+
+clean-local:
+	rm -rf $(target_INIT)
+
+install-exec-local:
+	$(INSTALL) -d $(DESTDIR)/$(INITDDIR)
+	$(INSTALL) -m 755 generic $(DESTDIR)/$(INITDDIR)/corosync
+
+uninstall-local:
+	cd $(DESTDIR)/$(INITDDIR) && \
+		rm -f corosync
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

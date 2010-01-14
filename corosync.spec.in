@@ -1,4 +1,4 @@
-%define alphatag @alphatag@
+%global alphatag @alphatag@
 
 Name: corosync
 Summary: The Corosync Cluster Engine and Application Programming Interfaces
@@ -7,7 +7,7 @@ Release: 1%{?alphatag:.%{alphatag}}%{?dist}
 License: BSD
 Group: System Environment/Base
 URL: http://www.openais.org
-Source0: http://developer.osdl.org/dev/openais/downloads/corosync-%{version}/corosync-%{version}.tar.gz
+Source0: http://developer.osdl.org/dev/openais/downloads/%{name}-%{version}/%{name}-%{version}.tar.gz
 
 # Runtime bits
 Requires: corosynclib = %{version}-%{release}
@@ -15,6 +15,8 @@ Requires(pre): /usr/sbin/useradd
 Requires(post): /sbin/chkconfig
 Requires(preun): /sbin/chkconfig
 Conflicts: openais <= 0.89, openais-devel <= 0.89
+
+# Build bits
 
 %define buildtrunk 0
 %{?_with_buildtrunk: %define buildtrunk 1}
@@ -28,7 +30,7 @@ BuildRequires: libibverbs-devel librdmacm-devel
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 %prep
-%setup -q -n corosync-%{version}
+%setup -q -n %{name}-%{version}
 
 %if %{buildtrunk}
 ./autogen.sh
@@ -40,7 +42,8 @@ export rdmacm_CFLAGS=-I/usr/include/rdma \
 export rdmacm_LIBS=-lrdmacm \
 %{configure} \
 	--enable-nss \
-	--enable-rdma
+	--enable-rdma \
+	--with-initddir=%{_initddir}
 
 %build
 make %{_smp_mflags}
@@ -49,8 +52,6 @@ make %{_smp_mflags}
 rm -rf %{buildroot}
 
 make install DESTDIR=%{buildroot}
-install -d %{buildroot}%{_initddir}
-install -m 755 init/redhat %{buildroot}%{_initddir}/corosync
 
 ## tree fixup
 # drop static libs
@@ -74,9 +75,6 @@ if [ $1 -eq 0 ]; then
 	/sbin/chkconfig --del corosync || :
 fi
 
-%postun
-[ "$1" -ge "1" ] && /sbin/service corosync condrestart &>/dev/null || :
-
 %files
 %defattr(-,root,root,-)
 %doc LICENSE SECURITY
@@ -89,6 +87,7 @@ fi
 %{_sbindir}/corosync-cpgtool
 %{_sbindir}/corosync-quorumtool
 %dir %{_sysconfdir}/corosync
+%dir %{_sysconfdir}/corosync/service.d
 %dir %{_sysconfdir}/corosync/uidgid.d
 %config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example
 %{_initddir}/corosync
@@ -112,7 +111,7 @@ fi
 %package -n corosynclib
 Summary: The Corosync Cluster Engine Libraries
 Group: System Environment/Libraries
-Conflicts: corosync < 0.92-7
+Requires: %{name} = %{version}-%{release}
 
 %description -n corosynclib
 This package contains corosync libraries.
@@ -131,6 +130,7 @@ This package contains corosync libraries.
 %{_libdir}/libquorum.so.*
 %{_libdir}/libvotequorum.so.*
 %{_libdir}/libpload.so.*
+%{_libdir}/libsam.so.*
 
 %post -n corosynclib -p /sbin/ldconfig
 
@@ -165,6 +165,7 @@ The Corosync Cluster Engine APIs.
 %{_includedir}/corosync/hdb.h
 %{_includedir}/corosync/list.h
 %{_includedir}/corosync/mar_gen.h
+%{_includedir}/corosync/sam.h
 %{_includedir}/corosync/swab.h
 %{_includedir}/corosync/quorum.h
 %{_includedir}/corosync/votequorum.h
@@ -194,17 +195,20 @@ The Corosync Cluster Engine APIs.
 %{_libdir}/libquorum.so
 %{_libdir}/libvotequorum.so
 %{_libdir}/libpload.so
+%{_libdir}/libsam.so
 %{_libdir}/pkgconfig/*.pc
 %{_mandir}/man3/cpg_*3*
 %{_mandir}/man3/evs_*3*
 %{_mandir}/man3/confdb_*3*
 %{_mandir}/man3/votequorum_*3*
+%{_mandir}/man3/sam_*3*
 %{_mandir}/man8/cpg_overview.8*
 %{_mandir}/man8/evs_overview.8*
 %{_mandir}/man8/confdb_overview.8*
 %{_mandir}/man8/logsys_overview.8*
 %{_mandir}/man8/votequorum_overview.8*
 %{_mandir}/man8/coroipc_overview.8*
+%{_mandir}/man8/sam_overview.8*
 
 %changelog
 * @date@ Autotools generated version <nobody@nowhere.org> - @version@-1.@alphatag@

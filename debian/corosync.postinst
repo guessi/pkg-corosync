@@ -6,6 +6,10 @@ set -e
 
 if [ "$1" = "configure" ]; then
 	adduser --quiet --group --system --no-create-home ais
+
+	# Touch an empty file so the log dir stays around after package removal
+	# so logrotate doesn't choke
+	touch /var/log/corosync/.empty
 fi
 
 #DEBHELPER#

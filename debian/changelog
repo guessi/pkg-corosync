@@ -1,3 +1,11 @@
+corosync (1.2.0-2) unstable; urgency=low
+
+  * [e6d54e6] Make sure /var/log/corosync/ is nonempty otherwise removing
+    corosync also removes this dir which makes logrotate choke. A purge
+    cleans up the log files anyway.
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 10 Feb 2010 18:58:15 +0100
+
 corosync (1.2.0-1) unstable; urgency=low
 
   * [0538e91] Imported Upstream version 1.2.0

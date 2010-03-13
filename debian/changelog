@@ -1,3 +1,13 @@
+corosync (1.2.0-3) unstable; urgency=low
+
+  * [3c2ff0a] Use passive ftp for uscan
+  * [fb2678a] Fix typo in dependencies that breaks the autobuild (Closes:
+    #573676)
+  * [81e5a81] corosync-dbg: dependency on corosync or libcorosync4 so the
+    library can be debugged without corosync installed.
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 13 Mar 2010 11:54:07 +0100
+
 corosync (1.2.0-2) unstable; urgency=low
 
   * [e6d54e6] Make sure /var/log/corosync/ is nonempty otherwise removing

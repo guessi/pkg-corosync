@@ -11,7 +11,7 @@ Vcs-Browser: http://git.debian.org/?p=debian-ha/corosync.git;a=summary
 Package: corosync
 Section: admin
 Architecture: any
-Depends: ${shlibs:Depends}, lsb-base (>= 3.0-6), libcorosync4 (>= ${binary:Verson}), adduser
+Depends: ${shlibs:Depends}, lsb-base (>= 3.0-6), libcorosync4 (>= ${binary:Version}), adduser
 Conflicts: openais (<< 0.85), openais-legacy (<< 1.0.0)
 Description: Standards-based cluster framework (daemon and modules)
  The corosync project is a project to implement a production quality
@@ -31,7 +31,7 @@ Package: corosync-dbg
 Section: debug
 Priority: extra
 Architecture: any
-Depends: ${shlibs:Depends}, libcorosync4 (= ${binary:Version}),
+Depends: ${shlibs:Depends}, libcorosync4 (= ${binary:Version}) |
  corosync (= ${binary:Version})
 Description: Standards-based cluster framework (debugging symbols)
  The corosync project is a project to implement a production quality

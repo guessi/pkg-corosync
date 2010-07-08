@@ -1,3 +1,18 @@
+corosync (1.2.1-1~bpo50+1) lenny-backports; urgency=low
+
+  * Rebuild for lenny-backports.
+
+ -- Martin Loschwitz <madkiss@debian.org>  Thu, 08 Jul 2010 08:49:06 +0000
+
+corosync (1.2.1-1) unstable; urgency=low
+
+  * [c254474] Bump standards version
+  * [d4bd86b] Add ${misc:Depends} dependencies
+  * [cef00bb] Upstream changed the login - fix watch file
+  * [6e03508] Imported Upstream version 1.2.1
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 26 Apr 2010 19:05:02 +0200
+
 corosync (1.2.0-3) unstable; urgency=low
 
   * [3c2ff0a] Use passive ftp for uscan

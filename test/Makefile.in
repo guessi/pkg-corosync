@@ -353,7 +353,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 MAINTAINERCLEANFILES = Makefile.in
-INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include
+INCLUDES = -I$(top_builddir)/include/corosync -I$(top_srcdir)/include
 testevs_LDADD = -levs -lcoroipcc
 testevs_LDFLAGS = -L../lib
 testcpg_LDADD = -lcpg -lcoroipcc
@@ -403,6 +403,9 @@ logsys_t2_LDADD = -llogsys
 logsys_t2_LDFLAGS = -L../exec
 testsam_LDADD = -lsam
 testsam_LDFLAGS = -L../lib
+LINT_FILES1 := $(filter-out sa_error.c, $(wildcard *.c))
+LINT_FILES2 := $(filter-out testevsth.c, $(LINT_FILES1))
+LINT_FILES := $(filter-out testparse.c, $(LINT_FILES2))
 all: all-am
 
 .SUFFIXES:
@@ -759,7 +762,7 @@ uninstall-am:
 
 
 lint:
-	-splint $(LINT_FLAGS) $(CFLAGS) *.c
+	-for f in $(LINT_FILES) ; do echo Splint $$f ; splint $(INCLUDES) $(LINT_FLAGS) $(CFLAGS) $$f ; done
 
 clean-local:
 	rm -f fdata

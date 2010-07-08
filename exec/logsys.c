@@ -943,12 +943,14 @@ static int logsys_config_file_set_unlocked (
 
 	logsys_loggers[subsysid].logfile_fp = fopen (file, "a+");
 	if (logsys_loggers[subsysid].logfile_fp == NULL) {
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
 		free(logsys_loggers[subsysid].logfile);
 		logsys_loggers[subsysid].logfile = NULL;
 		snprintf (error_string_response,
 			sizeof(error_string_response),
 			"Can't open logfile '%s' for reason (%s).\n",
-				 file, strerror (errno));
+				 file, error_str);
 		*error_string = error_string_response;
 		return (-1);
 	}
@@ -1074,7 +1076,6 @@ int _logsys_wthread_create (void)
 	if (((logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].mode & LOGSYS_MODE_FORK) == 0) &&
 		((logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].mode & LOGSYS_MODE_THREADED) != 0)) {
 		wthread_create();
-		atexit (logsys_atexit);
 	}
 	return (0);
 }

@@ -214,6 +214,8 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message);
 
 static void message_handler_req_lib_cpg_leave (void *conn, const void *message);
 
+static void message_handler_req_lib_cpg_finalize (void *conn, const void *message);
+
 static void message_handler_req_lib_cpg_mcast (void *conn, const void *message);
 
 static void message_handler_req_lib_cpg_membership (void *conn,
@@ -240,7 +242,9 @@ static int cpg_exec_send_downlist(void);
 
 static int cpg_exec_send_joinlist(void);
 
-static void cpg_sync_init (
+static void cpg_sync_init_v2 (
+	const unsigned int *trans_list,
+	size_t trans_list_entries,
 	const unsigned int *member_list,
 	size_t member_list_entries,
 	const struct memb_ring_id *ring_id);
@@ -288,6 +292,10 @@ static struct corosync_lib_handler cpg_lib_engine[] =
 		.lib_handler_fn				= message_handler_req_lib_cpg_iteration_finalize,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
+	{ /* 8 */
+		.lib_handler_fn				= message_handler_req_lib_cpg_finalize,
+		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
+	},
 };
 
 static struct corosync_exec_handler cpg_exec_engine[] =
@@ -329,8 +337,8 @@ struct corosync_service_engine cpg_service_engine = {
 	.exec_dump_fn				= NULL,
 	.exec_engine				= cpg_exec_engine,
 	.exec_engine_count		        = sizeof (cpg_exec_engine) / sizeof (struct corosync_exec_handler),
-	.sync_mode				= CS_SYNC_V1,
-	.sync_init                              = cpg_sync_init,
+	.sync_mode				= CS_SYNC_V1_APIV2,
+	.sync_init                              = (sync_init_v1_fn_t)cpg_sync_init_v2,
 	.sync_process                           = cpg_sync_process,
 	.sync_activate                          = cpg_sync_activate,
 	.sync_abort                             = cpg_sync_abort
@@ -406,7 +414,9 @@ struct req_exec_cpg_downlist {
 
 static struct req_exec_cpg_downlist g_req_exec_cpg_downlist;
 
-static void cpg_sync_init (
+static void cpg_sync_init_v2 (
+	const unsigned int *trans_list,
+	size_t trans_list_entries,
 	const unsigned int *member_list,
 	size_t member_list_entries,
 	const struct memb_ring_id *ring_id)
@@ -435,8 +445,8 @@ static void cpg_sync_init (
 		 */
 		for (i = 0; i < my_old_member_list_entries; i++) {
 			found = 0;
-			for (j = 0; j < my_member_list_entries; j++) {
-				if (my_old_member_list[i] == my_member_list[j]) {
+			for (j = 0; j < trans_list_entries; j++) {
+				if (my_old_member_list[i] == trans_list[j]) {
 					found = 1;
 					break;
 				}
@@ -1063,6 +1073,21 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 		}
 	}
 
+	/*
+	 * Same check must be done in process info list, because there may be not yet delivered
+	 * leave of client.
+	 */
+	for (iter = process_info_list_head.next; iter != &process_info_list_head; iter = iter->next) {
+		struct process_info *pi = list_entry (iter, struct process_info, list);
+
+		if (pi->nodeid == api->totem_nodeid_get () && pi->pid == req_lib_cpg_join->pid &&
+		    mar_name_compare(&req_lib_cpg_join->group_name, &pi->group) == 0) {
+			/* We have same pid and group name joined -> return error */
+			error = CPG_ERR_TRY_AGAIN;
+			goto response_send;
+		}
+	}
+
 	switch (cpd->cpd_state) {
 	case CPD_STATE_UNJOINED:
 		error = CPG_OK;
@@ -1128,6 +1153,32 @@ static void message_handler_req_lib_cpg_leave (void *conn, const void *message)
 	res_lib_cpg_leave.header.id = MESSAGE_RES_CPG_LEAVE;
 	res_lib_cpg_leave.header.error = error;
 	api->ipc_response_send(conn, &res_lib_cpg_leave, sizeof(res_lib_cpg_leave));
+}
+
+/* Finalize message from library */
+static void message_handler_req_lib_cpg_finalize (
+	void *conn,
+	const void *message)
+{
+	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
+	struct res_lib_cpg_finalize res_lib_cpg_finalize;
+	cs_error_t error = CS_OK;
+
+	log_printf (LOGSYS_LEVEL_DEBUG, "cpg finalize for conn=%p\n", conn);
+
+	/*
+	 * We will just remove cpd from list. After this call, connection will be
+	 * closed on lib side, and cpg_lib_exit_fn will be called
+	 */
+	list_del (&cpd->list);
+	list_init (&cpd->list);
+
+	res_lib_cpg_finalize.header.size = sizeof (res_lib_cpg_finalize);
+	res_lib_cpg_finalize.header.id = MESSAGE_RES_CPG_FINALIZE;
+	res_lib_cpg_finalize.header.error = error;
+
+	api->ipc_response_send (conn, &res_lib_cpg_finalize,
+		sizeof (res_lib_cpg_finalize));
 }
 
 /* Mcast message from the library */

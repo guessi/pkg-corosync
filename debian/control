@@ -3,7 +3,7 @@ Section: admin
 Priority: optional
 Maintainer: Debian HA Maintainers <debian-ha-maintainers@lists.alioth.debian.org>
 Uploaders: Martin Gerhard Loschwitz <martin.loschwitz@linbit.com>, Guido Günther <agx@sigxcpu.org>
-Standards-Version: 3.8.3
+Standards-Version: 3.8.4
 Build-Depends: debhelper (>> 5), libnss3-dev, pkg-config, groff, quilt
 Vcs-Git: git://git.debian.org/debian-ha/corosync.git
 Vcs-Browser: http://git.debian.org/?p=debian-ha/corosync.git;a=summary
@@ -11,7 +11,8 @@ Vcs-Browser: http://git.debian.org/?p=debian-ha/corosync.git;a=summary
 Package: corosync
 Section: admin
 Architecture: any
-Depends: ${shlibs:Depends}, lsb-base (>= 3.0-6), libcorosync4 (>= ${binary:Version}), adduser
+Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base (>= 3.0-6),
+ libcorosync4 (>= ${binary:Version}), adduser
 Conflicts: openais (<< 0.85), openais-legacy (<< 1.0.0)
 Description: Standards-based cluster framework (daemon and modules)
  The corosync project is a project to implement a production quality
@@ -31,8 +32,8 @@ Package: corosync-dbg
 Section: debug
 Priority: extra
 Architecture: any
-Depends: ${shlibs:Depends}, libcorosync4 (= ${binary:Version}) |
- corosync (= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends},
+ libcorosync4 (= ${binary:Version}) | corosync (= ${binary:Version})
 Description: Standards-based cluster framework (debugging symbols)
  The corosync project is a project to implement a production quality
  "Revised BSD" licensed implementation of all core functionalities
@@ -50,7 +51,7 @@ Description: Standards-based cluster framework (debugging symbols)
 Package: libcorosync4
 Section: libs
 Architecture: any
-Depends: ${shlibs:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Conflicts: libopenais2 (<< 0.85)
 Description: Standards-based cluster framework (libraries)
  The corosync project is a project to implement a production quality
@@ -69,7 +70,7 @@ Description: Standards-based cluster framework (libraries)
 Package: libcorosync-dev
 Section: libdevel
 Architecture: any
-Depends: libcorosync4 (= ${binary:Version})
+Depends: libcorosync4 (= ${binary:Version}), ${misc:Depends}
 Conflicts: libopenais-dev (<< 0.85), libopenais-legacy-dev (<< 1.0.0)
 Description: Standards-based cluster framework (developer files)
  The corosync project is a project to implement a production quality

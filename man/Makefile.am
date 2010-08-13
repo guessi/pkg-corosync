@@ -39,7 +39,15 @@ EXTRA_DIST		= index.html
 dist_man_MANS = \
 	corosync.conf.5 \
 	confdb_overview.8 \
+	corosync.8 \
 	corosync-objctl.8 \
+	corosync-blackbox.8 \
+	corosync-keygen.8 \
+	corosync-cfgtool.8 \
+	corosync-cpgtool.8 \
+	corosync-fplay.8 \
+	corosync-pload.8 \
+	corosync-quorumtool.8 \
 	corosync_overview.8 \
 	cpg_overview.8 \
 	evs_overview.8 \
@@ -107,7 +115,8 @@ dist_man_MANS = \
 	sam_overview.8 \
 	sam_register.3 \
 	sam_start.3 \
-	sam_stop.3
+	sam_stop.3 \
+	sam_warn_signal_set.3
 	
 if BUILD_HTML_DOCS
 

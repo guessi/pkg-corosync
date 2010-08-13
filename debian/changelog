@@ -1,29 +1,10 @@
-corosync (1.2.1-4) unstable; urgency=low
+corosync (1.2.7-1) experimental; urgency=low
 
-  * [2ebaf59] Move corosync start out of rcS since we want to be able to log
-    to syslog and rsyslog isn't started in rcS. (Closes: #608269)
-
- -- Guido Günther <agx@sigxcpu.org>  Sun, 02 Jan 2011 12:41:52 +0100
-
-corosync (1.2.1-3) unstable; urgency=low
-
-  * [12e6e88] Fix default consensus timeout (Closes: #573030)
-  * [0d7cc00] Don't timeout during daemon shut down since this might leave
-    pacemaker resources running.
-    See: http://developerbugs.linux-foundation.org/show_bug.cgi?id=2217
-    (Closes: #556533)
-  * [583fe40] Add copytruncate to logrotate snippet (Closes: #584582)
-
- -- Guido Günther <agx@sigxcpu.org>  Tue, 07 Dec 2010 12:53:47 +0100
-
-corosync (1.2.1-2) unstable; urgency=low
-
+  * [1c157d6] New upstream version 1.2.7
   * [a2453fb] Add status to corosync init script (Closes: #582104) - thanks to
     Raoul Bhatia for the patch
-  * [986d8ed] Make sure we start before and stop after $syslog (Closes:
-    #596694) - thanks to Frank Schmidt for tracking down the start issues
 
- -- Guido Günther <agx@sigxcpu.org>  Tue, 14 Sep 2010 13:05:21 +0200
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 13 Aug 2010 16:32:40 +0200
 
 corosync (1.2.1-1) unstable; urgency=low
 

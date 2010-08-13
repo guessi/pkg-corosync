@@ -13,7 +13,7 @@ totem {
 	join: 60
 
 	# How long to wait for consensus to be achieved before starting a new round of membership configuration (ms)
-	consensus: 3600
+	consensus: 1500
 
 	# Turn off the virtual synchrony filter
 	vsftype: none

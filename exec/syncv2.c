@@ -244,6 +244,11 @@ static void sync_barrier_handler (unsigned int nodeid, const void *msg)
 		}
 	}
 	if (barrier_reached) {
+		log_printf (LOGSYS_LEVEL_DEBUG, "Committing synchronization for %s\n",
+			my_service_list[my_processing_idx].name);
+		my_service_list[my_processing_idx].state = ACTIVATE;
+		my_service_list[my_processing_idx].sync_activate ();
+
 		my_processing_idx += 1;
 		if (my_service_list_entries == my_processing_idx) {
 			my_memb_determine_list_entries = 0;
@@ -551,18 +556,11 @@ static int schedwrk_processor (const void *context)
 	if (my_service_list[my_processing_idx].state == PROCESS) {
 		my_service_list[my_processing_idx].state = PROCESS;
 		res = my_service_list[my_processing_idx].sync_process ();
-		if (res != -1) {
-			my_service_list[my_processing_idx].state = ACTIVATE;
+		if (res == 0) {
+			sync_barrier_enter();
 		} else {
 			return (-1);
 		}
-	}
-	if (my_service_list[my_processing_idx].state == ACTIVATE) {
-		my_service_list[my_processing_idx].state = ACTIVATE;
-		my_service_list[my_processing_idx].sync_activate ();
-		log_printf (LOGSYS_LEVEL_DEBUG, "Committing synchronization for %s\n",
-			my_service_list[my_processing_idx].name);
-		sync_barrier_enter();
 	}
 	return (0);
 }
@@ -601,6 +599,11 @@ void sync_v2_abort (void)
 		schedwrk_destroy (my_schedwrk_handle);
 		my_service_list[my_processing_idx].sync_abort ();
 	}
+
+	/* this will cause any "old" barrier messages from causing
+	 * problems.
+	 */
+	memset (&my_ring_id, 0,	sizeof (struct memb_ring_id));
 }
 
 void sync_v2_memb_list_determine (const struct memb_ring_id *ring_id)
@@ -614,4 +617,5 @@ void sync_v2_memb_list_determine (const struct memb_ring_id *ring_id)
 void sync_v2_memb_list_abort (void)
 {
 	my_memb_determine_list_entries = 0;
+	memset (&my_memb_determine_ring_id, 0, sizeof (struct memb_ring_id));
 }

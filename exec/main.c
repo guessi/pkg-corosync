@@ -136,6 +136,8 @@ static pthread_t corosync_exit_thread;
 
 static sem_t corosync_exit_sem;
 
+static void serialize_unlock (void);
+
 hdb_handle_t corosync_poll_handle_get (void)
 {
 	return (corosync_poll_handle);
@@ -154,6 +156,14 @@ void corosync_state_dump (void)
 
 static void unlink_all_completed (void)
 {
+	/*
+	 * The schedwrk_do API takes the global serializer lock
+	 * but doesn't release it because this exit callback is called
+	 * before it finishes.  Since we know we are exiting, we unlock it
+	 * here
+	 */
+	serialize_unlock ();
+	api->timer_delete (corosync_stats_timer_handle);
 	poll_stop (corosync_poll_handle);
 	totempg_finalize ();
 
@@ -384,8 +394,6 @@ static void priv_drop (void)
 
 static void corosync_tty_detach (void)
 {
-	int fd;
-
 	/*
 	 * Disconnect from TTY if this is not a debug run
 	 */
@@ -398,11 +406,6 @@ static void corosync_tty_detach (void)
 			/*
 			 * child which is disconnected, run this process
 			 */
-/* 			setset();
-			close (0);
-			close (1);
-			close (2);
-*/
 			break;
 		default:
 			exit (0);
@@ -415,17 +418,9 @@ static void corosync_tty_detach (void)
 	/*
 	 * Map stdin/out/err to /dev/null.
 	 */
-	fd = open("/dev/null", O_RDWR);
-	if (fd >= 0) {
-		/* dup2 to 0 / 1 / 2 (stdin / stdout / stderr) */
-		dup2(fd, STDIN_FILENO);  /* 0 */
-		dup2(fd, STDOUT_FILENO); /* 1 */
-		dup2(fd, STDERR_FILENO); /* 2 */
-
-		/* Should be 0, but just in case it isn't... */
-		if (fd > 2)
-			close(fd);
-	}
+	freopen("/dev/null", "r", stdin);
+	freopen("/dev/null", "a", stderr);
+	freopen("/dev/null", "a", stdout);
 }
 
 static void corosync_mlockall (void)
@@ -571,13 +566,12 @@ static void corosync_totem_stats_updater (void *data)
 		mtt_rx_token = (total_mtt_rx_token / token_count);
 		avg_backlog_calc = (total_backlog_calc / token_count);
 		avg_token_holdtime = (total_token_holdtime / token_count);
-
 		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
 			"mtt_rx_token", strlen("mtt_rx_token"),
 			&mtt_rx_token, sizeof (mtt_rx_token));
 		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
 			"avg_token_workload", strlen("avg_token_workload"),
-			&avg_token_holdtime, sizeof (avg_backlog_calc));
+			&avg_token_holdtime, sizeof (avg_token_holdtime));
 		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
 			"avg_backlog_calc", strlen("avg_backlog_calc"),
 			&avg_backlog_calc, sizeof (avg_backlog_calc));
@@ -693,8 +687,8 @@ static void corosync_totem_stats_init (void)
 			"avg_token_workload", &zero_32,
 			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
 		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"avg_backlog_calc", &zero_64,
-			sizeof (zero_64), OBJDB_VALUETYPE_UINT64);
+			"avg_backlog_calc", &zero_32,
+			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
 		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
 			"rx_msg_dropped", &zero_64,
 			sizeof (zero_64), OBJDB_VALUETYPE_UINT64);
@@ -744,6 +738,12 @@ static void deliver_fn (
 	}
 
 	if (!ais_service[service]) {
+		serialize_unlock();
+		return;
+	}
+	if (fn_id >= ais_service[service]->exec_engine_count) {
+		log_printf(LOGSYS_LEVEL_WARNING, "discarded unknown message %d for service %d (max id %d)",
+			fn_id, service, ais_service[service]->exec_engine_count);
 		serialize_unlock();
 		return;
 	}
@@ -911,6 +911,8 @@ static void corosync_sending_allowed_release (void *sending_allowed_private_data
 
 static int ipc_subsys_id = -1;
 
+
+static void ipc_fatal_error(const char *error_msg) __attribute__((noreturn));
 
 static void ipc_fatal_error(const char *error_msg) {
        _logsys_log_printf (

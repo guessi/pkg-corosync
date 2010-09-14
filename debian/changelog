@@ -1,3 +1,12 @@
+corosync (1.2.1-2) unstable; urgency=low
+
+  * [a2453fb] Add status to corosync init script (Closes: #582104) - thanks to
+    Raoul Bhatia for the patch
+  * [986d8ed] Make sure we start before and stop after $syslog (Closes:
+    #596694) - thanks to Frank Schmidt for tracking down the start issues
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 14 Sep 2010 13:05:21 +0200
+
 corosync (1.2.1-1) unstable; urgency=low
 
   * [c254474] Bump standards version

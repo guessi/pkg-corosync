@@ -2,8 +2,8 @@
 #
 ### BEGIN INIT INFO
 # Provides:          corosync
-# Required-Start:    $network $remote_fs
-# Required-Stop:     $network $remote_fs
+# Required-Start:    $network $remote_fs $syslog
+# Required-Stop:     $network $remote_fs $syslog
 # Default-Start:     S
 # Default-Stop:      0 1 6
 # Short-Description: corosync cluster framework
@@ -106,6 +106,9 @@ case "$1" in
 		log_end_msg 1
 		;;
 	esac
+	;;
+  status|monitor)
+	status_of_proc -p $PIDFILE $DAEMON $NAME && exit 0 || exit $?
 	;;
   *)
 	#echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2

@@ -7,4 +7,5 @@
 	notifempty
 	create 640 root adm
 	sharedscripts
+	copytruncate
 }

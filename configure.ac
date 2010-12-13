@@ -4,7 +4,10 @@
 # bootstrap / init
 AC_PREREQ([2.61])
 
-AC_INIT([corosync], [1.2.7], [openais@lists.osdl.org])
+AC_INIT([corosync],
+	m4_esyscmd([build-aux/git-version-gen .tarball-version]),
+	[openais@lists.osdl.org])
+
 AM_INIT_AUTOMAKE([-Wno-portability])
 
 AC_CONFIG_SRCDIR([lib/coroipcc.c])
@@ -13,11 +16,6 @@ AC_CONFIG_HEADER([include/corosync/config.h include/corosync/cs_config.h])
 AC_CANONICAL_HOST
 
 AC_LANG([C])
-
-# Define SVN revision
-AC_DEFINE([SVN_REVISION],["m4_esyscmd([svnversion >/dev/null 2>&1 && \
-				       svnversion -n || \
-				       echo -n exported])"], [SVN revision])
 
 dnl Fix default variables - "prefix" variable if not specified
 if test "$prefix" = "NONE"; then
@@ -223,6 +221,10 @@ AC_ARG_ENABLE([debug],
 	[ --enable-debug          : enable debug build. ],
 	[ default="no" ])
 
+AC_ARG_ENABLE([user-flags],
+	[  --enable-user-flags     : rely on user environment. ],
+	[ default="no" ])
+
 AC_ARG_ENABLE([coverage],
 	[  --enable-coverage       : coverage analysis of the codebase. ],
 	[ default="no" ])
@@ -264,7 +266,7 @@ case "$host_os" in
 		AC_DEFINE_UNQUOTED([COROSYNC_LINUX], [1],
 				   [Compiling for Linux platform])
 		OS_CFLAGS=""
-		OS_CPPFLAGS=""
+		OS_CPPFLAGS="-D_GNU_SOURCE"
 		OS_LDFLAGS=""
 		OS_DYFLAGS="-rdynamic"
 		DARWIN_OPTS=""
@@ -429,6 +431,13 @@ if test "x${enable_fatal_warnings}" = xyes && \
 	PACKAGE_FEATURES="$PACKAGE_FEATURES fatal-warnings"
 else
 	WERROR_CFLAGS=""
+fi
+
+# don't add addtional cflags
+if test "x${enable_user_flags}" = xyes; then
+  OPT_CFLAGS=""
+  GDB_FLAGS=""
+  EXTRA_WARNINGS=""
 fi
 
 # final build of *FLAGS

@@ -220,6 +220,7 @@ PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
 PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
+PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PKGCONFIG = @PKGCONFIG@
@@ -297,7 +298,13 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SPEC = $(PACKAGE_NAME).spec
 TARFILE = $(PACKAGE_NAME)-$(VERSION).tar.gz
-EXTRA_DIST = autogen.sh conf/corosync.conf.example $(SPEC).in
+EXTRA_DIST = autogen.sh conf/corosync.conf.example $(SPEC).in \
+			  build-aux/git-version-gen \
+			  build-aux/gitlog-to-changelog \
+			  build-aux/release.mk \
+			  conf/corosync.conf.example.udpu \
+			  .version
+
 AUTOMAKE_OPTIONS = foreign
 MAINTAINERCLEANFILES = Makefile.in aclocal.m4 configure depcomp \
 			  config.guess config.sub missing install-sh \
@@ -307,7 +314,9 @@ dist_doc_DATA = LICENSE INSTALL README.devmap \
 			  README.recovery SECURITY TODO AUTHORS
 
 corosysconfdir = ${COROSYSCONFDIR}
-corosysconf_DATA = conf/corosync.conf.example
+corosysconf_DATA = conf/corosync.conf.example \
+			  conf/corosync.conf.example.udpu
+
 SUBDIRS = include lcr lib exec services tools test pkgconfig \
 			  man init
 
@@ -317,7 +326,12 @@ RPMBUILDOPTS = --define "_sourcedir $(abs_builddir)" \
 		  --define "_srcrpmdir $(abs_builddir)" \
 		  --define "_rpmdir $(abs_builddir)"
 
-all: all-recursive
+
+# release/versioning
+BUILT_SOURCES = .version
+gen_start_date = 2000-01-01
+all: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
 .SUFFIXES:
 am--refresh:
@@ -617,6 +631,9 @@ distdir: $(DISTFILES)
 	      || exit 1; \
 	  fi; \
 	done
+	$(MAKE) $(AM_MAKEFLAGS) \
+	  top_distdir="$(top_distdir)" distdir="$(distdir)" \
+	  dist-hook
 	-test -n "$(am__skip_mode_fix)" \
 	|| find "$(distdir)" -type d ! -perm -755 \
 		-exec chmod u+rwx,go+rx {} \; -o \
@@ -733,14 +750,16 @@ distcleancheck: distclean
 	       $(distcleancheck_listfiles) ; \
 	       exit 1; } >&2
 check-am: all-am
-check: check-recursive
+check: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) check-recursive
 all-am: Makefile $(DATA)
 installdirs: installdirs-recursive
 installdirs-am:
 	for dir in "$(DESTDIR)$(corosysconfdir)" "$(DESTDIR)$(docdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
-install: install-recursive
+install: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) install-recursive
 install-exec: install-exec-recursive
 install-data: install-data-recursive
 uninstall: uninstall-recursive
@@ -763,6 +782,7 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
+	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
 	-test -z "$(MAINTAINERCLEANFILES)" || rm -f $(MAINTAINERCLEANFILES)
 clean: clean-recursive
 
@@ -834,16 +854,17 @@ ps-am:
 uninstall-am: uninstall-corosysconfDATA uninstall-dist_docDATA \
 	uninstall-local
 
-.MAKE: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) ctags-recursive \
-	install-am install-strip tags-recursive
+.MAKE: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) all check \
+	ctags-recursive install install-am install-strip \
+	tags-recursive
 
 .PHONY: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) CTAGS GTAGS \
 	all all-am am--refresh check check-am clean clean-generic \
 	ctags ctags-recursive dist dist-all dist-bzip2 dist-gzip \
-	dist-lzma dist-shar dist-tarZ dist-xz dist-zip distcheck \
-	distclean distclean-generic distclean-hdr distclean-tags \
-	distcleancheck distdir distuninstallcheck dvi dvi-am html \
-	html-am info info-am install install-am \
+	dist-hook dist-lzma dist-shar dist-tarZ dist-xz dist-zip \
+	distcheck distclean distclean-generic distclean-hdr \
+	distclean-tags distcleancheck distdir distuninstallcheck dvi \
+	dvi-am html html-am info info-am install install-am \
 	install-corosysconfDATA install-data install-data-am \
 	install-dist_docDATA install-dvi install-dvi-am install-exec \
 	install-exec-am install-exec-local install-html \
@@ -886,12 +907,40 @@ clean-generic:
 $(SPEC): $(SPEC).in
 	rm -f $@-t $@
 	LC_ALL=C date="$(shell date "+%a %b %d %Y")" && \
-	alphatag="$(shell svnversion | sed -e "s#.*:##g" -e "s#[MS]##g")" && \
-	sed \
-		-e "s#@alphatag@#r$$alphatag#g" \
-		-e "s#@version@#$(VERSION)#g" \
-		-e "s#@date@#$$date#g" \
-	$< > $@-t
+	if [ -f .tarball-version ]; then \
+		gitver="$(shell cat .tarball-version)" && \
+		rpmver=$$gitver && \
+		alphatag="" && \
+		dirty="" && \
+		numcomm="0"; \
+	else \
+		gitver="$(shell git describe --abbrev=4 --match='v*' HEAD 2>/dev/null)" && \
+		rpmver=`echo $$gitver | sed -e "s/^v//" -e "s/-.*//g"` && \
+		alphatag=`echo $$gitver | sed -e "s/.*-//" -e "s/^g//"` && \
+		vtag=`echo $$gitver | sed -e "s/-.*//g"` && \
+		numcomm=`git rev-list $$vtag..HEAD | wc -l` && \
+		git update-index --refresh > /dev/null 2>&1 || true && \
+		dirty=`git diff-index --name-only HEAD 2>/dev/null`; \
+	fi && \
+	if [ -n "$$dirty" ]; then dirty="dirty"; else dirty=""; fi && \
+	if [ "$$numcomm" = "0" ]; then \
+		sed \
+			-e "s#@version@#$$rpmver#g" \
+			-e "s#%glo.*alpha.*##g" \
+			-e "s#%glo.*numcomm.*##g" \
+			-e "s#@dirty@#$$dirty#g" \
+			-e "s#@date@#$$date#g" \
+		$< > $@-t; \
+	else \
+		sed \
+			-e "s#@version@#$$rpmver#g" \
+			-e "s#@alphatag@#$$alphatag#g" \
+			-e "s#@numcomm@#$$numcomm#g" \
+			-e "s#@dirty@#$$dirty#g" \
+			-e "s#@date@#$$date#g" \
+		$< > $@-t; \
+	fi; \
+	if [ -z "$$dirty" ]; then sed -i -e "s#%glo.*dirty.*##g" $@-t; fi
 	chmod a-w $@-t
 	mv $@-t $@
 
@@ -905,6 +954,19 @@ srpm: clean
 rpm: clean
 	$(MAKE) $(SPEC) $(TARFILE)
 	rpmbuild $(RPMBUILDOPTS) -ba $(SPEC)
+.version:
+	echo $(VERSION) > $@-t && mv $@-t $@
+
+dist-hook: gen-ChangeLog
+	echo $(VERSION) > $(distdir)/.tarball-version
+.PHONY: gen-ChangeLog
+gen-ChangeLog:
+	if test -d .git; then						\
+		$(top_srcdir)/build-aux/gitlog-to-changelog		\
+			--since=$(gen_start_date) > $(distdir)/cl-t;	\
+		rm -f $(distdir)/ChangeLog;				\
+		mv $(distdir)/cl-t $(distdir)/ChangeLog;		\
+	fi
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

@@ -1,3 +1,12 @@
+corosync (1.3.0-2) unstable; urgency=low
+
+  * Upload to unstable
+  * [f1907f8] Move corosync start out of rcS since we want to be able to log
+    to syslog and rsyslog isn't started in rcS. Fix cherry-picked from
+    squeeze. (Closes: #608269)
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 29 Mar 2011 18:26:50 +0200
+
 corosync (1.3.0-1) experimental; urgency=low
 
   * [986d8ed] Make sure we start before and stop after $syslog.

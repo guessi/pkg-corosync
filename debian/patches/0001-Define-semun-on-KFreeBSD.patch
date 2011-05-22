@@ -1,0 +1,29 @@
+From: =?UTF-8?q?Guido=20G=C3=BCnther?= <agx@sigxcpu.org>
+Date: Mon, 2 May 2011 21:42:49 +0200
+Subject: Define semun on KFreeBSD
+
+---
+ lib/coroipcc.c |    9 +++++++++
+ 1 files changed, 9 insertions(+), 0 deletions(-)
+
+diff --git a/lib/coroipcc.c b/lib/coroipcc.c
+index bbeb95f..bc161fb 100644
+--- a/lib/coroipcc.c
++++ b/lib/coroipcc.c
+@@ -572,6 +572,15 @@ coroipcc_service_connect (
+ 	struct ipc_instance *ipc_instance;
+ #if _POSIX_THREAD_PROCESS_SHARED < 1
+ 	key_t semkey = 0;
++#if defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
++        union semun
++        {
++                int val;
++                struct semid_ds *buf;
++                unsigned short int *array;
++                struct seminfo *__buf;
++        };
++#endif
+ 	union semun semun;
+ #endif
+ 	int sys_res;
+-- 

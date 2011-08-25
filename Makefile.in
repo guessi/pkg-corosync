@@ -186,6 +186,8 @@ CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DARWIN_OPTS = @DARWIN_OPTS@
+DBUS_CFLAGS = @DBUS_CFLAGS@
+DBUS_LIBS = @DBUS_LIBS@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 ECHO_C = @ECHO_C@
@@ -220,7 +222,6 @@ PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
 PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
-PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PKGCONFIG = @PKGCONFIG@
@@ -231,6 +232,9 @@ RANLIB = @RANLIB@
 SAM_SONAME = @SAM_SONAME@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
+SNMPCONFIG = @SNMPCONFIG@
+SNMPLIBS = @SNMPLIBS@
+SNMP_LCRSO = @SNMP_LCRSO@
 SOCKETDIR = @SOCKETDIR@
 SOLARIS_OPTS = @SOLARIS_OPTS@
 SOMAJOR = @SOMAJOR@
@@ -291,6 +295,7 @@ rdmacm_LIBS = @rdmacm_LIBS@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
+statgrab_LIBS = @statgrab_LIBS@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
@@ -318,7 +323,7 @@ corosysconf_DATA = conf/corosync.conf.example \
 			  conf/corosync.conf.example.udpu
 
 SUBDIRS = include lcr lib exec services tools test pkgconfig \
-			  man init
+			  man init conf
 
 RPMBUILDOPTS = --define "_sourcedir $(abs_builddir)" \
 		  --define "_specdir $(abs_builddir)" \
@@ -878,6 +883,11 @@ uninstall-am: uninstall-corosysconfDATA uninstall-dist_docDATA \
 	uninstall-local
 
 
+coverity:
+	cov-build --dir=cov make
+	cov-analyze --dir cov
+	cov-format-errors --dir cov
+
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/service.d
 	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/uidgid.d
@@ -906,7 +916,7 @@ clean-generic:
 
 $(SPEC): $(SPEC).in
 	rm -f $@-t $@
-	LC_ALL=C date="$(shell date "+%a %b %d %Y")" && \
+	date="$(shell LC_ALL=C date "+%a %b %d %Y")" && \
 	if [ -f .tarball-version ]; then \
 		gitver="$(shell cat .tarball-version)" && \
 		rpmver=$$gitver && \
@@ -962,7 +972,7 @@ dist-hook: gen-ChangeLog
 .PHONY: gen-ChangeLog
 gen-ChangeLog:
 	if test -d .git; then						\
-		$(top_srcdir)/build-aux/gitlog-to-changelog		\
+		LC_ALL=C $(top_srcdir)/build-aux/gitlog-to-changelog		\
 			--since=$(gen_start_date) > $(distdir)/cl-t;	\
 		rm -f $(distdir)/ChangeLog;				\
 		mv $(distdir)/cl-t $(distdir)/ChangeLog;		\

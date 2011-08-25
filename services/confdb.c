@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <poll.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/coroipc_types.h>
@@ -51,6 +52,7 @@
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/logsys.h>
 #include <corosync/engine/coroapi.h>
+#include <corosync/totem/coropoll.h>
 
 LOGSYS_DECLARE_SUBSYS ("CONFDB");
 
@@ -65,8 +67,28 @@ m2h (mar_uint64_t *m)
 
 static struct corosync_api_v1 *api;
 
+static int notify_pipe[2];
+
+struct confdb_ipc_message_holder {
+	void *conn;
+	size_t mlen;
+	struct list_head list;
+	char msg[];
+};
+
+DECLARE_LIST_INIT(confdb_ipc_message_holder_list_head);
+
+pthread_mutex_t confdb_ipc_message_holder_list_mutex =
+	PTHREAD_MUTEX_INITIALIZER;
+
 static int confdb_exec_init_fn (
 	struct corosync_api_v1 *corosync_api);
+static int confdb_exec_exit_fn(void);
+
+static int fd_set_nonblocking(int fd);
+
+static int objdb_notify_dispatch(hdb_handle_t handle,
+		int fd,	int revents, void *data);
 
 static int confdb_lib_init_fn (void *conn);
 static int confdb_lib_exit_fn (void *conn);
@@ -107,6 +129,8 @@ static void message_handler_req_lib_confdb_object_find (void *conn,
 
 static void message_handler_req_lib_confdb_object_parent_get (void *conn,
 							      const void *message);
+static void message_handler_req_lib_confdb_object_name_get (void *conn,
+							      const void *message);
 static void message_handler_req_lib_confdb_write (void *conn,
 						  const void *message);
 static void message_handler_req_lib_confdb_reload (void *conn,
@@ -129,12 +153,12 @@ static void confdb_notify_lib_of_key_change(
 static void confdb_notify_lib_of_new_object(
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
-	const uint8_t *name_pt, size_t name_len,
+	const void *name_pt, size_t name_len,
 	void *priv_data_pt);
 
 static void confdb_notify_lib_of_destroyed_object(
 	hdb_handle_t parent_object_handle,
-	const uint8_t *name_pt, size_t name_len,
+	const void *name_pt, size_t name_len,
 	void *priv_data_pt);
 
 static void confdb_notify_lib_of_reload(
@@ -227,6 +251,10 @@ static struct corosync_lib_handler confdb_lib_engine[] =
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_iter_typed,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
+	{ /* 20 */
+		.lib_handler_fn				= message_handler_req_lib_confdb_object_name_get,
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
 };
 
 
@@ -242,6 +270,7 @@ struct corosync_service_engine confdb_service_engine = {
 	.lib_engine				= confdb_lib_engine,
 	.lib_engine_count			= sizeof (confdb_lib_engine) / sizeof (struct corosync_lib_handler),
 	.exec_init_fn				= confdb_exec_init_fn,
+	.exec_exit_fn				= confdb_exec_exit_fn,
 };
 
 /*
@@ -290,14 +319,36 @@ __attribute__ ((constructor)) static void corosync_lcr_component_register (void)
 	lcr_component_register (&confdb_comp_ver0);
 }
 
+static int confdb_exec_exit_fn(void)
+{
+	api->poll_dispatch_delete(api->poll_handle_get(), notify_pipe[0]);
+	close(notify_pipe[0]);
+	close(notify_pipe[1]);
+	return 0;
+}
+
 static int confdb_exec_init_fn (
 	struct corosync_api_v1 *corosync_api)
 {
+	int i;
+
 #ifdef COROSYNC_SOLARIS
 	logsys_subsys_init();
 #endif
 	api = corosync_api;
-	return 0;
+
+	if (pipe(notify_pipe) != 0) {
+		return -1;
+	}
+
+	for (i = 0; i < 2; i++) {
+		if (fd_set_nonblocking (notify_pipe[i]) == -1) {
+			return -1;
+		}
+	}
+
+	return api->poll_dispatch_add(api->poll_handle_get(), notify_pipe[0],
+		POLLIN, NULL, objdb_notify_dispatch);
 }
 
 static int confdb_lib_init_fn (void *conn)
@@ -313,9 +364,26 @@ static int confdb_lib_exit_fn (void *conn)
 	api->object_track_stop(confdb_notify_lib_of_key_change,
 		confdb_notify_lib_of_new_object,
 		confdb_notify_lib_of_destroyed_object,
-		NULL,
+		confdb_notify_lib_of_reload,
 		conn);
 	return (0);
+}
+
+static int fd_set_nonblocking(int fd)
+{
+	int flags;
+	int res;
+
+	flags = fcntl (fd, F_GETFL);
+	if (flags == -1) {
+		return -1;
+	}
+
+	flags |= O_NONBLOCK;
+
+	res = fcntl (fd, F_SETFL, flags);
+
+	return res;
 }
 
 static void message_handler_req_lib_confdb_object_create (void *conn,
@@ -570,6 +638,28 @@ static void message_handler_req_lib_confdb_object_parent_get (void *conn,
 	api->ipc_response_send(conn, &res_lib_confdb_object_parent_get, sizeof(res_lib_confdb_object_parent_get));
 }
 
+static void message_handler_req_lib_confdb_object_name_get (void *conn,
+							      const void *message)
+{
+	const struct req_lib_confdb_object_name_get *request = message;
+	struct res_lib_confdb_object_name_get response;
+	int ret = CS_OK;
+	char object_name[CS_MAX_NAME_LENGTH];
+	size_t object_name_len;
+
+	if (api->object_name_get(request->object_handle,
+				object_name, &object_name_len)) {
+		ret = CS_ERR_ACCESS;
+	}
+
+	response.object_name.length = object_name_len;
+	strncpy((char*)response.object_name.value, object_name, CS_MAX_NAME_LENGTH);
+	response.object_name.value[CS_MAX_NAME_LENGTH-1] = '\0';
+	response.header.size = sizeof(response);
+	response.header.id = MESSAGE_RES_CONFDB_OBJECT_NAME_GET;
+	response.header.error = ret;
+	api->ipc_response_send(conn, &response, sizeof(response));
+}
 
 static void message_handler_req_lib_confdb_key_iter (void *conn,
 						     const void *message)
@@ -651,9 +741,12 @@ static void message_handler_req_lib_confdb_object_iter (void *conn,
 	int ret = CS_OK;
 
 	if (!req_lib_confdb_object_iter->find_handle) {
-		api->object_find_create(req_lib_confdb_object_iter->parent_object_handle,
+		if (api->object_find_create(req_lib_confdb_object_iter->parent_object_handle,
 					NULL, 0,
-					m2h(&res_lib_confdb_object_iter.find_handle));
+					m2h(&res_lib_confdb_object_iter.find_handle)) == -1) {
+			ret = CS_ERR_ACCESS;
+			goto response_send;
+		}
 	}
 	else
 		res_lib_confdb_object_iter.find_handle = req_lib_confdb_object_iter->find_handle;
@@ -664,12 +757,17 @@ static void message_handler_req_lib_confdb_object_iter (void *conn,
 		api->object_find_destroy(res_lib_confdb_object_iter.find_handle);
 	}
 	else {
-		api->object_name_get(res_lib_confdb_object_iter.object_handle,
+		if (api->object_name_get(res_lib_confdb_object_iter.object_handle,
 				     (char *)res_lib_confdb_object_iter.object_name.value,
-				     &object_name_len);
-
-		res_lib_confdb_object_iter.object_name.length = object_name_len;
+				     &object_name_len) == -1) {
+			ret = CS_ERR_ACCESS;
+			goto response_send;
+		} else {
+			res_lib_confdb_object_iter.object_name.length = object_name_len;
+		}
 	}
+
+response_send:
 	res_lib_confdb_object_iter.header.size = sizeof(res_lib_confdb_object_iter);
 	res_lib_confdb_object_iter.header.id = MESSAGE_RES_CONFDB_OBJECT_ITER;
 	res_lib_confdb_object_iter.header.error = ret;
@@ -686,10 +784,13 @@ static void message_handler_req_lib_confdb_object_find (void *conn,
 	int ret = CS_OK;
 
 	if (!req_lib_confdb_object_find->find_handle) {
-		api->object_find_create(req_lib_confdb_object_find->parent_object_handle,
+		if (api->object_find_create(req_lib_confdb_object_find->parent_object_handle,
 					req_lib_confdb_object_find->object_name.value,
 					req_lib_confdb_object_find->object_name.length,
-					m2h(&res_lib_confdb_object_find.find_handle));
+					m2h(&res_lib_confdb_object_find.find_handle)) == -1) {
+			ret = CS_ERR_ACCESS;
+			goto response_send;
+		}
 	}
 	else
 		res_lib_confdb_object_find.find_handle = req_lib_confdb_object_find->find_handle;
@@ -700,6 +801,8 @@ static void message_handler_req_lib_confdb_object_find (void *conn,
 		api->object_find_destroy(res_lib_confdb_object_find.find_handle);
 	}
 
+
+response_send:
 	res_lib_confdb_object_find.header.size = sizeof(res_lib_confdb_object_find);
 	res_lib_confdb_object_find.header.id = MESSAGE_RES_CONFDB_OBJECT_FIND;
 	res_lib_confdb_object_find.header.error = ret;
@@ -754,6 +857,124 @@ static void message_handler_req_lib_confdb_reload (void *conn,
 	api->ipc_response_send(conn, &res_lib_confdb_reload, sizeof(res_lib_confdb_reload));
 }
 
+static int objdb_notify_dispatch(hdb_handle_t handle,
+		int fd,	int revents, void *data)
+{
+	struct confdb_ipc_message_holder *holder;
+	ssize_t rc;
+	char pipe_cmd;
+
+	if (revents & POLLHUP) {
+		return -1;
+	}
+
+	pthread_mutex_lock (&confdb_ipc_message_holder_list_mutex);
+
+retry_read:
+	rc = read(fd, &pipe_cmd, sizeof(pipe_cmd));
+	if (rc == sizeof(pipe_cmd)) {
+		goto retry_read;	/* Flush whole buffer */
+	}
+
+	if (rc == -1) {
+		if (errno == EINTR) {
+			goto retry_read;
+		}
+
+		if (errno != EAGAIN && errno != EWOULDBLOCK) {
+			goto unlock_exit;
+		}
+	} else {
+		goto unlock_exit;	/* rc != -1 && rc != 1 -> end of file */
+	}
+
+	while (!list_empty (&confdb_ipc_message_holder_list_head)) {
+		holder = list_entry (confdb_ipc_message_holder_list_head.next,
+			    struct confdb_ipc_message_holder, list);
+
+		list_del (&holder->list);
+
+		/*
+		 * All list operations are done now, so unlock list mutex to
+		 * prevent deadlock in IPC.
+		 */
+		pthread_mutex_unlock (&confdb_ipc_message_holder_list_mutex);
+
+		api->ipc_dispatch_send(holder->conn, holder->msg, holder->mlen);
+
+		api->ipc_refcnt_dec(holder->conn);
+
+		free(holder);
+
+		/*
+		 * Next operation is again list one, so lock list again.
+		 */
+		pthread_mutex_lock (&confdb_ipc_message_holder_list_mutex);
+	}
+
+unlock_exit:
+	pthread_mutex_unlock (&confdb_ipc_message_holder_list_mutex);
+
+	return 0;
+}
+
+static int32_t ipc_dispatch_send_from_poll_thread(void *conn, const void *msg, size_t mlen)
+{
+	struct confdb_ipc_message_holder *holder;
+	ssize_t written;
+	size_t holder_size;
+	char pipe_cmd;
+
+	api->ipc_refcnt_inc(conn);
+
+	holder_size = sizeof (*holder) + mlen;
+	holder = malloc (holder_size);
+	if (holder == NULL) {
+		api->ipc_refcnt_dec(conn);
+		return -1;
+	}
+
+	memset(holder, 0, holder_size);
+	holder->conn = conn;
+	holder->mlen = mlen;
+	memcpy(holder->msg, msg, mlen);
+	list_init(&holder->list);
+
+	pthread_mutex_lock (&confdb_ipc_message_holder_list_mutex);
+
+	list_add_tail (&holder->list, &confdb_ipc_message_holder_list_head);
+
+	pipe_cmd = 'M';		/* Message */
+retry_write:
+	written = write(notify_pipe[1], &pipe_cmd, sizeof(pipe_cmd));
+
+	if (written == -1) {
+		if (errno == EINTR) {
+			goto retry_write;
+		}
+
+		if (errno != EAGAIN && errno != EWOULDBLOCK)  {
+			/*
+			 * Different error then EINTR or BLOCK -> exit with error
+			 */
+			goto refcnt_del_unlock_exit;
+		}
+	} else if (written != sizeof (pipe_cmd)) {
+		goto refcnt_del_unlock_exit;
+	}
+	pthread_mutex_unlock (&confdb_ipc_message_holder_list_mutex);
+
+	return 0;
+
+refcnt_del_unlock_exit:
+	list_del (&holder->list);
+	free(holder);
+	api->ipc_refcnt_dec(conn);
+	pthread_mutex_unlock (&confdb_ipc_message_holder_list_mutex);
+
+	return -1;
+}
+
 static void confdb_notify_lib_of_key_change(object_change_type_t change_type,
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
@@ -781,12 +1002,12 @@ static void confdb_notify_lib_of_key_change(object_change_type_t change_type,
 	memcpy(res.key_value.value, key_value_pt, key_value_len);
 	res.key_value.length = key_value_len;
 
-	api->ipc_dispatch_send(priv_data_pt, &res, sizeof(res));
+	ipc_dispatch_send_from_poll_thread(priv_data_pt, &res, sizeof(res));
 }
 
 static void confdb_notify_lib_of_new_object(hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
-	const uint8_t *name_pt, size_t name_len,
+	const void *name_pt, size_t name_len,
 	void *priv_data_pt)
 {
 	struct res_lib_confdb_object_create_callback res;
@@ -799,12 +1020,12 @@ static void confdb_notify_lib_of_new_object(hdb_handle_t parent_object_handle,
 	memcpy(res.name.value, name_pt, name_len);
 	res.name.length = name_len;
 
-	api->ipc_dispatch_send(priv_data_pt, &res, sizeof(res));
+	ipc_dispatch_send_from_poll_thread(priv_data_pt, &res, sizeof(res));
 }
 
 static void confdb_notify_lib_of_destroyed_object(
 	hdb_handle_t parent_object_handle,
-	const uint8_t *name_pt, size_t name_len,
+	const void *name_pt, size_t name_len,
 	void *priv_data_pt)
 {
 	struct res_lib_confdb_object_destroy_callback res;
@@ -816,7 +1037,7 @@ static void confdb_notify_lib_of_destroyed_object(
 	memcpy(res.name.value, name_pt, name_len);
 	res.name.length = name_len;
 
-	api->ipc_dispatch_send(priv_data_pt, &res, sizeof(res));
+	ipc_dispatch_send_from_poll_thread(priv_data_pt, &res, sizeof(res));
 }
 
 static void confdb_notify_lib_of_reload(objdb_reload_notify_type_t notify_type,
@@ -830,7 +1051,7 @@ static void confdb_notify_lib_of_reload(objdb_reload_notify_type_t notify_type,
 	res.header.error = CS_OK;
 	res.type = notify_type;
 
-	api->ipc_dispatch_send(priv_data_pt, &res, sizeof(res));
+	ipc_dispatch_send_from_poll_thread(priv_data_pt, &res, sizeof(res));
 }
 
 

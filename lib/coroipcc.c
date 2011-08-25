@@ -227,15 +227,13 @@ retry_recv:
 			goto res_exit;
 		}
 	}
-#if defined(COROSYNC_SOLARIS) || defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
-	/* On many OS poll never return POLLHUP or POLLERR.
-	 * EOF is detected when recvmsg return 0.
+	/*
+	 * EOF is also detected when recvmsg return 0.
 	 */
 	if (result == 0) {
 		res = CS_ERR_LIBRARY;
 		goto res_exit;
 	}
-#endif
 
 	processed += result;
 	if (processed != len) {
@@ -311,6 +309,10 @@ circular_memory_map (char *path, const char *file, void **buf, size_t bytes)
 	}
 
 	page_size = sysconf(_SC_PAGESIZE);
+	if (page_size == -1) {
+		goto error_close_unlink;
+	}
+
 	buffer = malloc (page_size);
 	if (buffer == NULL) {
 		goto error_close_unlink;
@@ -417,6 +419,10 @@ memory_map (char *path, const char *file, void **buf, size_t bytes)
 		goto error_close_unlink;
 	}
 	page_size = sysconf(_SC_PAGESIZE);
+	if (page_size == -1) {
+		goto error_close_unlink;
+	}
+
 	buffer = malloc (page_size);
 	if (buffer == NULL) {
 		goto error_close_unlink;
@@ -849,6 +855,17 @@ coroipcc_dispatch_get (
 		return (error);
 	}
 
+	if (shared_mem_dispatch_bytes_left (ipc_instance) > (ipc_instance->dispatch_size/2)) {
+		/*
+		 * Notify coroipcs to flush any pending dispatch messages
+		 */
+		res = ipc_sem_post (ipc_instance->control_buffer, SEMAPHORE_REQUEST_OR_FLUSH_OR_EXIT);
+		if (res != CS_OK) {
+			error = CS_ERR_LIBRARY;
+			goto error_put;
+		}
+	}
+
 	*data = NULL;
 
 	ufds.fd = ipc_instance->fd;
@@ -874,9 +891,16 @@ coroipcc_dispatch_get (
 	}
 
 	error = socket_recv (ipc_instance->fd, &buf, 1);
+#if defined(COROSYNC_SOLARIS) || defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
+	/* On many OS poll() never returns POLLHUP or POLLERR.
+	 * EOF is detected when recvmsg() return 0.
+	 */
+	if ( error == CS_ERR_LIBRARY )
+		goto error_put;
+#endif
 	assert (error == CS_OK);
 
-	if (shared_mem_dispatch_bytes_left (ipc_instance) > 500000) {
+	if (shared_mem_dispatch_bytes_left (ipc_instance) > (ipc_instance->dispatch_size/2)) {
 		/*
 		 * Notify coroipcs to flush any pending dispatch messages
 		 */
@@ -932,7 +956,9 @@ retry_ipc_sem_wait:
 	read_idx = ipc_instance->control_buffer->read;
 	header = (coroipc_response_header_t *) &addr[read_idx];
 	ipc_instance->control_buffer->read =
-		(read_idx + header->size) % ipc_instance->dispatch_size;
+		((read_idx + header->size + 7) & 0xFFFFFFF8) %
+			ipc_instance->dispatch_size;
+
 	/*
 	 * Put from dispatch get and also from this call's get
 	 */
@@ -1033,7 +1059,7 @@ coroipcc_zcb_alloc (
 {
 	struct ipc_instance *ipc_instance;
 	void *buf = NULL;
-	char path[128];
+	char path[PATH_MAX];
 	unsigned int res;
 	mar_req_coroipcc_zc_alloc_t req_coroipcc_zc_alloc;
 	coroipc_response_header_t res_coroipcs_zc_alloc;

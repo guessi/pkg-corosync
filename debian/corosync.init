@@ -20,12 +20,16 @@ DAEMON_ARGS=""
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 PIDFILE=/var/run/corosync.pid
+RARUNDIR=/var/run/resource-agents
 
 # Exit if the package is not installed
 [ -x "$DAEMON" ] || exit 0
 
 # Read configuration variable file if it is present
 [ -r /etc/default/corosync ] && . /etc/default/corosync
+
+# Make sure the Resource Agents run dir exists. Otherwise create it.
+[ -d "$RARUNDIR" ] || mkdir -p $RARUNDIR
 
 if [ "$START" != "yes" ]; then
 	exit 0

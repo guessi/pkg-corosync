@@ -1,27 +1,26 @@
 #!/bin/bash
 
 # Authors:
-#  Andrew Beekhof <abeekhof@redhat.com>
-#  Fabio M. Di Nitto <fdinitto@redhat.com>
+#  Angus Salkeld <asalkeld@redhat.com>
 #
 # License: Revised BSD
 
-# chkconfig: - 20 80
-# description: Corosync Cluster Engine
-# processname: corosync
+# chkconfig: - 23 77
+# description: Corosync Dbus and snmp notifier
+# processname: corosync-notifyd
 #
 ### BEGIN INIT INFO
-# Provides:		corosync
-# Required-Start:	$network $syslog
-# Required-Stop:	$network $syslog
+# Provides:		corosync-notifyd
+# Required-Start:	$corosync $cman
+# Required-Stop:	$corosync $cman
 # Default-Start:
 # Default-Stop:
-# Short-Description:	Starts and stops Corosync Cluster Engine.
-# Description:		Starts and stops Corosync Cluster Engine.
+# Short-Description:	Starts and stops Corosync Notifier.
+# Description:		Starts and stops Corosync Notifier.
 ### END INIT INFO
 
-desc="Corosync Cluster Engine"
-prog="corosync"
+desc="Corosync Notifier"
+prog="corosync-notifyd"
 
 # set secure PATH
 PATH="/sbin:/bin:/usr/sbin:/usr/bin:@SBINDIR@"
@@ -70,22 +69,9 @@ __pids_pidof() {
                 pidof -c -o $$ -o $PPID -o %PPID "${1##*/}"
 }
 
-cluster_disabled_at_boot()
-{
-       if grep -q nocluster /proc/cmdline && \
-          [ "$(tty)" = "/dev/console" ]; then
-               echo -e "not configured to run at boot"
-               failure
-               return 1
-       fi
-       return 0
-}
-
 start()
 {
 	echo -n "Starting $desc ($prog): "
-
-	! cluster_disabled_at_boot && return
 
 	# most recent distributions use tmpfs for @LOCALSTATEDIR@/run
 	# to avoid to clean it up on every boot.
@@ -96,7 +82,7 @@ start()
 	if status $prog > /dev/null 2>&1; then
 		success
 	else
-		$prog > /dev/null 2>&1
+		$prog $OPTIONS > /dev/null 2>&1
 
 		# give it time to fail
 		sleep 2
@@ -111,37 +97,14 @@ start()
 	echo
 }
 
-executed_by_cman()
-{
-	[ -f @LOCALSTATEDIR@/run/cman.pid ] || return 0
-
-	read cman_pid foo < @LOCALSTATEDIR@/run/cman.pid
-	if [ "$(pidof $prog)" == "$cman_pid" ];then
-		echo -n "$desc was executed by cman"
-		failure
-		echo
-		return 1
-	fi
-
-	return 0
-}
-
 stop()
 {
 	! status $prog > /dev/null 2>&1 && return
-
-	! executed_by_cman && return
 
 	echo -n "Signaling $desc ($prog) to terminate: "
 	kill -TERM $(pidof $prog) > /dev/null 2>&1
 	success
 	echo
-
-	echo -n "Waiting for $prog services to unload:"
-	while status $prog > /dev/null 2>&1; do
-		sleep 1
-		echo -n "."
-	done
 
 	rm -f $LOCK_FILE
 	success

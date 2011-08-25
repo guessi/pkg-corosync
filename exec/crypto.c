@@ -36,10 +36,6 @@ typedef uint64_t ulong64;
 #define ENDIAN_LITTLE
 #elif __BYTE_ORDER == __BIG_ENDIAN
 #define ENDIAN_BIG
-#elif _BYTE_ORDER == _LITTLE_ENDIAN
-#define ENDIAN_LITTLE
-#elif _BYTE_ORDER == _BIG_ENDIAN
-#define ENDIAN_BIG
 #else
 #error "cannot detect byte order"
 #endif
@@ -1318,7 +1314,7 @@ unsigned long rng_get_bytes(unsigned char *buf, unsigned long len,
 int rng_make_prng(int bits, int wprng, prng_state *prng,
                   void (*callback)(void))
 {
-   unsigned char buf[256];
+   unsigned char buf[258];
    int err;
 
    if (bits < 64 || bits > 1024) {

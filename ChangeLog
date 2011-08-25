@@ -1,3 +1,883 @@
+2011-07-26  Jan Friesse  <jfriesse@redhat.com>
+
+	main: let poll really stop before totempg_finalize
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit d4fb83e971b6fa9af0447ce0a70345fb20064dc1)
+
+	Revert "totemsrp: Remove recv_flush code"
+	This reverts commit 1a7b7a39f445be63c697170c1680eeca9834de39.
+
+	Reversion is needed to remove overflow of receive buffers and dropping
+	messages.
+
+	(cherry picked from commit ddb5214c2c57194fe8e12d775398bfc5726743c4)
+
+2011-07-26  MORITA Kazutaka  <morita.kazutaka@lab.ntt.co.jp>
+
+	totemsrp: fix buffer overflows for large clusters (> 100 nodes)
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 1d9f444feced36ec6118b4df5560f093ec44aba8)
+
+2011-07-21  Jan Friesse  <jfriesse@redhat.com>
+
+	specfile: Install corosync-signals.conf for dbus
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 2d75c7058f32b0f58aa5c825c13187103fcde1b2)
+
+	specfile: use _datadir as var expansion not exec
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit a197e7b1cec329701167def358f8c603b5dd054c)
+
+	specfile: Correct URL and source0
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit f103fb29b3e062dff67338fd75b91ea59ceb4972)
+
+2011-07-21  Tim Beale  <tim.beale@alliedtelesis.co.nz>
+
+	Add some more stats for debugging
+	+ overload - number of times client is told to try again
+	+ invalid_request - message contained invalid paramter, e.g. invalid size
+	+ msg_queue_avail - messages currently available at the Totem layer
+	+ msg-queue_reserved - messages currently reserved at the Totem layer
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 04f37df2f774b0d25540e27102c8a60527aa7125)
+
+2011-07-18  Jan Friesse  <jfriesse@redhat.com>
+
+	rrp: Handle rollower in passive rrp properly
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit ad5cda223c0916ea517d6f9f6c0ff4af3cd32246)
+
+	rrp: handle rollover in active rrp properly
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit d02d2887471423bd23247895d96a0d687255aa55)
+
+	totemconfig: Change default FAIL_TO_RECV_CONST
+	Previous default (50) was too low for most modern switch hardware. This
+	may trigger abort because the aru doesn't increase for 50 token
+	rotations combined with a defect in how failed to recv conditions are
+	handled.  By increasing this tunable, the condition should no longer
+	trigger the errant code.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit a48c8e517d82d099bfd3f4a8ebc11716eeb3962b)
+
+2011-07-18  Steven Dake  <sdake@redhat.com>
+
+	Correct missing poll funtions from service handler struct needed for confdb APIs
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+	(cherry picked from commit c544e87bb0bfdb6e2c5a43ec01113f814e738550)
+
+	Fix problem where corosync will segfault if there are gaps in recovery queue
+	Fixes a problem where there are gaps in the recovery queue.  Example my_aru = 5,
+	but there are messages at 7,8.  8 = my_high_seq_received which results
+	in data slots taken up in new message queue.  What should really happen
+	is these last messages should be delivered after a transitional
+	configuration to maintain SAFE agreement.  We don't have support for
+	SAFE atm, so it is probably safe just to throw these messages away.  Without
+	this change, the new message queue on a new configuraton change is out of sync.
+
+	Tested-by: Tim Beale <tlbeale@gmail.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+	(cherry picked from commit a3d98f1652011d6bc75101c7b8aa098c2d2977e4)
+
+2011-07-15  Jan Friesse  <jfriesse@redhat.com>
+
+	Ensure that strings are null terminated after strncpy().
+	From the strcpy(3) man page, the following warning is given:
+	  The strncpy() function is similar, except that at most n bytes of src
+	  are  copied.  Warning: If there is no null byte among the first n bytes
+	  of src, the string placed in dest will not be null-terminated.
+
+	The current corosync code base does not take this warning into account
+	when using strncpy, potentially resulting in non-null terminated strings.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(backported from commit a609f79f1f8d23f8e57fe2afb383bd62621545f6)
+
+	cfgtool: print list of IP with space between items
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit b4bef1cbf533ec1b8bdefb21a7987c6f69a40b3d)
+
+	cpgtool: print list of IP with space between items
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit f6df7823fafed80f555b6a7d76643d2b555d17bb)
+
+	cfg_get_node_addrs: Return correct addresses
+	Zero element array behavior is very different from normal array or
+	pointer. This behavior is root of problem in not returning correctly
+	filled array of addresses. This appeared only in rrp mode, where more
+	then one address is returned.
+
+	All memcpy's are now correctly converted to copy pointer to char.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 033f7ced1061e39647b0b9d07e1eecb74839cd8a)
+
+	corosync-fplay: use uint32_t and remove bit-shift
+	The flight recorder records all data in 32 bit words. Use uint32_t type
+	rather then unsigned int. Also remove bit-shift with multiply by sizeof
+	uint32_t.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 12163b62d2d84ec438f35f5b942d3e8525585755)
+
+	corosync-fplay: Use size_t length mod in printf
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit d3e9382d57e02724b44ea5f5736f42deb6c65a82)
+
+	corosync-fplay: handle too large rec_size
+	Corrupted files may contain items with rec_size larger then g_record
+	buffer and/or flt_data_size.
+
+	Also g_record array size is now defined as constant.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 7b0517f5e97af89ecb0a1c3145ad1db2a35475f5)
+
+	logsys: Properly lock flt data before dump
+	Data needs to be locked, otherwise resulting fdata file may be
+	incorrect.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit c5e823732504e0c6e9e0eb66870bcacafde080c9)
+
+	logsys: Don't leak fd on successful fdata dump
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 88515e3d20d9b34cc7a15e8da717aeb0a9965900)
+
+	Handle "nocluster" kernel parameter in init script
+	Init script checks kernel parameters and refuses to start corosync if
+	nocluster parameter exist on boot time. The init script will
+	continue to work as expected from console/tty after boot.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit fbbb3f01cbb7b5a6a105dbc4fe1541ca8bdb5e4d)
+
+2011-07-08  Jan Friesse  <jfriesse@redhat.com>
+
+	totemiba: free send_buf on ibv_reg_mr failure
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 57749ec02a081b21218508355f139315bb95b652)
+
+2011-07-07  Florian Haas  <florian.haas@linbit.com>
+
+	build: disable RDMA support in RPMs by default
+	Rather than curiously disable RDMA support by default in configure and
+	enable it by default in RPM builds, streamline the default
+	configuration to always turn RDMA support off. It can be enabled in
+	RPM builds with "--with rdma".
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 051bca82df29d3448c55b772a4c4935c70c83643)
+
+	build: set RDMA related _LIBS and _CFLAGS only if building with RDMA support
+	Having to force {ibverbs,rdmacm}_{LIBS,CFLAGS} looks positively odd;
+	so this may warrant further review. However, they are definitely not
+	needed if building without RDMA support.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit e715a455b6fc2582f505f4b24ac1500068687ba9)
+
+	build: make RDMA support an RPM build conditional
+	Enable RDMA in RPM builds by default to maintain the previous behavior
+	(which always included --enable-rdma in the %configure invocation).
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 17fb819af1168d2d271a4d49a3f2536addcb80ed)
+
+	build: force LC_ALL=C correctly for dates
+	Failure to force "C" dates will have RPM et al. complain about invalid
+	dates and timestamps.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit b8809eaf270196ecb061fefa043c7bca8af75b06)
+
+2011-07-07  Tim Beale  <tim.beale@alliedtelesis.co.nz>
+
+	Fix compile/runtime issues for _POSIX_THREAD_PROCESS_SHARED < 1
+	For the case where _POSIX_THREAD_PROCESS_SHARED < 1, the code doesn't compile
+	for corosync v1.3.1. And when it does compile, it crashes on our system - our
+	version of uClibc seems to always expect a 4th arg. The man pages suggests
+	the 4th arg is optional, but does say: 'For greater portability it is best to
+	always call semctl() with four arguments', which is what this patch does.
+	Also removed semop as it's an unused variable.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 77f7e5b0fe40338e6e5760feb12768defa6b0cf9)
+
+	getpwnam_r()/getgrnam_r() returns ERANGE for some systems
+	On our system the expected buffer length is 256. This means calls to
+	getpwnam_r()/getgrnam_r() return ERANGE error and corosync fails to startup.
+	These 2 functions return ERANGE when insufficient buffer space is supplied.
+	Judging by the man page for getpwnam_r, the correct way to determine the
+	buffersize on any given system is to use sysconf().
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit ba107f0a33fd5e6ef4073b9cc5539740e6ae3c12)
+
+2011-07-07  Jiaju Zhang  <jjzhang.linux@gmail.com>
+
+	RRP: redundant ring automatic recovery
+	This patch automatically recovers redundant ring failures.
+
+	Please note that this patch introduced rrp_autorecovery_check_timeout
+	in totem config hence breaks internal ABI. The internal ABI users
+	of totem.h need to rebuild their binaries.
+
+	Tested-by: Jan Friesse <jfriesse@redhat.com>
+	Tested-by: Florian Haas <florian.haas@linbit.com>
+	Tested-by: Jiaju Zhang <jjzhang@suse.de>
+	(cherry picked from commit 5dc33c2824e9fd2b8c18e2e30cf60210c5e8617e)
+
+2011-07-07  Jan Friesse  <jfriesse@redhat.com>
+
+	flatiron: enable compile with --enable-fatal-warnings
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2011-07-04  Tim Serong  <tserong@novell.com>
+
+	Correct mailing list address in corosync_overview manpage
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 5a3a42dd2b6f9c12af4a653f6bd1b0b808581690)
+
+2011-07-04  Masatake YAMATO  <yamato@redhat.com>
+
+	fix typos in cpg_mcast_joined.3 and cpg_zcb_mcast_joined.3
+	(cherry picked from commit 7ba892dac323f9656c16981e02d3612f521bfbdb)
+
+2011-07-04  Steven Dake  <sdake@redhat.com>
+
+	Add coverity target to corosync makefile.am
+	Allow a make coverity target for those developers with coverity tools
+	available to them.
+
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+	(cherry picked from commit 899052484eaf3cee08d0a56b6579b73bf2ce99a0)
+
+2011-06-29  Jan Friesse  <jfriesse@redhat.com>
+
+	coroipcc: Test _SC_PAGESIZE result
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 94d934e0e0fa55027a974eb709a488802ee6134e)
+
+	Remove spinlocks
+	Spinlocks are now removed, because even spinlock can improve
+	speed is some special cases, in most cases it makes corosync CPU usage
+	much more intensive and less responsive then if only mutexes are used.
+
+	What we were doing is:
+	pthread_mutex_lock
+	pthread_spin_lock
+	pthread_spin_unlock
+	pthread_mutex_unlock
+
+	what is not safe.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(backported from commit 8c717c22b2f137f81ac5ae1a3437d73b62bb451d)
+
+	votequorum: free newly allocated node if nodeid==0
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 5458d4f27ad956d23a27a0d83b9cf9a6e36e68d0)
+
+2011-06-28  Jerome Flesch  <jerome.flesch@netasq.com>
+
+	Fix usage of strerror_r()/perror()
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+	(backported from commit 00434a4f10f0a0b0dfb1714504860d7ef560f7fb)
+
+2011-06-28  Steven Dake  <sdake@redhat.com>
+
+	sched_params log message incorrect
+	The sched_params parameter was set before being printed.
+
+	Reviewed-by:  <sdake@redhat.com>
+	(cherry picked from commit ae4a3af3407ec185f88172fdc88cc6227647565b)
+
+2011-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	confdb: Resolve dispatch deadlock
+	Following situation could happen:
+	- one thread is waiting for finish write operation (line 853), objdb is
+	  locked
+	- flush (done in objdb_notify_dispatch) is called in main thread, but
+	  this call will never appear because main thread is waiting for objdb
+	  lock.
+
+	In this situation deadlock appears.
+
+	Commit solves this by:
+	- setting pipe to non-blocking mode
+	- pipe is used only as trigger for coropoll
+	- dispatch messages are stored in list
+	- main thread is processing messages from list
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit b5d2f4578a239c6ee500e43542a93d0fa48d7fb6)
+
+	objdb: save copy of handles in object_find_create
+	Following situation could happen:
+	- process 1 thru confdb creates find handle
+	- calls find iteration once
+	- different process 2 deletes object pointed by process 1 iterator
+	- process 1 calls iteration again ->
+	  object_find_instance->find_child_list is invalid pointer
+
+	-> segfault
+
+	Now object_find_create creates array of matching object handlers and
+	object_find_next uses that array together with check for name. This
+	prevents situation where between steps 2 and 3 new object is created
+	with different name but sadly with same handle.
+
+	Also good to note that this patch is more or less quick hack rather
+	then proper solution. Real proper solution is to not use pointers
+	and rather use handles everywhere. This is big TODO.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit e8000c7b9b93b2ac4e6bec39df26755fdd4a8cf0)
+
+2011-06-28  Jiaju Zhang  <jjzhang.linux@gmail.com>
+
+	RRP: Fix ring initialization issue for UDPU mode
+	Redundant ring has some problem in the UDP unicast mode. The problem
+	is the second ring has not been successfully initialized, that is, the
+	second time iface_changes happens, the member list for that interface
+	has not been added, which results in that ring cannot transmit normal
+	message. So the second ring cannot take over the work if the first
+	ring is down. This patch fixes this issue.
+
+	comments from review:
+	More work is needed probably in totemnet where totemnet maintains the
+	the of node list and an iterator for them, and totemudpu_member_add adds
+	state information to a context for the iteration.
+
+	In any regard, that is somewhat difficult to test, so I'll merge this
+	patch for now - keep in mind interface changes on the bindnetaddr will
+	cause problems with udpu after this patch has been commmitted.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit c6bfc6b5d62d19686104265e8a1b2409f4c1eaf8)
+
+2011-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	coroipcc: check recvmsg result in socket_recv
+	According specification recvmsg can return 0, which means that
+	connection is closed. We had this check, but limited only for systems
+	other then Linux. recvmsg can return 0 even on Linux, so check is now
+	applied on all systems.
+
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+	(cherry picked from commit 2e5dc5f322a5a852d31f5775debbf51e062695ba)
+
+	confdb: Properly check result of object_find_create
+	in confdb_object_iter result of object_find_create is now properly
+	checked. object_find_create can return -1 if object doesn't exists.
+	Without this check, incorrect handle (memory garbage) was directly
+	passed to object_find_next.
+
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+	(cherry picked from commit 9afb4bdaa84aa3e7b48aa0a5136ee039dc73e19a)
+
+	crypto: rng_make_prng prevent buf overflow
+	with bits set to 1023, buf of 256 bytes was filled by rng_get_bytes
+	up to 257 bytes. Buf is now 258 bytes so it's no longer problem.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 50f05bfa15622e10f58511e8b0b8dadfe670e12f)
+
+	mainconfig: Check retval of logsys_format_set
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit afa0398ca4a605c0896b0d02b02805db736c0090)
+
+	testcpgzc: fgets buffer to really allocated size
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit aa23d20125ed9845186471e417bbe010978b7c29)
+
+	cpg: do_proc_join change list_slice to list_add
+	In this concrete case result is equivalent but makes coverity happy.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit f95d3b3bf206995d0bc04ae4b1855932eaaa4911)
+
+	totemudp: memset of proper size
+	In totemudp_mcast_thread_state_constructor memset to
+	sizeof(struct totemudp_mcast_thread_state) instead of size of
+	pointer.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 531e81602f8b47846aec8573dc57cb8941100367)
+
+	coroipcs: init buf in coroipcs_handler_dispatch
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit ea0a24866ccf27a4010edf75c5d0d223a84c80cd)
+
+	coroparse: don't leak dirent
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit c2a39cb8e2b3cc717dfe273425df3f2b4d0b48c0)
+
+	logsys: _logsys_wthread_create never returns != 0
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit d76bb76d1fef350eef74ada4f834c2011a70889e)
+
+	notifyd: Check retval of corosync_cfg_initialize
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 844c8759d72637e1c7776d598744343ddee62e2e)
+
+	totemconfig: discard check of objdb_get_string ret
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 6b9297131cda9ae874effa4e27ad70601a56d977)
+
+	coroipcc: proper path size in coroipcc_zcb_alloc
+	memory_map function internally limits maximum path size to
+	PATH_MAX but coroipcc_zcb_alloc passed smaller buffer.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 0273c54054f7e8c83b165daa1a4ded13f78f0515)
+
+	libquorum: memset/memcpy proper size of callbacks
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 6af98e79ee7f0278b641cb8f0cd8d8499988e373)
+
+	iazc: Reduce number of mem alloc and memcpy
+	X86 processors are able to handle unaligned memory access. Improve
+	performance by using that feature on i386 and x86_64 compatible
+	processors, and use old aligning code on different processors.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 77d98081251d1821ff62777dffd4543700737e02)
+
+2011-06-28  Jerome Flesch  <jerome.flesch@netasq.com>
+
+	logsys: When corosync is compiled with --enable-small-memory-footprint, also reduce the size of the logsys SHM
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 6bec0aa2276530d25a1984e90f7bd274f8d0c75b)
+
+	coroipcc_dispatch_get(): Fix --enable-small-memory-footprint support
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+	(cherry picked from commit 795aa5e24cee83c88b8a6ea3a3fd06e754f55010)
+
+	coroipcs_handler_dispatch(): Fix conn_info->service security value: -1 is not a good security value since it's equal to SOCKET_SERVICE_INIT
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+	(cherry picked from commit b11267211515e4fc50882acd5f2afe493c363708)
+
+	coroipcc: Fix unhandled BSD EOF in coroipcc_dispatch_get()
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 76426d7901def8bd7f3da8b07107f765dd8572d4)
+
+	Corosync: Fix build when done with --enable-fatal-warnings
+	Reviewed-by: Jan Friesse<jfriesse@redhat.com>
+	(backported from commit fe51e703675232a69009245cd9e0523bb1858dd6)
+
+2011-06-28  Russell Bryant  <russell@russellbryant.net>
+
+	logsys.c: Use snprintf() instead of sprintf().
+	Change a couple of string functions to use the the output length
+	limiting counterpart.
+
+	(cherry picked from commit a53e402912a7c4c4039b928d3b741fe8239ab2f7)
+
+2011-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	corosync-objctl: Option to display binary data
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 801717e46391af0b4d3103746b721e663f6db167)
+
+2011-06-28  Angus Salkeld  <asalkeld@redhat.com>
+
+	cpg: fix sync master selection when one node paused.
+	If one node is paused it can miss a config change and
+	thus report a larger old_members than expected.
+
+	The solution is to use the left_nodes field.
+
+	Master selection used to be "choose node with":
+	1) largest previous membership
+	2) (then as a tie-breaker) node with smallest nodeid
+
+	New selection:
+	1) largest (previous #nodes - #nodes know to have left)
+	2) (then as a tie-breaker) node with smallest nodeid
+
+	(cherry picked from commit 956a1dcb4236acbba37c07e2ac0b6c9ffcb32577)
+
+2011-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	totemsrp: Enhance mcast failure detection
+	memb_state_gather_enter increase stats.continuous_gather only if
+	previous state was gather also. This should happen only if multicast is
+	not working properly (local firewall in most cases) and not if many
+	nodes joins at one time.
+
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+	(cherry picked from commit 61d83cd719bcc93a78eb5c718a138b96c325cc3e)
+
+	coroipcs: Deny connect to service without initfn
+	If library connect to service with no init function, coroipcs will try
+	to dereference NULL pointer. Now we correctly return error code
+	CS_ERR_NOT_EXIST.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 719fddd8e16b6da8694fa84dd2fafbb202401200)
+
+2011-04-15  Tim Serong  <tserong@novell.com>
+
+	Add ipc_refcnt to message_handler_req_{exec, lib}_cfg_ringreenable()
+	Without refcounting the conn pointer here, corosync will segfault
+	if one kills a running instance of "corosync-cfgtool -r" (rhbz#695191)
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	Fix tyop in RRP faulty error messages
+	Reviewed-by: Russell Bryant <russell@russellbryant.net>
+
+2011-04-15  Steven Dake  <sdake@redhat.com>
+
+	Align ipc on 8 byte boundaries
+	Align all ipc messages on 8 byte boundaries.  This alignment will remove bus
+	errors on systems that can't access non-byte aligned data and should improve
+	performance.
+
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+
+	Fix problem where unaligned totemip address access would result in bus error on non-unaligned-safe architectures.
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+
+2011-04-15  Greg Walton  <corosync@gwalton.net>
+
+	Clean up ENDIAN ifdef tests
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2011-04-13  Angus Salkeld  <asalkeld@redhat.com>
+
+	IPC: place calls to stats functions outside of mutexes
+	This is to prevent nasty deadlocks between IPC and objdb.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2011-04-12  Zane Bitter  <zane.bitter@gmail.com>
+
+	Provide better checking of the message type
+	A negative value for the message type (on systems where char is signed)
+	would cause a crash. This is highly probable if the cluster is, for example,
+	misconfigured to have encryption enabled on some nodes but not others.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2011-03-29  Steven Dake  <sdake@redhat.com>
+
+	Fix problem in previous commit leading to compiler error
+	commit 78ae800f80fa9cd0fe593724f5c64138c205fec5 was backported from master
+	without addressing the lack of a few services in flatiron.
+
+2011-03-29  Angus Salkeld  <asalkeld@redhat.com>
+
+	Fix shutdown when a confdb client is still connected
+	If you are connected to corosync and registered for
+	object notifications then corosync is asked to shutdown
+	the IPC server will get stuck. This is because the pipe
+	is closed and the refcount is increased. This leaves ipcs
+	with a connection that it can't destroy.
+
+	Solution:
+	1) if a write to the pipe fails (pipe closed) decrement the refcounter.
+	2) fix the object_track_stop() - it was not working as the functions
+	   did not match up. (this caused the late callbacks).
+	3) in ipcs call exit_fn() then stats_destroy_connection() so that
+	   the service engine can have time to call object_track_stop()
+	   before the object gets destroyed.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	STATS: add the service name to the connection name.
+	This helps to quickly identify what service the application
+	is connected to.
+
+	The object will now look like:
+	runtime.connections.corosync-objctl:CONFDB:19654:13.service_id=11
+	runtime.connections.corosync-objctl:CONFDB:19654:13.client_pid=19654
+	etc...
+
+	This also makes it clearer to receivers of the dbus/snmp events
+	what is going on.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	NOTIFYD: prevent duplicate quorate events.
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	NOTIFYD: fix retrieving the application's parent name.
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2011-03-24  Angus Salkeld  <asalkeld@redhat.com>
+
+	confdb: send notifications from the main thread not IPC thread
+	corosync-notifyd has exposed an issue with confdb notifications.
+
+	The normal state of affairs is:
+	IPC thread > lock > objdb > lock
+
+	objdb notification whilst really useful turn things around:
+	<middle of big call chain>
+	objdb > lock > confdb > ipc > lock
+
+	This reverse ordering of locks causes a horrible dead lock.
+
+	I see this patch as a work around until corosync-2.0
+	when most of the threads and locking disappear.
+
+	This patch adds a pipe to confdb service. When we get a
+	objdb notification a struct gets written to the pipe.
+	The poll loop then runs the dispatch in the main thread.
+	In the dispatch we call the real ipc_dispatch_send().
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2011-03-24  Steven Dake  <sdake@redhat.com>
+
+	totemsrp: free messages originated in recovery rather then rely on messages_free
+	Relying on messages_free may seem like it should work, but it leads to a
+	situation where every node has released the messages, yet some nodes think
+	messages are missing.  The output then looks like "Retransmit: #" in
+	repitition.  This patch frees those messages immediately during the transition
+	to the OPERATIONAL state and sets the internal variables totemsrp depends
+	upon to the proper values.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	totemsrp: Only restore old ring id information one time
+	The current code stores the current ring information every time a commit
+	token is generated.  This causes the old ring id used for comparison purposes
+	to increase if a token is lost in commit or recovery, resulting in failure of
+	totem.  This patch changes the behavior to only store the old ring id one
+	time when the commit token is received, and then further commit token ring
+	id saves are not done until OPERATIONAL is reached.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	totemsrp: Remove recv_flush code
+	The recv_flush code is no longer necessary because of the miss_count_count
+	addition.  It can in some cases lead to register corruption because of
+	interactions with -fstack-protector, the recursive nature of how this code
+	works, and interactions with the optimizer in some versions of gcc.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2011-03-21  Steven Dake  <sdake@redhat.com>
+
+	Resolve abort during simulatenous stopping of atleast 4 nodes
+	consider 5 nodes.
+
+	node 3,4 stopped (by random stopping) node 1,2,5 form new configuration
+	and during recovery node 1 and node 2 are stopped (via service service
+	corosync stop).  This causes 5 never to finish recovery within the timeout
+	period, triggering a token loss in recovery.  Bug #623176 resolved an assert
+	which happens because the full ring id was being restored.  The resolution
+	to Bug #623176 was to not restore the full ring id, and instead operate
+	(according to specifications) the new ring id.  Unfortunately this exposes
+	a problem whereby the restarting of nodes 1-4 generate the same ring id.
+	This ring id gets to the recovery failed node 5 which is now in gather,
+	and triggers a condition not accounted for in the original totem specification.
+
+	It appears later work from Dr. Agarwal's PHD dissertation considers this
+	scenario.  That solution entails rejecting the regular token in the above
+	condition.  Since the ring id is also used to make decisions for commit token
+	acceptance, we must also take care to reject the regular token in all cases
+	after transitioning from OPERATIONAL.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2011-03-21  Angus Salkeld  <asalkeld@redhat.com>
+
+	notifyd: dispatch only one message at a time.
+	This is avoid getting stuck in the dispatch processing
+	messages when the user is trying to shutdown the service.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2011-03-15  Angus Salkeld  <asalkeld@redhat.com>
+
+	Remove the ttl option from udpu and rely on the kernel ttl setting.
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Fix the ttl defaults and range
+	1) both IPv4 and IPv6 mcast should default to ttl=1
+	2) the range should be 0..255
+	   0 is valid meaning localhost only (cluster of one)
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2011-03-08  Steven Dake  <sdake@redhat.com>
+
+	Fix abort when token is lost in RECOVERY state
+	A commit token should be rejected when a token is lost in the recovery
+	state.  This occurs naturally because the ring id increases by 4 for
+	every new ring.  Prior to this patch, if the token was lost, the old
+	ring id information was restored, causing a commit token to be accepted
+	when it should be rejected.  This erronously accepted commit token would
+	lead to an assertion which is fixed by this patch.
+
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+
+2011-02-28  Jan Friesse  <jfriesse@redhat.com>
+
+	objdb: destroy all handles in _clear_object
+	Patch replaces free for object_instance with handle_destroy to remove
+	leaks in handles (and also memory leak).
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	Iterate all items in object_reload_notification
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2011-02-24  Steven Dake  <sdake@redhat.com>
+
+	Don't assert when ring id file is less then 8 bytes
+	If the ring id file for the processor is less then 8 bytes, totemsrp would
+	assert.  Our speculation is that this condition happens during a fencing
+	operation or local filesystem corruption.
+
+	With this patch, Corosync will create fresh ring id file data when the
+	incorrect number of bytes are read from the ring id.
+
+	Amend to use sizeof the strerror string length and PATH_MAX for the path length.
+
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+
+	snmp: Allow buildling of corosync on already existing older install of corosync
+	When building corosync against older libraries already installed on the system,
+	the corosync-notifyd application uses the wrong Makefile.am commands.  This
+	results in the SNMPLIBS (which includes -L/usr/lib64) coming before the proper
+	LDADD flags.  The result is an inability to compile on an already existing
+	installation.
+
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+
+2011-02-10  Angus Salkeld  <asalkeld@redhat.com>
+
+	Fix merge markers in spec file
+
+2011-02-09  Angus Salkeld  <asalkeld@redhat.com>
+
+	Make node state a string (not an integer)
+	Ryan noticed this inconsistency, all other status's
+	are string so this should be too.
+
+	Reviewed-by: Seven Dake <sdake@redhat.com>
+	Reviewed-by: Ryan O'Hara <rohara@redhat.com>
+
+	objdb: fix some strange types (uint8_t* -> void*).
+	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@3045 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2011-02-04  Steven Dake  <sdake@redhat.com>
+
+	Conflicts previously resolved were not merged.
+
+2011-02-04  Angus Salkeld  <asalkeld@redhat.com>
+
+	MIB: expand the descriptions of the notifications
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2011-02-04  Lon Hohberger  <lhh@redhat.com>
+
+	Match up MIB to notifyd & add SNMP quorum events
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+
+	Make SNMP MIB match what is being sent over DBUS
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+
+2011-02-04  Steven Dake  <sdake@redhat.com>
+
+	Add dbus and snmp notifier
+	This is to send dbus events on major cluster events:
+	 - membership changes
+	 - application connect/dissconnet from corosync
+	 - quorum changes
+
+	dbus events can then be converted into snmp traps by foghorn or
+	corosync-notifyd can be run to directly send snmp traps.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	Reviewed-by: Russell Bryant <russell@russellbryant.net>
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Conflicts:
+
+		Makefile.am
+		configure.ac
+		corosync.spec.in
+
+	Conflicts Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2011-02-04  Angus Salkeld  <asalkeld@redhat.com>
+
+	CONFDB: add confdb_object_name_get()
+	This is useful when tracking object changes.
+
+	Reviewed-by: Seven Dake <sdake@redhat.com>
+
+	STATS: fix key name length on "join_count"
+	Reviewed-by: Seven Dake <sdake@redhat.com>
+
+	STATS: increase the space for application names
+	Reviewed-by: Seven Dake <sdake@redhat.com>
+
+2011-01-26  Angus Salkeld  <asalkeld@redhat.com>
+
+	CPG: make sure coroipcc_service_disconnect() is always called.
+	This prevents a shared mem leak if corosync dies while clients
+	are connected.
+
+	Calling cpg_finalize() did not release the shared mem as
+	coroipcc_msg_send_reply_receive() returned an error and
+	thus coroipcc_service_disconnect() did not get called.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	IPC: send failure message to client if memory maps fail
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2011-01-26  Jan Friesse  <jfriesse@redhat.com>
+
+	Add objdb firewall_enabled_or_nic_failure
+	New objdb var runtime.totem.pg.mrp.srp.firewall_enabled_or_nic_failure
+	is set to 1 if continuous_gather is larger then MAX_NO_CONT_GATHER.
+	Under normal conditions, value of variable is 0.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	Display warning when not possible to form cluster
+	This may typically happen if local firewall is enabled. Patch adds new
+	item to statistics called continuous_gather where is number of
+	continuous entered gather state. If this number is bigger then
+	MAX_NO_CONT_GATHER, warning message is displayed. This is also used on
+	exiting, so stop of corosync is now possible even with enabled firewall.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2011-01-26  Angus Salkeld  <asalkeld@redhat.com>
+
+	Add totem/interface/ttl config option.
+	This adds a per-interface config option to
+	adjust the TTL.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2011-01-11  Steven Dake  <sdake@redhat.com>
+
+	Handle delayed multicast packets that occur with switches
+	Some switches delay multicast packets vs the unicast token.  This patch works
+	around that problem by providing a new tuneable called miss_count_const.  This
+	tuneable works by counting the number of times a message is found missing
+	and once reaching the const value, marks it as missing in the retransmit list.
+
+	This improves performance and doesn't display warning messages about missed
+	multicast messages when operating in these switching environments.
+
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+
 2010-12-01  Fabio M. Di Nitto  <fdinitto@redhat.com>
 
 	build: fix make srpm from release tarball
@@ -328,7 +1208,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@3006 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2010-07-21  Angus Salkeld  <asalkeld@redhat.com>
+2010-07-22  Angus Salkeld  <asalkeld@redhat.com>
 
 	Merge trunk revision 3002: r3002 | sdake | 2010-07-22 06:48:40 +1000 (Thu, 22 Jul 2010) | 2 lines Fix merge error with revision 3001.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@3004 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -386,7 +1266,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@2987 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2010-07-03  Steven Dake  <sdake@redhat.com>
+2010-07-04  Steven Dake  <sdake@redhat.com>
 
 	Merge trunk revision 2984: r2984 | sdake | 2010-07-03 14:54:22 -0700 (Sat, 03 Jul 2010) | 2 lines
 	Fix fail list fault that occurs in very rare circumstances.
@@ -462,8 +1342,6 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@2973 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2010-06-28  Steven Dake  <sdake@redhat.com>
-
 	Merge trunk revision 2970: r2970 | sdake | 2010-06-28 16:30:49 -0700 (Mon, 28 Jun 2010) | 3 lines
 	Have corosync spec file own /var/log/cluster/corosync.log
 	have example use /var/log/cluster/cluster.log as default log file
@@ -537,7 +1415,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@2954 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2010-06-18  Steven Dake  <sdake@redhat.com>
+2010-06-19  Steven Dake  <sdake@redhat.com>
 
 	Merge trunk revision 2949: r2949 | sdake | 2010-06-18 17:10:41 -0700 (Fri, 18 Jun 2010) | 2 lines
 	Unlock global serializer lock during shutdown.
@@ -1098,7 +1976,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@2858 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2010-05-12  Steven Dake  <sdake@redhat.com>
+2010-05-13  Steven Dake  <sdake@redhat.com>
 
 	Merge trunk revision 2818: r2818 | sdake | 2010-05-12 21:42:06 -0700 (Wed, 12 May 2010) | 2 lines
 	Bump version to 1.2.2.
@@ -1114,7 +1992,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@2817 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2010-05-11  Steven Dake  <sdake@redhat.com>
+2010-05-12  Steven Dake  <sdake@redhat.com>
 
 	Merge trunk revision 2800: r2800 | asalkeld | 2010-05-03 21:25:31 -0700 (Mon, 03 May 2010) | 2 lines
 	check and discard unknown messages
@@ -1123,7 +2001,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@2810 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2010-05-10  Steven Dake  <sdake@redhat.com>
+2010-05-11  Steven Dake  <sdake@redhat.com>
 
 	Merge trunk revision 2789: r2789 | honzaf | 2010-04-26 09:16:20 -0700 (Mon, 26 Apr 2010) | 7 lines
 	Handle POLLNVAL in coroipcc
@@ -1168,7 +2046,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@2788 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2010-04-22  Angus Salkeld  <asalkeld@redhat.com>
+2010-04-23  Angus Salkeld  <asalkeld@redhat.com>
 
 	Revert mistaken merge in confdb.c.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@2786 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -1607,7 +2485,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@2686 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-12-07  Steven Dake  <sdake@redhat.com>
+2009-12-08  Steven Dake  <sdake@redhat.com>
 
 	Merge trunk revision 2581: r2581 | sdake | 2009-12-07 17:02:00 -0700 (Mon, 07 Dec 2009) | 2 lines
 	Bump verion to 1.2.0.
@@ -2021,7 +2899,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@2582 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-10-22  Steven Dake  <sdake@redhat.com>
+2009-10-23  Steven Dake  <sdake@redhat.com>
 
 	Merge trunk revision 2537: r2537 | sdake | 2009-10-22 15:30:59 -0700 (Thu, 22 Oct 2009) | 2 lines
 	Bump version to 1.1.2.
@@ -2037,7 +2915,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@2538 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-10-20  Steven Dake  <sdake@redhat.com>
+2009-10-21  Steven Dake  <sdake@redhat.com>
 
 	Merge trunk revision 2533: ------------------------------------------------------------------------ r2533 | sdake | 2009-10-20 15:40:29 -0700 (Tue, 20 Oct 2009) | 2 lines
 	Bump revision to 1.1.1.
@@ -2053,7 +2931,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@2532 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-10-14  Steven Dake  <sdake@redhat.com>
+2009-10-15  Steven Dake  <sdake@redhat.com>
 
 	Merge trunk revision 2524: r2524 | sdake | 2009-10-14 12:06:37 -0700 (Wed, 14 Oct 2009) | 3 lines
 	Patch from jflesch to fix segfault when using sysv semaphores that the thread
@@ -2114,8 +2992,6 @@
 
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@2505 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2009-09-24  Steven Dake  <sdake@redhat.com>
 
 	Merge trunk revision 2481: r2481 | sdake | 2009-09-24 23:23:04 -0700 (Thu, 24 Sep 2009) | 2 lines
 	Totem IBA implementation.
@@ -2336,7 +3212,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@2466 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-09-19  Steven Dake  <sdake@redhat.com>
+2009-09-20  Steven Dake  <sdake@redhat.com>
 
 	Merge trunk revision 2463: r2463 | sdake | 2009-09-19 23:56:02 -0700 (Sat, 19 Sep 2009) | 2 lines
 	Remove warning in logsys compile related to const correctness.
@@ -2748,7 +3624,7 @@
 	Use the preferred prefix for the Pacemaker service
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@2361 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-07-07  Steven Dake  <sdake@redhat.com>
+2009-07-08  Steven Dake  <sdake@redhat.com>
 
 	Bumping version to 1.0.0
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/branches/flatiron@2353 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -2834,7 +3710,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2332 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-06-30  Steven Dake  <sdake@redhat.com>
+2009-07-01  Steven Dake  <sdake@redhat.com>
 
 	Add context get set man pages for evs.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2331 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -2878,7 +3754,7 @@
 	Reset version to 0.99 in configure.ac to unbreak rpm/srpm.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2321 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-06-29  Steven Dake  <sdake@redhat.com>
+2009-06-30  Steven Dake  <sdake@redhat.com>
 
 	Reset 0.98 in configure.ac to trunk so toplevel makefile works properly
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2319 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -2889,7 +3765,7 @@
 	Fix segfault during dispatch within confdb library.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2317 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-06-27  Steven Dake  <sdake@redhat.com>
+2009-06-28  Steven Dake  <sdake@redhat.com>
 
 	Static-ize some main.c variables.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2316 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -2915,7 +3791,7 @@
 	Send fake barriers for the event service when operating in compatibility mode whitetank.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2309 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-06-26  Angus Salkeld  <asalkeld@redhat.com>
+2009-06-27  Angus Salkeld  <asalkeld@redhat.com>
 
 	add "-p" option to corosync-objctl
 	This just adds a "-p" option to corosync-objctl.
@@ -2928,18 +3804,20 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2308 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-06-26  Fabio M. Di Nitto  <fdinitto@redhat.com>
+2009-06-27  Fabio M. Di Nitto  <fdinitto@redhat.com>
 
 	Fix rpm version generation and adapt release manager Makefile.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2307 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-06-26  Steven Dake  <sdake@redhat.com>
+2009-06-27  Steven Dake  <sdake@redhat.com>
 
 	Remove some debug printfs that snuck in.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2306 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
 	Change sync_init api call to pass information relevant for making synchronization decisions.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2305 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2009-06-26  Steven Dake  <sdake@redhat.com>
 
 	Add ability to detect process pause and not implode the membership algorithm when this occurs.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2304 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -2949,8 +3827,6 @@
 
 	Add syncv2.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2302 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2009-06-25  Steven Dake  <sdake@redhat.com>
 
 	Add AMF_V2_SERVICE defintion
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2301 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -2969,6 +3845,8 @@
 
 	sync-v1 onwire compat layer for raw corosync to communicate with whitetank.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2296 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2009-06-25  Steven Dake  <sdake@redhat.com>
 
 	Define CMAN and CRM service ids.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2295 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -2996,7 +3874,7 @@
 	Add locking of database in hdb_handle_refcount_get
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2290 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-06-23  Steven Dake  <sdake@redhat.com>
+2009-06-24  Steven Dake  <sdake@redhat.com>
 
 	Remove totempg debug message.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2289 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -3012,7 +3890,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2288 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-06-23  Ryan O'Hara  <rohara@redhat.com>
+2009-06-24  Ryan O'Hara  <rohara@redhat.com>
 
 	Add hdb_handle_refcount_get call.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2287 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -3022,13 +3900,13 @@
 	Tidy's up startup printfs.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2286 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-06-22  Steven Dake  <sdake@redhat.com>
-
 	Change startup notice to Corosync Cluster Engine. Change 2008 to 2009 in copyright.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2285 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
 	Remove "AIS" string from exit notice.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2284 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2009-06-22  Steven Dake  <sdake@redhat.com>
 
 	Remove warning by casting properly in totemnet.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2283 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -3038,8 +3916,6 @@
 
 	Add dump_state to coroapi.h.  Need to remove logging output from signal handlers.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2281 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2009-06-21  Steven Dake  <sdake@redhat.com>
 
 	Sanitize -p option to not set scheduling parameters in all software.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2280 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -3060,13 +3936,13 @@
 	Add tests for posix scheduling apis to configure.ac and use them to determine if we should set scheduling priorities or not.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2277 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-06-20  Steven Dake  <sdake@redhat.com>
-
 	Work around dlopen'ed objects not executing constructors on solaris platform.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2276 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
 	Remove hdb constructor usage.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2275 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2009-06-20  Steven Dake  <sdake@redhat.com>
 
 	Remove timersub redefine.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2274 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -3104,15 +3980,13 @@
 	Fix handling of sysconfdir
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2265 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-06-18  Fabio M. Di Nitto  <fdinitto@redhat.com>
-
 	Install basic operational directories
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2264 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
 	Remove tags from example configuration
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2263 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-06-18  Steven Dake  <sdake@redhat.com>
+2009-06-19  Steven Dake  <sdake@redhat.com>
 
 	Warn user of missing dirs and exit gracefully.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2262 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -3122,6 +3996,8 @@
 
 	Sanitize output of autogen.sh.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2260 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2009-06-18  Steven Dake  <sdake@redhat.com>
 
 	Ensure Linux, BSD, Solaris, Darwin function with security authentication in IPC system.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2259 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -3178,7 +4054,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2255 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-06-17  Steven Dake  <sdake@redhat.com>
+2009-06-18  Steven Dake  <sdake@redhat.com>
 
 	Add Jerome to AUTHORS file
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2254 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -3186,7 +4062,7 @@
 	add madvise nosync calls for bsd platform.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2253 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-06-17  Fabio M. Di Nitto  <fdinitto@redhat.com>
+2009-06-18  Fabio M. Di Nitto  <fdinitto@redhat.com>
 
 	logsys: remove leftover files from running tests
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2252 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -3379,8 +4255,6 @@
 	Include string.h in sq.h for memset() calls.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2216 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-06-06  Steven Dake  <sdake@redhat.com>
-
 	Make readdir operation portable by removing BSDism from coroparse.c.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2215 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
@@ -3466,12 +4340,12 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2202 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-05-30  Steven Dake  <sdake@redhat.com>
+2009-05-31  Steven Dake  <sdake@redhat.com>
 
 	Fix race condition in cpg service.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2201 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-05-29  Fabio M. Di Nitto  <fdinitto@redhat.com>
+2009-05-30  Fabio M. Di Nitto  <fdinitto@redhat.com>
 
 	Public headers should not include private config.h
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2200 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -3606,8 +4480,6 @@
 	Logsys header clean (comments and whitespaces)
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2182 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-05-12  Fabio M. Di Nitto  <fdinitto@redhat.com>
-
 	Fix totem logging after logsys changes
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2181 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
@@ -3647,7 +4519,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2176 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-05-11  Fabio M. Di Nitto  <fdinitto@redhat.com>
+2009-05-12  Fabio M. Di Nitto  <fdinitto@redhat.com>
 
 	Add debugging code to logsys.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2175 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -3670,7 +4542,7 @@
 	Remove most iovector-ized functionality from totem and only make one malloc and memory copy call in totemsrp_mcast.  The rest of the stack minus totempg then uses zero copies.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2172 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-05-05  Jim Meyering  <jim@meyering.net>
+2009-05-06  Jim Meyering  <jim@meyering.net>
 
 	fix missing-dependency bug, so as not to install bogus .pc files
 	* pkgconfig/Makefile.am (all .pc files): Depend on Makefile, so that
@@ -3697,10 +4569,12 @@
 	add NTF_SERVICE to the service list
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2167 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-04-29  Steven Dake  <sdake@redhat.com>
+2009-04-30  Steven Dake  <sdake@redhat.com>
 
 	Do checking of handle code after we verify that handle could actually be in the handle database.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2166 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2009-04-29  Steven Dake  <sdake@redhat.com>
 
 	Implement thread saftey in corosync trunk.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2165 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -3713,7 +4587,7 @@
 	Call all configured exec_dump_fn's when SIGUSR2 is received
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2163 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-04-27  Steven Dake  <sdake@redhat.com>
+2009-04-28  Steven Dake  <sdake@redhat.com>
 
 	Add cpgverify program to test directory.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2162 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -3731,7 +4605,7 @@
 	add max limit error checks in logsys
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2159 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-04-26  Steven Dake  <sdake@redhat.com>
+2009-04-27  Steven Dake  <sdake@redhat.com>
 
 	Add mechanism to use logsysrec from inside totem stack.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2157 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -3739,25 +4613,27 @@
 	Improve security of NSS implementation in totem.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2156 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
+2009-04-26  Steven Dake  <sdake@redhat.com>
+
 	Fix evsverify failure.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2155 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-04-25  Fabio M. Di Nitto  <fdinitto@redhat.com>
+2009-04-26  Fabio M. Di Nitto  <fdinitto@redhat.com>
 
 	Fix --enable-nss default in configure.ac
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2154 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-04-25  Steven Dake  <sdake@redhat.com>
+2009-04-26  Steven Dake  <sdake@redhat.com>
 
 	Make libnss detection work properly.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2153 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-04-25  Fabio M. Di Nitto  <fdinitto@redhat.com>
+2009-04-26  Fabio M. Di Nitto  <fdinitto@redhat.com>
 
 	Fix pkgconfig file inclusion into release and pass distcheck
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2152 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-04-25  Steven Dake  <sdake@redhat.com>
+2009-04-26  Steven Dake  <sdake@redhat.com>
 
 	add Chrissie as author of totem NSS implementation.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2151 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -3929,13 +4805,15 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2116 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-04-21  Steven Dake  <sdake@redhat.com>
+2009-04-22  Steven Dake  <sdake@redhat.com>
 
 	Change shared memory to use mmap() system calls.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2115 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
 	Zero copy feature for IPC transmits.  Also integrated into CPG library service.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2114 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2009-04-21  Steven Dake  <sdake@redhat.com>
 
 	Remove memory leak from new dispatch circular buffer mapped system.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2113 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -3996,7 +4874,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2105 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-04-20  Fabio M. Di Nitto  <fdinitto@redhat.com>
+2009-04-21  Fabio M. Di Nitto  <fdinitto@redhat.com>
 
 	Guarantee that all logging buffers are flushed before we die
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2104 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -4049,12 +4927,12 @@
 	readd early log level check for performance reasons.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2093 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-04-19  Steven Dake  <sdake@redhat.com>
+2009-04-20  Steven Dake  <sdake@redhat.com>
 
 	throw away mode in totempg was operating as a global variable, when it is possible for different nodes to be in different configurations of throw away.  This patch makes the variable instanced.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2092 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-04-19  Fabio M. Di Nitto  <fdinitto@redhat.com>
+2009-04-20  Fabio M. Di Nitto  <fdinitto@redhat.com>
 
 	Add logsys v3
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2091 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -4219,8 +5097,6 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2062 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-04-14  Jim Meyering  <jim@meyering.net>
-
 	* README.devmap: Update a prototype.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2061 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
@@ -4238,12 +5114,12 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2059 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-04-13  Steven Dake  <sdake@redhat.com>
+2009-04-14  Steven Dake  <sdake@redhat.com>
 
 	Autodetect build environment for configure for developers.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2058 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-04-09  Steven Dake  <sdake@redhat.com>
+2009-04-10  Steven Dake  <sdake@redhat.com>
 
 	Fix compile warning in main.c.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2057 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -4502,8 +5378,6 @@
 	* services/votequorum.c (conn, quorum_deliver_fn):
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2031 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2009-04-07  Jim Meyering  <jim@meyering.net>
 
 	continue pulling previous thread: mostly constification
 	* exec/apidef.c (typedef_tpg_join, typedef_tpg_leave)
@@ -4808,7 +5682,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1993 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-04-02  Fabio M. Di Nitto  <fdinitto@redhat.com>
+2009-04-03  Fabio M. Di Nitto  <fdinitto@redhat.com>
 
 	Drop unrequired struct
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1992 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -4926,8 +5800,6 @@
 
 	Fix internal API usage and add support for file_name
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1976 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2009-03-31  Fabio M. Di Nitto  <fdinitto@redhat.com>
 
 	Fix build warning
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1975 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -5206,7 +6078,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1914 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-03-29  Fabio M. Di Nitto  <fdinitto@redhat.com>
+2009-03-30  Fabio M. Di Nitto  <fdinitto@redhat.com>
 
 	Fix pkgconfig generation
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1913 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -5365,7 +6237,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1881 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-03-19  Steven Dake  <sdake@redhat.com>
+2009-03-20  Steven Dake  <sdake@redhat.com>
 
 	Revert last change which broke corosync.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1880 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -5415,8 +6287,6 @@
 
 	Fix corosync.pc installation
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1872 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2009-03-18  Fabio M. Di Nitto  <fdinitto@redhat.com>
 
 	Add missing libs from pkgconfig generation
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1871 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -5576,7 +6446,7 @@
 	Fix testconfdb use of object handles.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1844 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-03-11  Steven Dake  <sdake@redhat.com>
+2009-03-12  Steven Dake  <sdake@redhat.com>
 
 	Set correct OBJECT_PARENT_HANDLE define in coroapi.h
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1843 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -5636,12 +6506,10 @@
 	Readd pkgconfig subdir to the build system and port it to autoconf
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1832 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-03-10  Fabio M. Di Nitto  <fdinitto@redhat.com>
-
 	Add entries to maintainer-clean target
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1831 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-03-10  Steven Dake  <sdake@redhat.com>
+2009-03-11  Steven Dake  <sdake@redhat.com>
 
 	Remove warnings from coroipc.c.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1830 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -5799,7 +6667,7 @@
 	Allow logsys_format_set to reset to default.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1792 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-03-05  Steven Dake  <sdake@redhat.com>
+2009-03-06  Steven Dake  <sdake@redhat.com>
 
 	Use list_del on process info in the condition that lib_exit_fn is called to prevent segfault from processes later processing that list entry.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1791 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -5812,12 +6680,12 @@
 	Fix logsys_set_format by updating the right bits
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1789 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-03-02  Fabio M. Di Nitto  <fdinitto@redhat.com>
+2009-03-03  Fabio M. Di Nitto  <fdinitto@redhat.com>
 
 	Fix uninitialized memory. Spotted by valgrind
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1788 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-03-02  Steven Dake  <sdake@redhat.com>
+2009-03-03  Steven Dake  <sdake@redhat.com>
 
 	Rework a bit of how lib_exit_fn works so that reference counts may be used in the exit functions for services such as cpg.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1786 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -5850,17 +6718,15 @@
 	Unification around hdb_handle_t data type.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1782 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-02-24  Steven Dake  <sdake@redhat.com>
-
 	Send configuration changes to CPG listeners.  (regression in IPC patch).
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1781 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-02-24  Fabio M. Di Nitto  <fdinitto@redhat.com>
+2009-02-25  Fabio M. Di Nitto  <fdinitto@redhat.com>
 
 	Install corosync-fplay and corosync-pload binaries
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1780 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-02-24  Steven Dake  <sdake@redhat.com>
+2009-02-25  Steven Dake  <sdake@redhat.com>
 
 	Fix possible segfault with IPC service.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1779 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -5868,10 +6734,10 @@
 	Remove extra printf debug.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1778 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
+2009-02-24  Steven Dake  <sdake@redhat.com>
+
 	Remove installation of static libcoroipc.a.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1777 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2009-02-23  Steven Dake  <sdake@redhat.com>
 
 	Fix problem with 1722 commit which broke ipc.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1776 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -5922,12 +6788,12 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1767 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-02-18  Steven Dake  <sdake@redhat.com>
+2009-02-19  Steven Dake  <sdake@redhat.com>
 
 	Whitetank IPC Forward Port.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1766 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-02-17  Steven Dake  <sdake@redhat.com>
+2009-02-18  Steven Dake  <sdake@redhat.com>
 
 	Remove redundant statement in totemsrp.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1764 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -5938,12 +6804,12 @@
 	Update link for upstream crypto code.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1762 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-02-17  Ryan O'Hara  <rohara@redhat.com>
+2009-02-18  Ryan O'Hara  <rohara@redhat.com>
 
 	Add timer_expire_time_get Add timer_expire_time_get corosync API call.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1761 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-02-13  Ryan O'Hara  <rohara@redhat.com>
+2009-02-14  Ryan O'Hara  <rohara@redhat.com>
 
 	Add timer_time_get to the corosync API.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1760 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -5953,7 +6819,7 @@
 	Add corosync_cfg_local_get() call to get the local NodeID in libcfg
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1759 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-02-11  Ryan O'Hara  <rohara@redhat.com>
+2009-02-12  Ryan O'Hara  <rohara@redhat.com>
 
 	Add TMR_SERVICE to the list of service_types.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1758 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -6115,7 +6981,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1722 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-01-07  Steven Dake  <sdake@redhat.com>
+2009-01-08  Steven Dake  <sdake@redhat.com>
 
 	Patch to allow cpg_membership_get to work properly.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1721 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -6130,7 +6996,7 @@
 	Check against the right var and silence a few warnings at build time
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1719 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2009-01-05  Angus Salkeld  <asalkeld@redhat.com>
+2009-01-06  Angus Salkeld  <asalkeld@redhat.com>
 
 	Fix coverity bug ID 9: OVERRUN_STATIC
 	CID: 9
@@ -6332,10 +7198,12 @@
 	Fix received_flg to contain proper values.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1691 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2008-11-06  Angus Salkeld  <asalkeld@redhat.com>
+2008-11-07  Angus Salkeld  <asalkeld@redhat.com>
 
 	Add corotype.h and delete saAis.h
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1690 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2008-11-06  Angus Salkeld  <asalkeld@redhat.com>
 
 	cleanup the last of the SAF headers and types
 	This includes the rename of identifiers from corosync to cs.
@@ -6344,7 +7212,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1689 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2008-11-05  Steven Dake  <sdake@redhat.com>
+2008-11-06  Steven Dake  <sdake@redhat.com>
 
 	Make width of service 6 bytes instead of 5.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1688 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -6352,7 +7220,7 @@
 	Null terminate string which resulted in failure of confdb during logging.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1687 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2008-11-03  Angus Salkeld  <asalkeld@redhat.com>
+2008-11-04  Angus Salkeld  <asalkeld@redhat.com>
 
 	Make lib/ clean up after itself properly.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1686 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -6415,8 +7283,6 @@
 	remove some new warnings from corosync
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1677 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2008-10-20  Angus Salkeld  <asalkeld@redhat.com>
-
 	Remove unused global debug option from the man page.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1676 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
@@ -6463,7 +7329,7 @@
 	Fix CFLAGS and LDFLAGS overrides to work for DEBUG and RELEASE modes.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1671 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2008-09-24  Steven Dake  <sdake@redhat.com>
+2008-09-25  Steven Dake  <sdake@redhat.com>
 
 	Fix makefile error in test directory.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1669 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -6563,7 +7429,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1660 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2008-08-19  Angus Salkeld  <asalkeld@redhat.com>
+2008-08-20  Angus Salkeld  <asalkeld@redhat.com>
 
 	Zero out unused totemsrp my_proc_list entries
 	When making my_proc_list smaller, ensure that the
@@ -6652,13 +7518,13 @@
 	Make rpmlint pass without warnings.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1648 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2008-08-14  Steven Dake  <sdake@redhat.com>
-
 	Set the override for LCRSODIR properly.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1647 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
 	Finish the renaming of openais to corosync in the tree.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1646 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2008-08-14  Steven Dake  <sdake@redhat.com>
 
 	Fix build breakage.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1645 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -6714,7 +7580,7 @@
 	Change AIS names to corosync
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1630 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2008-08-12  Fabio M. Di Nitto  <fdinitto@redhat.com>
+2008-08-13  Fabio M. Di Nitto  <fdinitto@redhat.com>
 
 	Add support for reload operations within objdb and plugins.
 	Use a 2 phase "commit" operation:
@@ -6781,12 +7647,10 @@
 	Split openais and corosync tree into two seperate repositories.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1622 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2008-08-04  Steven Dake  <sdake@redhat.com>
-
 	Make mar_name_t an inline function to remove warnings
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1621 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2008-08-03  Steven Dake  <sdake@redhat.com>
+2008-08-04  Steven Dake  <sdake@redhat.com>
 
 	Allow msg service test applications to build properly.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1620 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -6831,8 +7695,6 @@
 	Make external service engines (openais) work properly. Also fix up make install.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1606 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2008-07-23  Steven Dake  <sdake@redhat.com>
-
 	Patch from Angus to make corosync build for his environment.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1605 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
@@ -6841,6 +7703,8 @@
 
 	Merge the API definitions of the objdb into the corosync api definition.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1603 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2008-07-23  Steven Dake  <sdake@redhat.com>
 
 	The entire tree builds properly and all services have been ported to the new coroapi.h include header.
 	The services shipped with corosync are CPG, CFG, CONFDB, and EVS.
@@ -6943,7 +7807,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1575 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2008-07-10  Steven Dake  <sdake@redhat.com>
+2008-07-11  Steven Dake  <sdake@redhat.com>
 
 	Fix error in a previous logsys patch.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1574 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -6953,7 +7817,7 @@
 	Add a missing object_find_reset() call.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1573 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2008-07-02  Steven Dake  <sdake@redhat.com>
+2008-07-03  Steven Dake  <sdake@redhat.com>
 
 	Add init/config entry points for those that dont with to use macros in logsys.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1572 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -6967,7 +7831,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1571 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2008-07-01  Steven Dake  <sdake@redhat.com>
+2008-07-02  Steven Dake  <sdake@redhat.com>
 
 	Add two new modes LOG_MODE_SHORT_FILELINE and LOG_MODE_NOSUBSYS. LOG_MODE_SHORT_FILELINE strips the leading path from the file name in a debug output.  LOG_MODE_NOSUBSYS removes a global variable and provides the ability to set or unset this via config_mode_set.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1570 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -6988,8 +7852,6 @@
 
 	Allow syslog priority configurations per subsystem in logsys.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1568 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2008-06-23  Steven Dake  <sdake@redhat.com>
 
 	Remove warnings of unused variables in main.c
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1566 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -7024,7 +7886,7 @@
 	Patch from Xinwei Hu to clean up test locking program.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1556 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2008-06-19  Steven Dake  <sdake@redhat.com>
+2008-06-20  Steven Dake  <sdake@redhat.com>
 
 	Allow user to retrieve logsys mode.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1555 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -7178,7 +8040,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1505 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2008-01-07  Steven Dake  <sdake@redhat.com>
+2008-01-08  Steven Dake  <sdake@redhat.com>
 
 	Patch to install liblogsys
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1495 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -7260,7 +8122,7 @@
 	Fix problem where adding a timer in a timer callback would lock system and also timer additions were not protected by mutex because of backwards pthread_equal comparison.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1463 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2007-09-27  Steven Dake  <sdake@redhat.com>
+2007-09-28  Steven Dake  <sdake@redhat.com>
 
 	segfault does not use source.conn unless the originating request is local. The actual code tries to dereference pointers created on another node.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1462 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -7273,6 +8135,8 @@
 
 	Fix linking of library objects.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1459 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2007-09-27  Steven Dake  <sdake@redhat.com>
 
 	Allow override of the LCRSO directory from the Makefiles or command line
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1458 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -7311,8 +8175,6 @@
 
 	Ensure DESTDIR and PREFIX are properly used in Makefiles
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1443 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2007-09-08  Steven Dake  <sdake@redhat.com>
 
 	Expose utils to the user
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1442 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -7373,7 +8235,7 @@
 	Patch to allocate event dispatch data in saEvtInitialize instead of directly on the stack for small thread-stack sized dispatch functions.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1421 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2007-08-10  Steven Dake  <sdake@redhat.com>
+2007-08-11  Steven Dake  <sdake@redhat.com>
 
 	Patch to not overwrite defualt configuration file or amf.conf file when executing make install
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1420 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -7384,7 +8246,7 @@
 	Patch to add amf_strdup instead of malloc and then copy for amf service.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1417 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2007-08-07  Steven Dake  <sdake@redhat.com>
+2007-08-08  Steven Dake  <sdake@redhat.com>
 
 	Fix minor leaks caused by not calling pthread_mutex_destroy throughout the tree.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1412 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -7415,15 +8277,15 @@
 	Update testckpt program to properly test checkpoint system.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1397 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2007-06-24  Steven Dake  <sdake@redhat.com>
-
 	Add cpg_local_get api to cpg service
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1391 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2007-06-23  Steven Dake  <sdake@redhat.com>
+2007-06-24  Steven Dake  <sdake@redhat.com>
 
 	Add IP address takeover as an AMF component
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1388 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2007-06-23  Steven Dake  <sdake@redhat.com>
 
 	Add passive monitoring support to AMF.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1386 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -7461,8 +8323,6 @@
 
 	Remove this_ip from the source tree and replace with accessor functions.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1379 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2007-06-04  Steven Dake  <sdake@redhat.com>
 
 	Change timers to add duration and absolute timers.  Use nanoseconds since epoch to track timers.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1378 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -7504,7 +8364,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1370 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2007-04-24  Steven Dake  <sdake@redhat.com>
+2007-04-25  Steven Dake  <sdake@redhat.com>
 
 	Fix section iteration size comparison
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1367 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -7518,12 +8378,12 @@
 	Fixes problem where if attributes list is zero, library would segfault
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1362 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2007-04-21  Steven Dake  <sdake@redhat.com>
+2007-04-22  Steven Dake  <sdake@redhat.com>
 
 	change references to evs to cpg to match API
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1361 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2007-04-20  Steven Dake  <sdake@redhat.com>
+2007-04-21  Steven Dake  <sdake@redhat.com>
 
 	Patch from Angus to fix return code of saAmfResponse if the handle was invalid.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1360 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -7621,7 +8481,7 @@
 	Fix ordering of join messages
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1324 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-12-10  Lon Hohberger  <lhh@redhat.com>
+2006-12-11  Lon Hohberger  <lhh@redhat.com>
 
 	Correct not initialized value  of  amf_comp in amf_comp_find_from_conn_info ()
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1322 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -7691,7 +8551,7 @@
 	handle case where POLLHUP or POLLERR are not supported by OS
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1311 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-11-16  Hans Feldt  <hans.feldt@ericsson.com>
+2006-11-17  Hans Feldt  <hans.feldt@ericsson.com>
 
 	Cleaning up and preparing for later patch.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1310 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -7765,7 +8625,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1285 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-10-23  Hans Feldt  <hans.feldt@ericsson.com>
+2006-10-24  Hans Feldt  <hans.feldt@ericsson.com>
 
 	AMF healthcheck keylen was not compared before matching key values
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1281 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -7825,7 +8685,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1266 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-10-11  Hans Feldt  <hans.feldt@ericsson.com>
+2006-10-12  Hans Feldt  <hans.feldt@ericsson.com>
 
 	This simple patch solves a problem we see when testing AMF. If a node leaves and joins the cluster quickly (within one second is default), the config change messages will not indicate that the node left and rejoined. The patch introduces a short delay in main() to make sure the token_timeout expires.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1259 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -7841,7 +8701,7 @@
 	Remove some debbugging code from totemsrp impacting performance.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1253 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-10-03  Lon Hohberger  <lhh@redhat.com>
+2006-10-04  Lon Hohberger  <lhh@redhat.com>
 
 	The patch contains:
 	 The instantiaton of the component is performed with some new steps:
@@ -7918,12 +8778,12 @@
 	Two configuration attributes for SG objects were not handled correctly by the config parser.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1249 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-09-27  Hans Feldt  <hans.feldt@ericsson.com>
+2006-09-28  Hans Feldt  <hans.feldt@ericsson.com>
 
 	Patches from Mathieu.Marie@sun.com: 2- On Solaris, the SA components executed have no names. 3- When killing the testamf1 component, it makes the aisexec process crash on both of my nodes. 4- max priority for RR on solaris is 59.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1247 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-09-24  Hans Feldt  <hans.feldt@ericsson.com>
+2006-09-25  Hans Feldt  <hans.feldt@ericsson.com>
 
 	An update of README.amf to match current state of the implementation. README.amf now also includes a detailed list of what is currently NOT implemented.
 	README.amf includes now, as before, a "demo example".
@@ -7953,10 +8813,12 @@
 	Fix for global_ckpt_id not synced
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1239 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-09-05  Hans Feldt  <hans.feldt@ericsson.com>
+2006-09-06  Hans Feldt  <hans.feldt@ericsson.com>
 
 	- ckpt_id was not synced. - debug printout of list reduced
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1238 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2006-09-05  Hans Feldt  <hans.feldt@ericsson.com>
 
 	1.    Improvement to manage more than one SG within an Application  and to 	asymmetrically distribute the SG:s among the Nodes. 2.    strcmp bug fixes  several *_find functions. 3.    Minor bug fixes.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1237 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8039,7 +8901,7 @@
 	add command line support with: launch as a foreground application, do not set priority
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1219 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-08-15  Steven Dake  <sdake@redhat.com>
+2006-08-16  Steven Dake  <sdake@redhat.com>
 
 	Add scalability to 128 nodes by adding new parameter to protocol which is a random timeout bounded by a configuration parameter when sending join messages.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1214 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8066,7 +8928,7 @@
 	fixe a bug in cpg where get_group() will return the wrong group info structure if there is a hash collision.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1199 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-08-07  Steven Dake  <sdake@redhat.com>
+2006-08-08  Steven Dake  <sdake@redhat.com>
 
 	Fix checkpoint header file error
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1178 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8076,15 +8938,13 @@
 	Committed a bunch of changes for testing scalability - reverting patch
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1177 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-08-04  Steven Dake  <sdake@redhat.com>
-
 	non-blocking syslog and file logging support
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1176 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
 	Solaris port for openais
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1175 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-08-02  Steven Dake  <sdake@redhat.com>
+2006-08-03  Steven Dake  <sdake@redhat.com>
 
 	Make sure sync_activate is called only once per service handler.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1174 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8094,12 +8954,12 @@
 	Removes the hardcoded limit of environment variables and argvs from components, now unlimited.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1172 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-07-31  Hans Feldt  <hans.feldt@ericsson.com>
+2006-08-01  Hans Feldt  <hans.feldt@ericsson.com>
 
 	- Handling of HUP and other poll errors improved in saAmfDispatch. - Termination of testamf1 when saAmfDispatch returns an error.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1171 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-07-28  Steven Dake  <sdake@redhat.com>
+2006-07-29  Steven Dake  <sdake@redhat.com>
 
 	Patch so realloc reverts to old buffer if reallocation fails.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1170 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8130,8 +8990,6 @@
 	Clean up endian swabbing for cpg service.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1162 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-07-25  Steven Dake  <sdake@redhat.com>
-
 	Fix where setsockopt is bound to in totemnet.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1161 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
@@ -8150,7 +9008,7 @@
 	Endian cleanup for the clm service.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1156 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-07-23  Steven Dake  <sdake@redhat.com>
+2006-07-24  Steven Dake  <sdake@redhat.com>
 
 	Allow build type of COVERAGE for code coverage analysis
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1152 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8174,8 +9032,6 @@
 	Increase IPC thread stack size from 100k to 200k to accomodate larger data structures in ipc message handlers (for the CLM service).
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1149 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-07-20  Steven Dake  <sdake@redhat.com>
-
 	Remove TODO for swabbing conn data structure
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1148 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
@@ -8197,16 +9053,18 @@
 	Remove unnecessary exit from testevs
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1142 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
+2006-07-20  Steven Dake  <sdake@redhat.com>
+
 	Remove debug printf in totemsrp
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1141 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2006-07-19  Steven Dake  <sdake@redhat.com>
 
 	Don't segfault if unauthorized user connects
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1140 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
 	Make checkpoint service work according to specifications with regards to the unlink operation.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1139 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2006-07-19  Steven Dake  <sdake@redhat.com>
 
 	Remove compile warning from cfgtool commit.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1138 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8219,23 +9077,23 @@
 	Send the new joinlists using the sync service, so it happens atomically. This should fix some odd sequencing bugs.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1136 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-07-17  Patrick Caulfield  <pcaulfie@redhat.com>
+2006-07-18  Patrick Caulfield  <pcaulfie@redhat.com>
 
 	printing ipv6 addresses often needs more than a 32 byte buffer. THis could causes a crash with sone ipv6 installations.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1135 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-07-17  Steven Dake  <sdake@redhat.com>
+2006-07-18  Steven Dake  <sdake@redhat.com>
 
 	Support for ia64 arch builds.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1133 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2006-07-17  Steven Dake  <sdake@redhat.com>
 
 	Fix synchronization not working properly.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1132 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
 	Event marshalling patch for 32/64/endian support.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1131 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2006-07-16  Steven Dake  <sdake@redhat.com>
 
 	If version field is NULL as passed to saClmInitialize, return INVALID_PARAM
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1130 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8255,6 +9113,8 @@
 	Return INVALID_PARAM when section read is larger then checkpoint section
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1125 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
+2006-07-16  Steven Dake  <sdake@redhat.com>
+
 	CheckpointRead wasn't checking the active replica was set.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1124 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
@@ -8269,20 +9129,20 @@
 	Proper barrier operation as requested.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1121 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-07-13  Steven Dake  <sdake@redhat.com>
-
 	Add support for s390 and s390x architectures.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1120 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2006-07-13  Steven Dake  <sdake@redhat.com>
 
 	Fix library renames to 2.0.0 as needed by distros.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1119 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-07-11  Steven Dake  <sdake@redhat.com>
+2006-07-12  Steven Dake  <sdake@redhat.com>
 
 	Update to checkpoint service to use new APIs as rest of services do.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1118 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-07-10  Steven Dake  <sdake@redhat.com>
+2006-07-11  Steven Dake  <sdake@redhat.com>
 
 	Fix broken timers when release type set to RELEASE
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1117 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8322,7 +9182,7 @@
 	- Error escalation improved, SU failover recovery action added - Most runtime attributes in the inf. model calculated in runtime from   more fundamental information. (improves consistency) - sg_assign_si can now recalculate workloads considering existing   assignments - Logging improvements, similar to what is required as notification in   AMF spec. - CLC-CLI INSTANTIATE now exits aisexec when it fails (should later be   sent as an NTF alarm) - CLC-CLI CLEANUP correctly handles already terminated processes - testamf1.c printouts removed for normal operation - Iterator functions for SI/CSI assignments
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1108 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-07-06  Steven Dake  <sdake@redhat.com>
+2006-07-07  Steven Dake  <sdake@redhat.com>
 
 	Make sure RELEASE version detaches from tty
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1105 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8333,6 +9193,8 @@
 	The recent endian/32/64 changes broke cpg callbacks.  The left list address was incorrectly calculated.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1102 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
+2006-07-06  Steven Dake  <sdake@redhat.com>
+
 	The totem rrp incorrectly increased the wrong failure counter.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1101 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
@@ -8341,15 +9203,13 @@
 	marshall of cpg_join name field is wrong.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1100 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-06-29  Steven Dake  <sdake@redhat.com>
-
 	Rework of the timer system to allow timers to be added in dispatch handlers.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1099 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
+2006-06-29  Steven Dake  <sdake@redhat.com>
+
 	Rewrite of the checkpoint benchmark using threads tool
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1098 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2006-06-28  Steven Dake  <sdake@redhat.com>
 
 	set serialize lock to proper function.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1097 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8357,7 +9217,7 @@
 	Rework of IPC layer once again
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1096 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-06-27  Steven Dake  <sdake@redhat.com>
+2006-06-28  Steven Dake  <sdake@redhat.com>
 
 	Fix problem where AMF locks up system if two or more components are members of the same service unit.  Also fixes problem where AMF asserts if two or more components are specified in a service unit.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1095 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8402,13 +9262,15 @@
 	Fix message alignment in CPG. we now unpack the message in the same way as we pack it.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1084 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-06-21  Steven Dake  <sdake@redhat.com>
+2006-06-22  Steven Dake  <sdake@redhat.com>
 
 	Change makefile to install swab from correct place
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1081 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
 	New make release in top level makefile
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1077 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2006-06-21  Steven Dake  <sdake@redhat.com>
 
 	Modify AMF to use new timer.c/timer.h routines properly
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1076 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8422,7 +9284,7 @@
 	Fix error where pathlist buffer is overrun resulting in segfault
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1072 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-06-19  Hans Feldt  <hans.feldt@ericsson.com>
+2006-06-20  Hans Feldt  <hans.feldt@ericsson.com>
 
 	Refactoring of AMF into several files (based on classed in inf. model). A central header file (amf.h) keeps all the definitions and prototypes needed.
 	New things apart from that:
@@ -8434,10 +9296,12 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1071 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-06-19  Steven Dake  <sdake@redhat.com>
+2006-06-20  Steven Dake  <sdake@redhat.com>
 
 	Fix off by one error in totemsrp.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1070 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2006-06-19  Steven Dake  <sdake@redhat.com>
 
 	Missed timer commit.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1069 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8456,7 +9320,7 @@
 	Allow CFLAGS and LDFLAGS to be overridden through the environment or command line.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1065 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-06-05  Steven Dake  <sdake@redhat.com>
+2006-06-06  Steven Dake  <sdake@redhat.com>
 
 	Remove warnings in AMF executive service.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1061 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8472,7 +9336,7 @@
 	- (Re-)introduction of event based multicast messages (not all yet) - Use of Distinguished Names (DN) in API and multicast messages - CSI resassignment properly handled (by using restarting state) - State 'setter' functions with uniform printouts - Simple 'assign SU to host' algorithm: 	- based on saAmfSUHostedByNode config attribute 	- see config file for example - Debug print runtime attributes upon user request: 	$ pkill -USR2 aisexec - Object-oriented naming of functions started (but not finished) - testamf1.c updated with some new tests - Minor fix in print.h and print.c - AMF can be started on two nodes (example config file needs   modification for this)
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1058 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-05-28  Steven Dake  <sdake@redhat.com>
+2006-05-29  Steven Dake  <sdake@redhat.com>
 
 	Set to SCHED_RR:1 to match ipc layer
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1057 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8484,8 +9348,6 @@
 
 	Update TODO to match 2006 project priorities.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1055 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2006-05-26  Steven Dake  <sdake@redhat.com>
 
 	This sanitizes the makefiles in several ways * .so and .so.1 files are linked to library.so.1.0.0 and installed with make install * renames all build targets to library.so.1.0.0 from library.so.1.0 * puts ld.so.conf.d files in the correct place * allows not installing static libraries by using make install STATICLIBS=NO
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1054 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8499,10 +9361,10 @@
 	Under load, it was observed that the token could be lost because the totem protocol was not being scheduled above the other I/O processes. This patch reinstalls the sched_setscheduler call which for some reason was commented out.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1051 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
+2006-05-26  Steven Dake  <sdake@redhat.com>
+
 	defect 1270 Fix checkpoint read operation which would return invalid operation in some circumstances.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1050 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2006-05-25  Steven Dake  <sdake@redhat.com>
 
 	Remove scandir error=%s printf since it spews a bunch of errors when the aisexec is run after a make install
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1049 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8544,7 +9406,7 @@
 	Remove poinless man-page. bug fix CPG example.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1038 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-05-21  Steven Dake  <sdake@redhat.com>
+2006-05-22  Steven Dake  <sdake@redhat.com>
 
 	commit for redundant ring take 4 was only done from exec directory missing all of the commits for the rest of the directories.  This commit will now allow the tree to compile.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1035 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8607,7 +9469,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1025 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-05-10  Steven Dake  <sdake@redhat.com>
+2006-05-11  Steven Dake  <sdake@redhat.com>
 
 	Environment variable cleanup, documentation of environment variables in man pages, and rename of one of the environment variables used to specify the main openais configuration file.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1024 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8617,7 +9479,7 @@
 	fix compile under darwin: sched_setscheduler does not exist
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1023 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-05-09  Hans Feldt  <hans.feldt@ericsson.com>
+2006-05-10  Hans Feldt  <hans.feldt@ericsson.com>
 
 	- Preprocessor flags to control user, group and directory for configuration files removed.
 	- Environment variables for the same thing added:
@@ -8642,7 +9504,7 @@
 	Cope with >32 groups on a node that goes down. Add a missing endian conversion.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1020 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-04-29  Steven Dake  <sdake@redhat.com>
+2006-04-30  Steven Dake  <sdake@redhat.com>
 
 	Fix comile failures for BSD/Darwin port
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1019 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8671,8 +9533,6 @@
 
 	Add invalid handle definition
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1014 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2006-04-26  Steven Dake  <sdake@redhat.com>
 
 	Remove priority from aispoll since we now use the kernel scheduler for priorities for polling
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1013 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8721,7 +9581,7 @@
 	Patch from Hans to fix segfault in loading of LCR components
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@999 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-04-20  Steven Dake  <sdake@redhat.com>
+2006-04-21  Steven Dake  <sdake@redhat.com>
 
 	More make install work to install all necessary files
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@998 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8741,13 +9601,15 @@
 	Patch from Hans to significantly improve the logging functionality read openais.conf.5 for info on how the new logging works.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@995 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-04-15  Steven Dake  <sdake@redhat.com>
+2006-04-16  Steven Dake  <sdake@redhat.com>
 
 	Remove segfault when object database can't be loaded
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@994 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
 	Remove segfaults when object database can't be loaded for some reason.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@993 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2006-04-15  Steven Dake  <sdake@redhat.com>
 
 	remove -DDEBUG from release build
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@992 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8776,7 +9638,7 @@
 	Add missing vsf.h from previous commit
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@984 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-04-13  Steven Dake  <sdake@redhat.com>
+2006-04-14  Steven Dake  <sdake@redhat.com>
 
 	fix fc5 segfault correctly by removing code that violates strict aliasing rules.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@983 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8784,7 +9646,7 @@
 	scale part 3 componentize YKD dynamic linear voting algorithm
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@982 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-04-12  Steven Dake  <sdake@redhat.com>
+2006-04-13  Steven Dake  <sdake@redhat.com>
 
 	Improvement of the rrp_algo data structure to support only running totemnet api calls on the appropriate totemnet interfaces.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@981 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8803,7 +9665,7 @@
 	Split the logging config options into three keys: to_file, to_stderr & to_syslog
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@977 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-04-08  Steven Dake  <sdake@redhat.com>
+2006-04-09  Steven Dake  <sdake@redhat.com>
 
 	defect 1191 Add more support for the redundant ring protocol.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@976 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8842,7 +9704,7 @@
 	defect 1170 Fix recovery protocol to avoid assertion in memb_state_recovery_enter
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@967 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-04-03  Steven Dake  <sdake@redhat.com>
+2006-04-04  Steven Dake  <sdake@redhat.com>
 
 	defect 205 implement totem single ring protocol flow control algorithm
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@966 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8917,7 +9779,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@951 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-03-15  Steven Dake  <sdake@redhat.com>
+2006-03-16  Steven Dake  <sdake@redhat.com>
 
 	Patch from Hans Feldt This small patch (against r948) adds variable CPPFLAGS to all make rules that compiles `.c' files into `.o' files.
 	This makes it possible to set CPPFLAGS on the command line as in:
@@ -8986,10 +9848,12 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@939 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-03-05  Muni Bajpai  <muni.osdl@gmail.com>
+2006-03-06  Muni Bajpai  <muni.osdl@gmail.com>
 
 	bug 1115. Fixes the synchronization algorithm which was skipping services.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@938 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2006-03-05  Muni Bajpai  <muni.osdl@gmail.com>
 
 	Bug Fix for memory leak in ckpt section management. Bug 1112
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@937 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -8999,7 +9863,7 @@
 	Add cpg (closed process groups) component.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@936 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-03-02  Steven Dake  <sdake@redhat.com>
+2006-03-03  Steven Dake  <sdake@redhat.com>
 
 	defect 981 This patch fixes a problem where the synchronization engine would not work cross endian.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@935 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9010,10 +9874,12 @@
 	defect 981 This patch fixes a problem where totempg would not work cross-endian.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@933 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-03-01  Muni Bajpai  <muni.osdl@gmail.com>
+2006-03-02  Muni Bajpai  <muni.osdl@gmail.com>
 
 	reverting fix to man page as only 0.72 is broken with last byte zero in bindnetaddress
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@932 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2006-03-01  Muni Bajpai  <muni.osdl@gmail.com>
 
 	Remove the reference to the use of 0 as last byte in the bindnetaddr
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@931 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9026,7 +9892,7 @@
 	Fabien's patch for the BSD/Darwin port.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@926 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-02-14  Steven Dake  <sdake@redhat.com>
+2006-02-15  Steven Dake  <sdake@redhat.com>
 
 	Patch from Patrick This patch restores the functionality in previous versions where the node address could be specified as a network address in openais.conf
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@925 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9056,15 +9922,15 @@
 	Some versions of GCC were optimizing out the static ctor section.  This patch makes the ctor non-static so it is not optimized out.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@917 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-02-09  Steven Dake  <sdake@redhat.com>
-
 	Cleanup of dynamic loading to allow using the same interface factory code for statically linked components.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@916 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-02-01  Steven Dake  <sdake@redhat.com>
+2006-02-02  Steven Dake  <sdake@redhat.com>
 
 	Patch from Patrick to enable configuring the list of dynamic service handlers in the configuration file.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@915 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2006-02-01  Steven Dake  <sdake@redhat.com>
 
 	1049 make all service handlers dynamically loadable or compilable statically use the BUILD_DYNAMIC flag in the makefile to set dynamic loading or static compile.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@914 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9083,7 +9949,7 @@
 	defect 1049 Fix compile error in testlck and testmsg.  Use SA_AIS_OK.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@906 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-01-24  Steven Dake  <sdake@redhat.com>
+2006-01-25  Steven Dake  <sdake@redhat.com>
 
 	enhancement 1049 enhance services so dynamic service handlers are more easily possible
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@905 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9102,7 +9968,7 @@
 	defect 1046 SaErrorT in trunk branch, but only SaAisErrorT should be used
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@902 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-01-21  Steven Dake  <sdake@redhat.com>
+2006-01-22  Steven Dake  <sdake@redhat.com>
 
 	defect 1045 totempg is not thread safe, and AMF requires threads to instantiate components
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@898 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9117,12 +9983,12 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@892 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-01-15  Steven Dake  <sdake@redhat.com>
+2006-01-16  Steven Dake  <sdake@redhat.com>
 
 	remove old files that are no longer needed.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@891 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-01-13  Steven Dake  <sdake@redhat.com>
+2006-01-14  Steven Dake  <sdake@redhat.com>
 
 	Small man page cleanup
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@890 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9139,7 +10005,7 @@
 	defect 1030 This fixes the event handle leak on failure, the malloc check for hl, removes the redundant memset when creating a handle, and makes sure that the put of the channel handle is a valid handle.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@886 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-01-06  Steven Dake  <sdake@redhat.com>
+2006-01-07  Steven Dake  <sdake@redhat.com>
 
 	defect 1024 YKD algorithm doesn't always work when new_message_queue is full.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@885 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9157,8 +10023,6 @@
 	Delete empty files.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@881 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-01-02  Steven Dake  <sdake@redhat.com>
-
 	enhancement 1020 adds missing file from commit
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@880 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
@@ -9168,7 +10032,7 @@
 	enhancement 1019 Modify YKD to select primary component and execute the synchronization operation only in the main partition.  In the non-primary partition, no new requests are allowed - they are all returned with the error code SA_AIS_ERR_TRY_AGAIN.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@878 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2006-01-01  Steven Dake  <sdake@redhat.com>
+2006-01-02  Steven Dake  <sdake@redhat.com>
 
 	defect 1006 on 64 bit platforms, the timer is not properly cleared resulting in segfaults
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@876 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9215,13 +10079,15 @@
 	fix documentation error from specification which identifies SaLckResourceLockAsync as the function name in some places but saLckResourceLockAsync in other places.  We settled on saLck since it matches the rest of the specifications.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@859 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-11-30  Steven Dake  <sdake@redhat.com>
+2005-12-01  Steven Dake  <sdake@redhat.com>
 
 	shared object name incorrectly set for the lock service to libSaLCK instead of libSaLck.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@858 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
 	fix documentation error from specification which identifies SaLckResourceLockAsync as the function name in some places but saLckResourceLockAsync in other places.  We settled on saLck since it matches the rest of the specifications.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@857 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2005-11-30  Steven Dake  <sdake@redhat.com>
 
 	defect 979 This enhancement adds support for IPV6 to the trunk of openais.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@856 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9268,12 +10134,12 @@
 	defect 968 Improve worst-case failure detection time using active healthchecking
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@836 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-10-26  Steven Dake  <sdake@redhat.com>
+2005-10-27  Steven Dake  <sdake@redhat.com>
 
 	defect 914 fix gcc 4 specific compile warnings and compile errors
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@834 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-10-03  Steven Dake  <sdake@redhat.com>
+2005-10-04  Steven Dake  <sdake@redhat.com>
 
 	defect 909 c++ keywords are used in the internal implementation of list.h
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@832 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9283,7 +10149,7 @@
 	Fix compiler warnings when HZ is defined to be a long. Bugzilla #904
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@830 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-09-28  Steven Dake  <sdake@redhat.com>
+2005-09-29  Steven Dake  <sdake@redhat.com>
 
 	defect 903 First cut at a distributed locking service.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@829 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9304,13 +10170,15 @@
 	defect 895 Ruppert reported that there is code that doesn't do anything but should.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@821 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-09-20  Steven Dake  <sdake@redhat.com>
+2005-09-21  Steven Dake  <sdake@redhat.com>
 
 	reduce maximum message size since 253000 is beyond the max.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@818 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
 	remove extraneous debug printf
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@816 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2005-09-20  Steven Dake  <sdake@redhat.com>
 
 	defect 892 Fix performance degradation when sending 10-15 messages per second because of a large seqno_unchanged_const.  Also, seqno_unchanged_const does not have a configurable option and this patch adds that support.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@814 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9342,7 +10210,7 @@
 	defect 840 J Seltzer reported that closed checkpoints in the TRY_AGAIN state are not closed in the executive but are closed in the library.  This patch fixes that problem.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@806 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-08-25  Steven Dake  <sdake@redhat.com>
+2005-08-26  Steven Dake  <sdake@redhat.com>
 
 	defect 837 Muni reported the token retransmission timer doesn't need to be reset when receiving a retransmission
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@805 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9383,7 +10251,7 @@
 	enhancmement 821 Global reorganization of totem code and also many feature enhancments These include: need to specify whether authentication is enabled or dislabed in config file need to specify frame size in config file need redundant ring placeholder need to specify version field of totem need to support large frame sizes need to break out threading code from totemsrp need to break out network code from totemsrp need to break out parser code from parse.c and some others
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@794 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-08-12  Steven Dake  <sdake@redhat.com>
+2005-08-13  Steven Dake  <sdake@redhat.com>
 
 	Patch from Russell Bryant to fix up gcc 4 warnings
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@793 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9403,10 +10271,12 @@
 	Fix for BUG 803.  We need to complete a library call even if the channel requested for unlink has been deleted previous to processing an unlink request.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@790 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-07-29  Steven Dake  <sdake@redhat.com>
+2005-07-30  Steven Dake  <sdake@redhat.com>
 
 	fixes segfault when ctrl-c pressed with new totemmrp code
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@789 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2005-07-29  Steven Dake  <sdake@redhat.com>
 
 	fixes a missed merge in the totemmrp mergeup
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@788 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9448,7 +10318,7 @@
 	defect 788 ckptbench returns error 7 at 20000 byte size writes.  The benchmark program improperly creates the checkpoint parameters.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@777 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-07-26  Mark Haverkamp  <markh@osdl.org>
+2005-07-27  Mark Haverkamp  <markh@osdl.org>
 
 	Fix for bug 773.  Not quite the full fix, but the best we can do for now.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@776 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9607,7 +10477,7 @@
 	Check for reserved event ID and return SA_AIS_ERR_INVALID_PARAM. Bug 694
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@728 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-06-30  Mark Haverkamp  <markh@osdl.org>
+2005-07-01  Mark Haverkamp  <markh@osdl.org>
 
 	Wait to return status to the library until the clear request was received over the network so that the publish and receipt of the event is in sync with the time clear request.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@727 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9620,12 +10490,10 @@
 	defect 502 fix assert when packet added in multicast message handler.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@725 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-06-29  Steven Dake  <sdake@redhat.com>
-
 	Remove some warnings from the compile.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@724 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-06-29  Mark Haverkamp  <markh@osdl.org>
+2005-06-30  Mark Haverkamp  <markh@osdl.org>
 
 	Error comparing unsigned to less than zero.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@723 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -9692,7 +10560,7 @@
 	The A spec required patterns to be set but the B spec doesn't.  Fix lib/evt.c and test/testevt.c
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@708 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-06-21  Mark Haverkamp  <markh@osdl.org>
+2005-06-22  Mark Haverkamp  <markh@osdl.org>
 
 	This fixes some B spec related parameter checks
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@707 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -10099,7 +10967,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@644 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-05-26  Steven Dake  <sdake@mvista.com>
+2005-05-27  Steven Dake  <sdake@mvista.com>
 
 	(Logical change 1.196)
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@643 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -10119,7 +10987,7 @@
 	Initial revision
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@640 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-05-26  Mark Haverkamp  <markh@osdl.org>
+2005-05-27  Mark Haverkamp  <markh@osdl.org>
 
 	Allow services to use the openais.conf file for setting custom options. Evt now allows the maximum delivery queue size and the resume size to be set in openais.conf
 	(Logical change 1.195)
@@ -10257,8 +11125,6 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@620 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-04-20  Steven Dake  <sdake@mvista.com>
-
 	defect 505 - fix uncompilable with gcc 2.95
 	(Logical change 1.186)
 
@@ -10271,7 +11137,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@618 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-04-20  Mark Haverkamp  <markh@osdl.org>
+2005-04-21  Mark Haverkamp  <markh@osdl.org>
 
 	Defect 501.
 	Fix some mutex and error return problems.
@@ -10288,6 +11154,8 @@
 
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@616 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2005-04-20  Mark Haverkamp  <markh@osdl.org>
 
 	For defect 501. Fix possible stale pointers in async lists if an application disconnects before its command has been fully processed.
 	(Logical change 1.184)
@@ -10332,7 +11200,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@610 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-04-15  Steven Dake  <sdake@mvista.com>
+2005-04-16  Steven Dake  <sdake@mvista.com>
 
 	totemsrp.c:   Fixes a condition which would result in a proc set and failed set   being equal which would force the algorithm to never reach   consensus in the membership algorithm.
 	BKrev: 42604e9fCBYactncuQuguPZ_IEfQsQ
@@ -10382,6 +11250,8 @@
 
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@603 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2005-04-15  Steven Dake  <sdake@mvista.com>
 
 	crypto.c:   autodetect endian and wordsize with gnuisms
 	BKrev: 42602efdZ8LfQwIHBFrdtsjrK3BtCg
@@ -10560,7 +11430,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@576 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-04-04  Steven Dake  <sdake@mvista.com>
+2005-04-05  Steven Dake  <sdake@mvista.com>
 
 	Patch from Miyotaka Sakai to fix access to free area defect 426.
 	(Logical change 1.168)
@@ -10606,7 +11476,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@569 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-03-30  Miyotaka Sakai  <sakai@unknown.org>
+2005-03-31  Miyotaka Sakai  <sakai@unknown.org>
 
 	fix not to transit state when process terminate
 	(Logical change 1.166)
@@ -10634,8 +11504,6 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@565 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-03-29  Steven Dake  <sdake@mvista.com>
-
 	Merge sdake@bk.osdl.org:/var/bk/openais into persist.az.mvista.com:/home/sdake/openais
 	2005/03/29 15:03:30-07:00 mvista.com!sdake
 	testckpt.c:
@@ -10662,7 +11530,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@562 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-03-28  Miyotaka Sakai  <sakai@unknown.org>
+2005-03-29  Miyotaka Sakai  <sakai@unknown.org>
 
 	fix configuration change
 	(Logical change 1.163)
@@ -10759,7 +11627,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@549 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-03-22  Steven Dake  <sdake@mvista.com>
+2005-03-23  Steven Dake  <sdake@mvista.com>
 
 	defect325 - rename saCkptActiveCheckpointSet to saCkptActiveReplicaSet
 	(Logical change 1.157)
@@ -10791,7 +11659,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@544 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-03-22  Mark Haverkamp  <markh@osdl.org>
+2005-03-23  Mark Haverkamp  <markh@osdl.org>
 
 	Fix an off by one error causing a bad event ID to be sent after a recovery in some cases.
 	BKrev: 4240a8ba6cGIAgqLoTZNAUZJJOgyrg
@@ -10855,7 +11723,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@536 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-03-16  Steven Dake  <sdake@mvista.com>
+2005-03-17  Steven Dake  <sdake@mvista.com>
 
 	Block multicast messages during synchronization.
 	(Logical change 1.151)
@@ -10874,6 +11742,8 @@
 
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@533 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2005-03-16  Steven Dake  <sdake@mvista.com>
 
 	cleanup some shared datatypes.
 	(Logical change 1.150)
@@ -10936,8 +11806,6 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@523 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-03-14  Steven Dake  <sdake@mvista.com>
-
 	Add checkpoint reader and writer to test synchronization
 	(Logical change 1.147)
 
@@ -10955,6 +11823,8 @@
 
 	Initial revision
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@519 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2005-03-14  Steven Dake  <sdake@mvista.com>
 
 	Merge sdake@bk.osdl.org:/var/bk/openais into persist.az.mvista.com:/home/sdake/openais
 	2005/03/14 15:39:42-07:00 mvista.com!sdake
@@ -11047,7 +11917,7 @@
 	Initial revision
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@506 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-02-26  Steven Dake  <sdake@broked.org>
+2005-02-27  Steven Dake  <sdake@broked.org>
 
 	em64t support
 	(Logical change 1.141)
@@ -11075,7 +11945,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@502 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-02-16  Steven Dake  <sdake@mvista.com>
+2005-02-17  Steven Dake  <sdake@mvista.com>
 
 	Auto merged
 	2005/02/16 17:24:12-07:00 mvista.com!sdake
@@ -11110,7 +11980,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@498 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-02-15  Mark Haverkamp  <markh@osdl.org>
+2005-02-16  Mark Haverkamp  <markh@osdl.org>
 
 	Look for SA_EVT_EVENTID_LOST when receiving an event.
 	(Logical change 1.138)
@@ -11136,6 +12006,8 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@494 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
+2005-02-15  Mark Haverkamp  <markh@osdl.org>
+
 	Add unlink function.
 	(Logical change 1.137)
 
@@ -11151,7 +12023,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@492 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2005-02-08  Steven Dake  <sdake@mvista.com>
+2005-02-09  Steven Dake  <sdake@mvista.com>
 
 	Increase code coverage by calling more API functions.
 	(Logical change 1.136)
@@ -11176,6 +12048,8 @@
 
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@488 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2005-02-08  Steven Dake  <sdake@mvista.com>
 
 	(Logical change 1.135)
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@487 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -11788,7 +12662,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@392 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-11-24  Steven Dake  <sdake@mvista.com>
+2004-11-25  Steven Dake  <sdake@mvista.com>
 
 	code coverage work cleanup
 	(Logical change 1.108)
@@ -11826,6 +12700,8 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@386 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
+2004-11-24  Steven Dake  <sdake@mvista.com>
+
 	Fix compile with gcc 2.95.
 	(Logical change 1.106)
 
@@ -11852,7 +12728,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@382 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-11-07  somacoma  <somacoma@unknown.org>
+2004-11-08  somacoma  <somacoma@unknown.org>
 
 	Merge
 	2004/10/29 00:13:35+02:00 somacoma.net!dns
@@ -11957,7 +12833,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@369 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-10-29  Steven Dake  <sdake@mvista.com>
+2004-10-30  Steven Dake  <sdake@mvista.com>
 
 	Add rlimit code to allow openais to work with linux kernel 2.6.9 or later
 	(Logical change 1.99)
@@ -11971,7 +12847,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@367 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-10-27  Steven Dake  <sdake@mvista.com>
+2004-10-28  Steven Dake  <sdake@mvista.com>
 
 	64bit safe ais types
 	(Logical change 1.98)
@@ -12191,7 +13067,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@339 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-10-14  Steven Dake  <sdake@mvista.com>
+2004-10-15  Steven Dake  <sdake@mvista.com>
 
 	Make testevs exit on evs_initialize if the return code is not EVS_OK.
 	(Logical change 1.94)
@@ -12360,7 +13236,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@318 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-10-01  Steven Dake  <sdake@mvista.com>
+2004-10-02  Steven Dake  <sdake@mvista.com>
 
 	Fix a bunch of errors in node get and async node get.
 	(Logical change 1.87)
@@ -12380,7 +13256,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@315 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-09-28  Miyotaka Sakai  <sakai@unknown.org>
+2004-09-29  Miyotaka Sakai  <sakai@unknown.org>
 
 	get rid of compile warning
 	(Logical change 1.86)
@@ -12535,7 +13411,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@292 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-09-23  Steven Dake  <sdake@mvista.com>
+2004-09-24  Steven Dake  <sdake@mvista.com>
 
 	testparse.c:   Fix commit error in changeset 1.77.
 	BKrev: 41534ab0cY4dYHQw-qoPHLMpXQTAAQ
@@ -12620,7 +13496,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@281 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-09-22  Steven Dake  <sdake@mvista.com>
+2004-09-23  Steven Dake  <sdake@mvista.com>
 
 	Store handle address in timer structure.  When timer expires, wipe out the handle address's value, since the timer is no longer valid. This allows double frees, or frees on handles that haven't been added. One note of caution: a handle cannot be moved into another variable and be expected to work properly for double frees.
 	(Logical change 1.79)
@@ -12646,6 +13522,8 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@277 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
+2004-09-22  Steven Dake  <sdake@mvista.com>
+
 	Fix annoying build failure because of code coverage increases.
 	(Logical change 1.78)
 
@@ -12658,7 +13536,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@275 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-09-20  Steven Dake  <sdake@mvista.com>
+2004-09-21  Steven Dake  <sdake@mvista.com>
 
 	Add retainined events while also cleaning up memory leakage that occurs because of a lack of retained events.
 	(Logical change 1.77)
@@ -12776,7 +13654,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@259 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-09-15  Steven Dake  <sdake@mvista.com>
+2004-09-16  Steven Dake  <sdake@mvista.com>
 
 	gmi.c:   Bug 44.   Fixes assertion in executive when running ckptbenchth.
 	BKrev: 4148dc42NSqyi9F4s6exhsVarsF10Q
@@ -12789,6 +13667,8 @@
 
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@257 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2004-09-15  Steven Dake  <sdake@mvista.com>
 
 	main.c:   Call poll_destroy when executing ais_done.  This increases code   coverage from 66.9% to 82.3%.
 	BKrev: 4148ac12oFAraidHBF8lhdpMgBXc1w
@@ -12844,7 +13724,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@248 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-09-09  Steven Dake  <sdake@mvista.com>
+2004-09-10  Steven Dake  <sdake@mvista.com>
 
 	BUG 37.  Fix several leaks during configuration changes.  Also fixes a possible assert with many large messages being sent from multiple processors at the same time.
 	(Logical change 1.68)
@@ -12886,7 +13766,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@243 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-09-07  Steven Dake  <sdake@broked.org>
+2004-09-08  Steven Dake  <sdake@broked.org>
 
 	Get rid of magic number 1500 and replace with PACKET_SIZE_MAX. Also fix a glaring memory overwrite bug in gmi_init which would init 256k of memory instead of PACKET_SIZE_MAX memory.
 	(Logical change 1.66)
@@ -12899,6 +13779,8 @@
 
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@241 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2004-09-07  Steven Dake  <sdake@broked.org>
 
 	EVS library makes compiler warning on some compilers.  Found and fixed by Sakai Miyotaka.
 	(Logical change 1.65)
@@ -13142,7 +14024,7 @@
 	Initial revision
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@210 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-08-27  Steven Dake  <sdake@mvista.com>
+2004-08-28  Steven Dake  <sdake@mvista.com>
 
 	gmi.c:   Flush all multicast messages by delivering them before   processing the token.  This ensures that the mcast fd   doesn't buffer too many old messages and avoids an assert.
 	BKrev: 412fd3cesE7M-pXl9OZs1X2CyK7Y4A
@@ -13156,7 +14038,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@208 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-08-23  Steven Dake  <sdake@mvista.com>
+2004-08-24  Steven Dake  <sdake@mvista.com>
 
 	Add initial support for multipathing to group messaging.
 	(Logical change 1.60)
@@ -13188,7 +14070,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@203 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-08-23  Mark Haverkamp  <markh@osdl.org>
+2004-08-24  Mark Haverkamp  <markh@osdl.org>
 
 	Need to check the size of the response header here.
 	(Logical change 1.59)
@@ -13202,7 +14084,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@201 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-08-22  Steven Dake  <sdake@mvista.com>
+2004-08-23  Steven Dake  <sdake@mvista.com>
 
 	Clean up usage of ais_done.  This includes passing a value for each done type.  Also, libais_disconnect cleaned up so it doesn't ais_done when its queues are full.  Instead it disconnects the library connection.  A new connection state variable added to the conn_info structure in place of active.
 	(Logical change 1.58)
@@ -13261,7 +14143,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@192 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-08-20  Steven Dake  <sdake@mvista.com>
+2004-08-21  Steven Dake  <sdake@mvista.com>
 
 	Cleanup errors in Makefile.
 	(Logical change 1.55)
@@ -13415,7 +14297,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@169 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-08-09  Steven Dake  <sdake@broked.org>
+2004-08-10  Steven Dake  <sdake@broked.org>
 
 	gmi.c:   When 2 processors are part of the configuration, then one   of the members leaves, then a new configuration occurs   with 2 or more members, the "joined" list was not   being properly passed to the rest of the executive   services.  This bug fixed.
 	BKrev: 41185349SwUWKZU-QQ_K91jAnvqYpA
@@ -13528,7 +14410,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@152 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-07-29  Steven Dake  <sdake@mvista.com>
+2004-07-30  Steven Dake  <sdake@mvista.com>
 
 	Change RecvQueue to use a stack structure for receiving the response instead of passing in the maximum sized value for a response message.
 	(Logical change 1.48)
@@ -13553,6 +14435,8 @@
 
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@148 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2004-07-29  Steven Dake  <sdake@mvista.com>
 
 	(Logical change 1.47)
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@147 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -13636,7 +14520,7 @@
 	Initial revision
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@134 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-07-28  Steven Dake  <sdake@mvista.com>
+2004-07-29  Steven Dake  <sdake@mvista.com>
 
 	README.devmap:   Document new changes to exec handler function prototype   and recommend using the source_addr for deferring requests   instead of recording the ip address in the message itself. main.c, handlers.h, clm.c, ckpt.c, amf.c:   Add source_addr to exec message handler for event service.
 	BKrev: 41082a5cY6cLQK7NG_rxZrkb7lERfw
@@ -13656,7 +14540,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@131 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-07-27  Steven Dake  <sdake@mvista.com>
+2004-07-28  Steven Dake  <sdake@mvista.com>
 
 	Major cleanup and use hdb.c abstracted out functions now instead of internal hacked together stuff that was there previously.
 	(Logical change 1.44)
@@ -13709,7 +14593,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@122 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-07-26  Steven Dake  <sdake@mvista.com>
+2004-07-27  Steven Dake  <sdake@mvista.com>
 
 	Remove BINDTODEVICE socket option and replace with MULTICAST_IF to be more portable and require less root privs.
 	(Logical change 1.42)
@@ -13723,7 +14607,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@120 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-07-23  Steven Dake  <sdake@mvista.com>
+2004-07-24  Steven Dake  <sdake@mvista.com>
 
 	Additional information for using the saRecvQueue call in a library.
 	(Logical change 1.41)
@@ -13737,7 +14621,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@118 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-07-20  Steven Dake  <sdake@mvista.com>
+2004-07-21  Steven Dake  <sdake@mvista.com>
 
 	(Logical change 1.40)
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@117 fd59a12c-fef9-0310-b244-a6a79926bd2f
@@ -13751,7 +14635,7 @@
 	Initial revision
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@115 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-07-14  Steven Dake  <sdake@mvista.com>
+2004-07-15  Steven Dake  <sdake@mvista.com>
 
 	Major improvements to fragmentation.  It works alot better now.
 	(Logical change 1.39)
@@ -13791,8 +14675,6 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@109 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-07-12  Steven Dake  <sdake@mvista.com>
-
 	Add ip to deliver_fn callback
 	(Logical change 1.36)
 
@@ -13822,6 +14704,8 @@
 
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@104 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2004-07-12  Steven Dake  <sdake@mvista.com>
 
 	gmi.c:   Fix debug exit.
 	BKrev: 40f3069ao4cKWSuICZHrMdMIqJDlMw
@@ -13868,7 +14752,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@100 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-07-11  Steven Dake  <sdake@broked.org>
+2004-07-12  Steven Dake  <sdake@broked.org>
 
 	Retransmit orf token if no multicast or token received within a timeout period.  This could mean that the token was lost, but no configuration change has really occured.  Rather then execute the heavyweight membership protocol, just retry the token and if it fails after the token timeout, execute a configuration change sequence.
 	BKrev: 40f21082dvUxH0aOPvKmpqoqlkEgEA
@@ -13914,7 +14798,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@93 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-07-09  Steven Dake  <sdake@mvista.com>
+2004-07-10  Steven Dake  <sdake@mvista.com>
 
 	Removes the external dependency from the gmi to the global variable this_ip.  This is still passed in for gmi_init users to be notified of which IP was selected, but copied for local use.
 	BKrev: 40ef692cfv-e5JCQ8T9iC-_i3AaBcg
@@ -13933,6 +14817,8 @@
 
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@90 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2004-07-09  Steven Dake  <sdake@mvista.com>
 
 	Rename: exec/poll.h -> exec/aispoll.h
 	}(Logical change 1.28)
@@ -14004,8 +14890,6 @@
 
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@78 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2004-07-07  Steven Dake  <sdake@mvista.com>
 
 	Fix build errors after previous commit.
 	(Logical change 1.25)
@@ -14084,6 +14968,8 @@
 
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@65 fd59a12c-fef9-0310-b244-a6a79926bd2f
+
+2004-07-07  Steven Dake  <sdake@mvista.com>
 
 	Change memcpy to memmove to quiet down valgrind.
 	(Logical change 1.23)
@@ -14277,7 +15163,7 @@
 	Initial revision
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@33 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-06-28  Steven Dake  <sdake@mvista.com>
+2004-06-29  Steven Dake  <sdake@mvista.com>
 
 	Cluster membership API not being authenticated by openais executive. This results in testclm locking on start in saClmInitialize.
 	BKrev: 40e095e4VUojyuQYOBeAUqjZnbBTCA
@@ -14328,8 +15214,6 @@
 
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@26 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2004-06-22  Steven Dake  <sdake@mvista.com>
 
 	QUICKSTART:   Modified quickstart guide thanks to comments from Yixiong Zou   Information about adding groups added   Information about testclm blocking until cluster membership   event occurs added.
 	BKrev: 40d920ffgjnZO35fZ2d947AV5TWGWQ
@@ -14407,8 +15291,6 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@15 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-06-17  Steven Dake  <sdake@mvista.com>
-
 	Fix single-node AMF assertion failure (cause runaway recursion).
 	BKrev: 40d22e42IsByk3WqoRIGSlETLqdUgw
 
@@ -14421,6 +15303,8 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@13 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
+2004-06-17  Steven Dake  <sdake@mvista.com>
+
 	Crash when no network.conf file present (missing error checking).
 	(Logical change 1.6)
 
@@ -14432,8 +15316,6 @@
 
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@11 fd59a12c-fef9-0310-b244-a6a79926bd2f
-
-2004-06-16  Steven Dake  <sdake@mvista.com>
 
 	Fix bug in membership protocol where form token sometimes times out because the initial send of the token is sent to the wrong address.
 	2004/06/16 15:42:49-07:00 mvista.com!sdake
@@ -14453,7 +15335,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@9 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-06-15  Steven Dake  <sdake@mvista.com>
+2004-06-16  Steven Dake  <sdake@mvista.com>
 
 	QUICKSTART:   Test change
 	BKrev: 40cfe45fPOa0mbN6jPO9bRiSG_tZWA
@@ -14467,7 +15349,7 @@
 
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@7 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-06-15  John Cherry  <cherry@osdl.net>
+2004-06-16  John Cherry  <cherry@osdl.net>
 
 	Import changeset
 	BKrev: 40cf759cAkpvgQbZ43nWNRClHYqlXQ
@@ -14481,7 +15363,7 @@
 	Initial revision
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@4 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-06-15  cem  <cem@osdl.net>
+2004-06-16  cem  <cem@osdl.net>
 
 	Initial repository create
 	BKrev: 40cf7521T7yNtYdteqiCUMgD7RdOCA
@@ -14492,7 +15374,7 @@
 	Initial revision
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@2 fd59a12c-fef9-0310-b244-a6a79926bd2f
 
-2004-06-15  Steven Dake  <sdake@broked.org>
+2004-06-16  Steven Dake  <sdake@broked.org>
 
 	New repository initialized by cvs2svn.
 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1 fd59a12c-fef9-0310-b244-a6a79926bd2f

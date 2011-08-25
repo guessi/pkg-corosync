@@ -584,6 +584,8 @@ static void message_handler_req_exec_cfg_ringreenable (
 			req_exec_cfg_ringreenable->source.conn,
 			&res_lib_cfg_ringreenable,
 			sizeof (struct res_lib_cfg_ringreenable));
+
+		api->ipc_refcnt_dec(req_exec_cfg_ringreenable->source.conn);
 	}
 	LEAVE();
 }
@@ -704,6 +706,7 @@ static void message_handler_req_lib_cfg_ringreenable (
 	req_exec_cfg_ringreenable.header.id = SERVICE_ID_MAKE (CFG_SERVICE,
 		MESSAGE_REQ_EXEC_CFG_RINGREENABLE);
 	api->ipc_source_set (&req_exec_cfg_ringreenable.source, conn);
+	api->ipc_refcnt_inc(conn);
 
 	iovec.iov_base = (char *)&req_exec_cfg_ringreenable;
 	iovec.iov_len = sizeof (struct req_exec_cfg_ringreenable);
@@ -1040,6 +1043,7 @@ static void message_handler_req_lib_cfg_get_node_addrs (void *conn,
 	const struct req_lib_cfg_get_node_addrs *req_lib_cfg_get_node_addrs = msg;
 	struct res_lib_cfg_get_node_addrs *res_lib_cfg_get_node_addrs = (struct res_lib_cfg_get_node_addrs *)buf;
 	unsigned int nodeid = req_lib_cfg_get_node_addrs->nodeid;
+	char *addr_buf;
 
 	if (nodeid == 0)
 		nodeid = api->totem_nodeid_get();
@@ -1052,8 +1056,9 @@ static void message_handler_req_lib_cfg_get_node_addrs (void *conn,
 	res_lib_cfg_get_node_addrs->num_addrs = num_interfaces;
 	if (num_interfaces) {
 		res_lib_cfg_get_node_addrs->family = node_ifs[0].family;
-		for (i = 0; i<num_interfaces; i++) {
-			memcpy(&res_lib_cfg_get_node_addrs->addrs[i][0], node_ifs[i].addr, TOTEMIP_ADDRLEN);
+		for (i = 0, addr_buf = (char *)res_lib_cfg_get_node_addrs->addrs;
+		    i < num_interfaces; i++, addr_buf += TOTEMIP_ADDRLEN) {
+			memcpy(addr_buf, node_ifs[i].addr, TOTEMIP_ADDRLEN);
 		}
 	}
 	else {

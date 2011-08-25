@@ -18,9 +18,9 @@
 
 #include <corosync/engine/logsys.h>
 
-unsigned int flt_data_size;
+uint32_t flt_data_size;
 
-unsigned int *flt_data;
+uint32_t *flt_data;
 #define FDHEAD_INDEX		(flt_data_size)
 #define FDTAIL_INDEX		(flt_data_size + 1)
 
@@ -341,42 +341,50 @@ static struct printer_subsys printer_subsystems[] = {
 static unsigned int printer_subsys_count =
   sizeof (printer_subsystems) / sizeof (struct printer_subsys);
 
-static unsigned int g_record[10000];
+#define G_RECORD_SIZE	10000
+
+static uint32_t g_record[G_RECORD_SIZE];
 
 /*
  * Copy record, dealing with wrapping
  */
 static int logsys_rec_get (int rec_idx) {
-	unsigned int rec_size;
+	uint32_t rec_size;
 	int firstcopy, secondcopy;
 
 	rec_size = flt_data[rec_idx];
 
 	firstcopy = rec_size;
 	secondcopy = 0;
+
+	if (rec_size > G_RECORD_SIZE || rec_size > flt_data_size) {
+		fprintf (stderr, "rec_size too large. Input file is probably corrupted.\n");
+		exit (EXIT_FAILURE);
+	}
+
 	if (firstcopy + rec_idx > flt_data_size) {
 		firstcopy = flt_data_size - rec_idx;
 		secondcopy -= firstcopy - rec_size;
 	}
-	memcpy (&g_record[0], &flt_data[rec_idx], firstcopy<<2);
+	memcpy (&g_record[0], &flt_data[rec_idx], firstcopy * sizeof(uint32_t));
 	if (secondcopy) {
-		memcpy (&g_record[firstcopy], &flt_data[0], secondcopy<<2);
+		memcpy (&g_record[firstcopy], &flt_data[0], secondcopy * sizeof(uint32_t));
 	}
 	return ((rec_idx + rec_size) % flt_data_size);
 }
 
 static void logsys_rec_print (const void *record)
 {
-	const unsigned int *buf_uint32t = record;
-	unsigned int rec_size;
-	unsigned int rec_ident;
-	unsigned int level;
-	unsigned int line;
-	unsigned int arg_size_idx;
+	const uint32_t *buf_uint32t = record;
+	uint32_t rec_size;
+	uint32_t rec_ident;
+	uint32_t level;
+	uint32_t line;
+	uint32_t arg_size_idx;
 	unsigned int i;
 	unsigned int j;
 	unsigned int rec_idx = 0;
-	unsigned int record_number;
+	uint32_t record_number;
 	unsigned int words_processed;
 	unsigned int found;
 	const char *arguments[64];
@@ -472,14 +480,14 @@ int main (void)
 		return EXIT_FAILURE;
 	}
 
-	n_required = sizeof (unsigned int);
+	n_required = sizeof (uint32_t);
 	n_read = read (fd, &flt_data_size, n_required);
 	if (n_read != n_required) {
 		fprintf (stderr, "Unable to read fdata header\n");
 		return EXIT_FAILURE;
 	}
 
-	n_required = ((flt_data_size + 2) * sizeof(unsigned int));
+	n_required = ((flt_data_size + 2) * sizeof(uint32_t));
 
 	if ((flt_data = malloc (n_required)) == NULL) {
 		fprintf (stderr, "exhausted virtual memory\n");
@@ -494,8 +502,8 @@ int main (void)
 	}
 
 	if (n_read != n_required) {
-		printf ("Warning: read %lu bytes, but expected %lu\n",
-			(unsigned long) n_read, (unsigned long) n_required);
+		printf ("Warning: read %zd bytes, but expected %zu\n",
+			n_read, n_required);
 	}
 
 	rec_idx = flt_data[FDTAIL_INDEX];

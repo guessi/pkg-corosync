@@ -128,6 +128,13 @@ If you have multiple clusters on the same network using the same mcastaddr
 please configure the mcastports with a gap.
 
 .TP
+ttl
+This specifies the Time To Live (TTL). If you run your cluster on a routed
+network then the default of "1" will be too small. This option provides
+a way to increase this up to 255. The valid range is 0..255.
+Note that this is only valid on multicast transport types.
+
+.TP
 member
 This specifies a member on the interface and used with the udpu transport only.
 Every node that should be a member of the membership should be specified as
@@ -373,7 +380,7 @@ This constant specifies how many rotations of the token without receiving any
 of the messages when messages should be received may occur before a new
 configuration is formed.
 
-The default is 50 failures to receive a message.
+The default is 2500 failures to receive a message.
 
 .TP
 seqno_unchanged_const
@@ -432,6 +439,16 @@ processor on receipt of the token.  The max_messages parameter is limited to
 The default is 17 messages.
 
 .TP
+miss_count_const
+This constant defines the maximum number of times on receipt of a token
+a message is checked for retransmission before a retransmission occurs.  This
+parameter is useful to modify for switches that delay multicast packets
+compared to unicast packets.  The default setting works well for nearly all
+modern switches.
+
+The default is 5 messages.
+
+.TP
 rrp_problem_count_timeout
 This specifies the time in milliseconds to wait before decrementing the
 problem count by 1 for a particular ring to ensure a link is not marked
@@ -465,6 +482,13 @@ problem_count_threshold but may be overridden.  It is not recommended to
 override this value without guidance from the corosync community.
 
 The default is 47 milliseconds.
+
+.TP
+rrp_autorecovery_check_timeout
+This specifies the time in milliseconds to check if the failed ring can be
+auto-recovered.
+
+The default is 1000 milliseconds.
 
 .PP
 Within the

@@ -108,6 +108,8 @@ CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DARWIN_OPTS = @DARWIN_OPTS@
+DBUS_CFLAGS = @DBUS_CFLAGS@
+DBUS_LIBS = @DBUS_LIBS@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 ECHO_C = @ECHO_C@
@@ -142,7 +144,6 @@ PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
 PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
-PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PKGCONFIG = @PKGCONFIG@
@@ -153,6 +154,9 @@ RANLIB = @RANLIB@
 SAM_SONAME = @SAM_SONAME@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
+SNMPCONFIG = @SNMPCONFIG@
+SNMPLIBS = @SNMPLIBS@
+SNMP_LCRSO = @SNMP_LCRSO@
 SOCKETDIR = @SOCKETDIR@
 SOLARIS_OPTS = @SOLARIS_OPTS@
 SOMAJOR = @SOMAJOR@
@@ -213,14 +217,15 @@ rdmacm_LIBS = @rdmacm_LIBS@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
+statgrab_LIBS = @statgrab_LIBS@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 MAINTAINERCLEANFILES = Makefile.in
-EXTRA_DIST = generic.in
-target_INIT = generic
+EXTRA_DIST = generic.in notifyd.in
+target_INIT = generic notifyd
 all: all-am
 
 .SUFFIXES:
@@ -421,10 +426,11 @@ clean-local:
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(INITDDIR)
 	$(INSTALL) -m 755 generic $(DESTDIR)/$(INITDDIR)/corosync
+	$(INSTALL) -m 755 notifyd $(DESTDIR)/$(INITDDIR)/corosync-notifyd
 
 uninstall-local:
 	cd $(DESTDIR)/$(INITDDIR) && \
-		rm -f corosync
+		rm -f corosync corosync-notifyd
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

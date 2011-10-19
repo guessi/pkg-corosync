@@ -1,9 +1,3 @@
-corosync (1.4.2-1~bpo60+1) squeeze-backports; urgency=low
-
-  * Rebuild for squeeze-backports.
-
- -- Martin Loschwitz <madkiss@debian.org>  Thu, 10 Nov 2011 11:03:51 +0000
-
 corosync (1.4.2-1) unstable; urgency=low
 
   * Changed my email address in debian/control

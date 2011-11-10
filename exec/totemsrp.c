@@ -110,10 +110,6 @@
  * SEQNO_START_TOKEN is the starting sequence number after a new configuration
  *	for a token.  This should remain zero, unless testing overflow in which
  *	case 07fffff00 or 0xffffff00 are good starting values.
- *
- * SEQNO_START_MSG is the starting sequence number after a new configuration
- *	This should remain zero, unless testing overflow in which case
- *	0x7ffff000 and 0xfffff000 are good values to start with
  */
 #define SEQNO_START_MSG 0x0
 #define SEQNO_START_TOKEN 0x0
@@ -625,12 +621,12 @@ void main_iface_change_fn (
 struct message_handlers totemsrp_message_handlers = {
 	6,
 	{
-		message_handler_orf_token,
-		message_handler_mcast,
-		message_handler_memb_merge_detect,
-		message_handler_memb_join,
-		message_handler_memb_commit_token,
-		message_handler_token_hold_cancel
+		message_handler_orf_token,            /* MESSAGE_TYPE_ORF_TOKEN */
+		message_handler_mcast,                /* MESSAGE_TYPE_MCAST */
+		message_handler_memb_merge_detect,    /* MESSAGE_TYPE_MEMB_MERGE_DETECT */
+		message_handler_memb_join,            /* MESSAGE_TYPE_MEMB_JOIN */
+		message_handler_memb_commit_token,    /* MESSAGE_TYPE_MEMB_COMMIT_TOKEN */
+		message_handler_token_hold_cancel     /* MESSAGE_TYPE_TOKEN_HOLD_CANCEL */
 	}
 };
 
@@ -861,6 +857,9 @@ int totemsrp_initialize (
 	log_printf (instance->totemsrp_log_level_debug,
 		"RRP threshold (%d problem count)\n",
 		totem_config->rrp_problem_count_threshold);
+	log_printf (instance->totemsrp_log_level_debug,
+		"RRP multicast threshold (%d problem count)\n",
+		totem_config->rrp_problem_count_mcast_threshold);
 	log_printf (instance->totemsrp_log_level_debug,
 		"RRP automatic recovery check timeout (%d ms)\n",
 		totem_config->rrp_autorecovery_check_timeout);
@@ -1795,7 +1794,36 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		sizeof (struct srp_addr) * instance->my_memb_entries);
 
 	instance->my_failed_list_entries = 0;
-	instance->my_high_delivered = instance->my_high_seq_received;
+	/*
+	 * TODO Not exactly to spec
+	 *
+	 * At the entry to this function all messages without a gap are
+	 * deliered.
+	 *
+	 * This code throw away messages from the last gap in the sort queue
+	 * to my_high_seq_received
+	 *
+	 * What should really happen is we should deliver all messages up to
+	 * a gap, then delier the transitional configuration, then deliver
+	 * the messages between the first gap and my_high_seq_received, then
+	 * deliver a regular configuration, then deliver the regular
+	 * configuration
+	 *
+	 * Unfortunately totempg doesn't appear to like this operating mode
+	 * which needs more inspection
+	 */
+	i = instance->my_high_seq_received + 1;
+	do {
+		void *ptr;
+
+		i -= 1;
+		res = sq_item_get (&instance->regular_sort_queue, i, &ptr);
+		if (i == 0) {
+			break;
+		}
+	} while (res);
+
+	instance->my_high_delivered = i;
 
 	for (i = 0; i <= instance->my_high_delivered; i++) {
 		void *ptr;
@@ -2023,7 +2051,7 @@ static void memb_state_recovery_enter (
 		log_printf (instance->totemsrp_log_level_debug,
 			"position [%d] member %s:\n", i, totemip_print (&addr[i].addr[0]));
 		log_printf (instance->totemsrp_log_level_debug,
-			"previous ring seq %lld rep %s\n",
+			"previous ring seq %llx rep %s\n",
 			memb_list[i].ring_id.seq,
 			totemip_print (&memb_list[i].ring_id.rep));
 
@@ -4418,7 +4446,7 @@ void main_iface_change_fn (
 		memb_ring_id_create_or_load (instance, &instance->my_ring_id);
 		log_printf (
 			instance->totemsrp_log_level_debug,
-			"Created or loaded sequence id %lld.%s for this ring.\n",
+			"Created or loaded sequence id %llx.%s for this ring.\n",
 			instance->my_ring_id.seq,
 			totemip_print (&instance->my_ring_id.rep));
 

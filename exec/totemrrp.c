@@ -890,14 +890,17 @@ static void passive_monitor (
 	unsigned int max;
 	unsigned int i;
 	unsigned int min_all, min_active;
+	unsigned int threshold;
 
 	/*
 	 * Monitor for failures
 	 */
 	if (is_token_recv_count) {
 		recv_count = passive_instance->token_recv_count;
+		threshold = rrp_instance->totem_config->rrp_problem_count_threshold;
 	} else {
 		recv_count = passive_instance->mcast_recv_count;
+		threshold = rrp_instance->totem_config->rrp_problem_count_mcast_threshold;
 	}
 
 	recv_count[iface_no] += 1;
@@ -959,8 +962,7 @@ static void passive_monitor (
 
 	for (i = 0; i < rrp_instance->interface_count; i++) {
 		if ((passive_instance->faulty[i] == 0) &&
-			(max - recv_count[i] >
-			rrp_instance->totem_config->rrp_problem_count_threshold)) {
+		    (max - recv_count[i] > threshold)) {
 			passive_instance->faulty[i] = 1;
 			poll_timer_add (rrp_instance->poll_handle,
 				rrp_instance->totem_config->rrp_autorecovery_check_timeout,
@@ -1015,12 +1017,16 @@ static void passive_mcast_flush_send (
 	unsigned int msg_len)
 {
 	struct passive_instance *passive_instance = (struct passive_instance *)instance->rrp_algo_instance;
+	int i = 0;
 
 	do {
 		passive_instance->msg_xmit_iface = (passive_instance->msg_xmit_iface + 1) % instance->interface_count;
-	} while (passive_instance->faulty[passive_instance->msg_xmit_iface] == 1);
+		i++;
+	} while ((i <= instance->interface_count) && (passive_instance->faulty[passive_instance->msg_xmit_iface] == 1));
 
-	totemnet_mcast_flush_send (instance->net_handles[passive_instance->msg_xmit_iface], msg, msg_len);
+	if (i <= instance->interface_count) {
+		totemnet_mcast_flush_send (instance->net_handles[passive_instance->msg_xmit_iface], msg, msg_len);
+	}
 }
 
 static void passive_mcast_noflush_send (
@@ -1029,13 +1035,16 @@ static void passive_mcast_noflush_send (
 	unsigned int msg_len)
 {
 	struct passive_instance *passive_instance = (struct passive_instance *)instance->rrp_algo_instance;
+	int i = 0;
 
 	do {
 		passive_instance->msg_xmit_iface = (passive_instance->msg_xmit_iface + 1) % instance->interface_count;
-	} while (passive_instance->faulty[passive_instance->msg_xmit_iface] == 1);
+		i++;
+	} while ((i <= instance->interface_count) && (passive_instance->faulty[passive_instance->msg_xmit_iface] == 1));
 
-
-	totemnet_mcast_noflush_send (instance->net_handles[passive_instance->msg_xmit_iface], msg, msg_len);
+	if (i <= instance->interface_count) {
+		totemnet_mcast_noflush_send (instance->net_handles[passive_instance->msg_xmit_iface], msg, msg_len);
+	}
 }
 
 static void passive_token_recv (
@@ -1070,14 +1079,18 @@ static void passive_token_send (
 	unsigned int msg_len)
 {
 	struct passive_instance *passive_instance = (struct passive_instance *)instance->rrp_algo_instance;
+	int i = 0;
 
 	do {
 		passive_instance->token_xmit_iface = (passive_instance->token_xmit_iface + 1) % instance->interface_count;
-	} while (passive_instance->faulty[passive_instance->token_xmit_iface] == 1);
+		i++;
+	} while ((i <= instance->interface_count) && (passive_instance->faulty[passive_instance->token_xmit_iface] == 1));
 
-	totemnet_token_send (
-		instance->net_handles[passive_instance->token_xmit_iface],
-		msg, msg_len);
+	if (i <= instance->interface_count) {
+		totemnet_token_send (
+		    instance->net_handles[passive_instance->token_xmit_iface],
+		    msg, msg_len);
+	}
 
 }
 

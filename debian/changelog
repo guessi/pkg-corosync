@@ -1,3 +1,17 @@
+corosync (1.4.2-1~bpo60+1) squeeze-backports; urgency=low
+
+  * Rebuild for squeeze-backports.
+
+ -- Martin Loschwitz <madkiss@debian.org>  Thu, 10 Nov 2011 11:03:51 +0000
+
+corosync (1.4.2-1) unstable; urgency=low
+
+  * Changed my email address in debian/control
+  * Add corosync-blackbox to the corosync package
+  * Imported Upstream version 1.4.2
+
+ -- Martin Loschwitz <madkiss@debian.org>  Wed, 19 Oct 2011 14:32:18 +0000
+
 corosync (1.4.1-1) unstable; urgency=low
 
   [ Andres Rodriguez ]

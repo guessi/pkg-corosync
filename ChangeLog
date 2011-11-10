@@ -1,3 +1,160 @@
+2011-09-22  Steven Dake  <sdake@redhat.com>
+
+	Deliver all messages from my_high_seq_recieved to the last gap
+	This patch passes two test cases:
+
+	-------
+	Test #1
+	-------
+	Two node cluster - run cpgbench on each node
+
+	modify totemsrp with following defines:
+	Two test cases:
+
+	-------
+	Test #2
+	-------
+	5 node cluster
+
+	start 5 nodes randomly at about same time, start 5 nodes randomly at about
+	same time, wait 10 seconds and attempt to send a message.  If message blocks
+	on "TRY_AGAIN" likely a message loss has occured.  Wait a few minutes without
+	cyclng the nodes and see if the TRY_AGAIN state becomes unblocked.
+
+	If it doesn't the test case has failed
+
+	Reviewed-by: Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+	(cherry picked from commit 2ec4ddb039b310b308a8748c88332155afd62608)
+
+2011-07-14  Russell Bryant  <russell@russellbryant.net>
+
+	Resolve a deadlock between the timer and serialize locks.
+	This patch resolves a deadlock between the serialize lock (in
+	exec/main.c) and the timer lock (in exec/timer.c).  I observed this
+	deadlock happening fairly quickly on a cluster using the EVT service
+	from OpenAIS.  (OpenAIS 1.1.4, Corosync 1.4.1)
+
+	In prioritized_timer_thread(), it was grabbing:
+	    1) timer lock
+	    2) serialize lock
+
+	In another thread, you have:
+	    1) grab the serialize lock in deliver_fn() of exec/main.c
+	    2) grab the timer lock in corosync_timer_add_duration().
+
+	The patch just swaps the locking order in the timer thread.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2011-09-08  Jan Friesse  <jfriesse@redhat.com>
+
+	totemconfig: change minimum RRP threshold
+	RRP threshold can be lower value then 5.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+	(cherry picked from commit f6c2a8dab786c50ece36dd3424e258e93a1000d3)
+
+2011-09-05  Steven Dake  <sdake@redhat.com>
+
+	Ignore memb_join messages during flush operations
+	a memb_join operation that occurs during flushing can result in an
+	entry into the GATHER state from the RECOVERY state.  This results in the
+	regular sort queue being used instead of the recovery sort queue, resulting
+	in segfault.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+	(cherry picked from commit 48ffa8892daac18935d96ae46a72aebe2fb70430)
+
+2011-09-01  Jan Friesse  <jfriesse@redhat.com>
+
+	rrp: Higher threshold in passive mode for mcast
+	There were too much false positives with passive mode rrp when high
+	number of messages were received.
+
+	Patch adds new configurable variable rrp_problem_count_mcast_threshold
+	which is by default 10 times rrp_problem_count_threshold and this is
+	used as threshold for multicast packets in passive mode. Variable is
+	unused in active mode.
+
+	Reviewed by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 752239eaa1edd68695a6e40bcde60471f34a02fd)
+
+	rrp: Handle endless loop if all ifaces are faulty
+	If all interfaces were faulty, passive_mcast_flush_send and related
+	functions ended in endless loop. This is now handled and if there is no
+	live interface, message is dropped.
+
+	Reviewed by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 0eade8de79b6e5b28e91604d4d460627c7a61ddd)
+
+2011-08-18  Tim Beale  <tim.beale@alliedtelesis.co.nz>
+
+	A CPG client can sometimes lockup if the local node is in the downlist
+	In a 10-node cluster where all nodes are booting up and starting corosync
+	at the same time, sometimes during this process corosync detects a node as
+	leaving and rejoining the cluster.
+
+	Occasionally the downlist that gets picked contains the local node. When the
+	local node sends leave events for the downlist (including itself), it sets
+	its cpd state to CPD_STATE_UNJOINED and clears the cpd->group_name. This
+	means it no longer sends CPG events to the CPG client.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+	(cherry picked from commit 08f07be323b777118264eb37413393065b360f8e)
+
+	Display ring-ID consistently in debug
+	Ring ID was being displayed both as hex and decimal in places. Update so
+	it's displayed consistently (I chose hex) to make debugging easier.
+
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+	(cherry picked from commit 370d9bcecf2716e52c8f729a53e9600fe6cc6aa4)
+
+	Add code comment mapping for message handler defines
+	As a corosync-newbie it can be hard to bridge the gap between where a
+	particular message is sent and where the receive handler processes it,
+	and vice versa.
+
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+	(cherry picked from commit 5a724a9c39465f7e63888f33375261506f69bd02)
+
+2011-08-17  Jan Friesse  <jfriesse@redhat.com>
+
+	cfg: Handle errors from totem_mcast
+	totem_mcast function can return -1 if corosync is overloaded. Sadly
+	in many calls of this functions was error code ether not handled at
+	all, or handled by assert.
+
+	Commit changes behaviour to ether return CS_ERR_TRY_AGAIN or put
+	error code to later layers to handle it.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	cpg: Handle errors from totem_mcast
+	totem_mcast function can return -1 if corosync is overloaded. Sadly in
+	many calls of this functions was error code ether not handled at all, or
+	handled by assert.
+
+	Commit changes behaviour to ether return CS_ERR_TRY_AGAIN or put error
+	code to later layers to handle it.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	coroipcc: use malloc for path in service_connect
+	Coroipcc appropriately uses PATH_MAX sized variables for various data
+	structures handling files in the initialization of the client.  Due to
+	the use of 12 of these structures declared as stack variables, the
+	application stack balloons to over 12*4k. This is especially problematic
+	if threads are used by long running daemons to restart the connection
+	to corosync so as to be resilient in the face of system services
+	restarting (service corosync restart).
+
+	A simple alternative is to allocate temporary memory to avoid
+	requirements of large thread stacks.
+
+	Original patch by Dan Clark <2clarkd@gmail.com>
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
 2011-07-26  Jan Friesse  <jfriesse@redhat.com>
 
 	main: let poll really stop before totempg_finalize

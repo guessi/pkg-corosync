@@ -287,39 +287,39 @@ static int notify_lib_totem_membership (
  */
 static struct corosync_lib_handler cpg_lib_engine[] =
 {
-	{ /* 0 */
+	{ /* 0 - MESSAGE_REQ_CPG_JOIN */
 		.lib_handler_fn				= message_handler_req_lib_cpg_join,
 		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 1 */
+	{ /* 1 - MESSAGE_REQ_CPG_LEAVE */
 		.lib_handler_fn				= message_handler_req_lib_cpg_leave,
 		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 2 */
+	{ /* 2 - MESSAGE_REQ_CPG_MCAST */
 		.lib_handler_fn				= message_handler_req_lib_cpg_mcast,
 		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 3 */
+	{ /* 3 - MESSAGE_REQ_CPG_MEMBERSHIP */
 		.lib_handler_fn				= message_handler_req_lib_cpg_membership,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 4 */
+	{ /* 4 - MESSAGE_REQ_CPG_LOCAL_GET */
 		.lib_handler_fn				= message_handler_req_lib_cpg_local_get,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 5 */
+	{ /* 5 - MESSAGE_REQ_CPG_ITERATIONINITIALIZE */
 		.lib_handler_fn				= message_handler_req_lib_cpg_iteration_initialize,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 6 */
+	{ /* 6 - MESSAGE_REQ_CPG_ITERATIONNEXT */
 		.lib_handler_fn				= message_handler_req_lib_cpg_iteration_next,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 7 */
+	{ /* 7 - MESSAGE_REQ_CPG_ITERATIONFINALIZE */
 		.lib_handler_fn				= message_handler_req_lib_cpg_iteration_finalize,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 8 */
+	{ /* 8 - MESSAGE_REQ_CPG_FINALIZE */
 		.lib_handler_fn				= message_handler_req_lib_cpg_finalize,
 		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
@@ -327,27 +327,27 @@ static struct corosync_lib_handler cpg_lib_engine[] =
 
 static struct corosync_exec_handler cpg_exec_engine[] =
 {
-	{ /* 0 */
+	{ /* 0 - MESSAGE_REQ_EXEC_CPG_PROCJOIN */
 		.exec_handler_fn	= message_handler_req_exec_cpg_procjoin,
 		.exec_endian_convert_fn	= exec_cpg_procjoin_endian_convert
 	},
-	{ /* 1 */
+	{ /* 1 - MESSAGE_REQ_EXEC_CPG_PROCLEAVE */
 		.exec_handler_fn	= message_handler_req_exec_cpg_procleave,
 		.exec_endian_convert_fn	= exec_cpg_procjoin_endian_convert
 	},
-	{ /* 2 */
+	{ /* 2 - MESSAGE_REQ_EXEC_CPG_JOINLIST */
 		.exec_handler_fn	= message_handler_req_exec_cpg_joinlist,
 		.exec_endian_convert_fn	= exec_cpg_joinlist_endian_convert
 	},
-	{ /* 3 */
+	{ /* 3 - MESSAGE_REQ_EXEC_CPG_MCAST */
 		.exec_handler_fn	= message_handler_req_exec_cpg_mcast,
 		.exec_endian_convert_fn	= exec_cpg_mcast_endian_convert
 	},
-	{ /* 4 */
+	{ /* 4 - MESSAGE_REQ_EXEC_CPG_DOWNLIST_OLD */
 		.exec_handler_fn	= message_handler_req_exec_cpg_downlist_old,
 		.exec_endian_convert_fn	= exec_cpg_downlist_endian_convert_old
 	},
-	{ /* 5 */
+	{ /* 5 - MESSAGE_REQ_EXEC_CPG_DOWNLIST */
 		.exec_handler_fn	= message_handler_req_exec_cpg_downlist,
 		.exec_endian_convert_fn	= exec_cpg_downlist_endian_convert
 	},
@@ -683,7 +683,8 @@ static int notify_lib_joinlist(
 				}
 				if (left_list_entries) {
 					if (left_list[0].pid == cpd->pid &&
-						left_list[0].nodeid == api->totem_nodeid_get()) {
+						left_list[0].nodeid == api->totem_nodeid_get() &&
+						left_list[0].reason == CONFCHG_CPG_REASON_LEAVE) {
 
 						cpd->pid = 0;
 						memset (&cpd->group_name, 0, sizeof(cpd->group_name));
@@ -865,12 +866,19 @@ static void cpg_pd_finalize (struct cpg_pd *cpd)
 static int cpg_lib_exit_fn (void *conn)
 {
 	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
+	int result;
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "exit_fn for conn=%p\n", conn);
 
 	if (cpd->group_name.length > 0) {
-		cpg_node_joinleave_send (cpd->pid, &cpd->group_name,
+		result = cpg_node_joinleave_send (cpd->pid, &cpd->group_name,
 				MESSAGE_REQ_EXEC_CPG_PROCLEAVE, CONFCHG_CPG_REASON_PROCDOWN);
+		if (result == -1) {
+			/*
+			 * Call this function again later
+			 */
+			return (result);
+		}
 	}
 
 	cpg_pd_finalize (cpd);
@@ -1286,9 +1294,11 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 {
 	const struct req_lib_cpg_join *req_lib_cpg_join = message;
 	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
+	struct cpg_pd tmp_cpd;
 	struct res_lib_cpg_join res_lib_cpg_join;
 	cs_error_t error = CPG_OK;
 	struct list_head *iter;
+	int result;
 
 	/* Test, if we don't have same pid and group name joined */
 	for (iter = cpg_pd_list_head.next; iter != &cpg_pd_list_head; iter = iter->next) {
@@ -1321,15 +1331,28 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 	switch (cpd->cpd_state) {
 	case CPD_STATE_UNJOINED:
 		error = CPG_OK;
+		/*
+		 * Make copy of cpd, to restore if cpg_node_joinleave_send fails
+		 */
+		memcpy (&tmp_cpd, cpd, sizeof(tmp_cpd));
 		cpd->cpd_state = CPD_STATE_JOIN_STARTED;
 		cpd->pid = req_lib_cpg_join->pid;
 		cpd->flags = req_lib_cpg_join->flags;
 		memcpy (&cpd->group_name, &req_lib_cpg_join->group_name,
 			sizeof (cpd->group_name));
 
-		cpg_node_joinleave_send (req_lib_cpg_join->pid,
+		result = cpg_node_joinleave_send (req_lib_cpg_join->pid,
 			&req_lib_cpg_join->group_name,
 			MESSAGE_REQ_EXEC_CPG_PROCJOIN, CONFCHG_CPG_REASON_JOIN);
+
+		if (result == -1) {
+			error = CPG_ERR_TRY_AGAIN;
+			/*
+			 * Restore cpd
+			 */
+			memcpy (cpd, &tmp_cpd, sizeof(tmp_cpd));
+			goto response_send;
+		}
 		break;
 	case CPD_STATE_LEAVE_STARTED:
 		error = CPG_ERR_BUSY;
@@ -1356,6 +1379,7 @@ static void message_handler_req_lib_cpg_leave (void *conn, const void *message)
 	cs_error_t error = CPG_OK;
 	struct req_lib_cpg_leave  *req_lib_cpg_leave = (struct req_lib_cpg_leave *)message;
 	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
+	int result;
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "got leave request on %p\n", conn);
 
@@ -1372,10 +1396,14 @@ static void message_handler_req_lib_cpg_leave (void *conn, const void *message)
 	case CPD_STATE_JOIN_COMPLETED:
 		error = CPG_OK;
 		cpd->cpd_state = CPD_STATE_LEAVE_STARTED;
-		cpg_node_joinleave_send (req_lib_cpg_leave->pid,
+		result = cpg_node_joinleave_send (req_lib_cpg_leave->pid,
 			&req_lib_cpg_leave->group_name,
 			MESSAGE_REQ_EXEC_CPG_PROCLEAVE,
 			CONFCHG_CPG_REASON_LEAVE);
+		if (result == -1) {
+			error = CPG_ERR_TRY_AGAIN;
+			cpd->cpd_state = CPD_STATE_JOIN_COMPLETED;
+		}
 		break;
 	}
 
@@ -1458,8 +1486,10 @@ static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
  		req_exec_cpg_iovec[1].iov_base = (char *)&req_lib_cpg_mcast->message;
  		req_exec_cpg_iovec[1].iov_len = msglen;
 
- 		result = api->totem_mcast (req_exec_cpg_iovec, 2, TOTEM_AGREED);
- 		assert(result == 0);
+		result = api->totem_mcast (req_exec_cpg_iovec, 2, TOTEM_AGREED);
+		if (result == -1) {
+			error = CPG_ERR_TRY_AGAIN;
+		}
  	}
 
 	res_lib_cpg_mcast.header.size = sizeof(res_lib_cpg_mcast);

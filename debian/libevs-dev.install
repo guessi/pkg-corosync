@@ -1,0 +1,4 @@
+usr/include/corosync/evs.h
+usr/lib/libevs.a
+usr/lib/libevs.so
+usr/lib/pkgconfig/libevs.pc

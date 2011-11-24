@@ -5,3 +5,5 @@ usr/share/man/man8
 usr/lib/lcrso
 usr/share/doc/corosync/html/
 etc/corosync/
+usr/share/doc/corosync/README.recovery
+usr/share/doc/corosync/README.devmap

@@ -1,0 +1,4 @@
+usr/include/corosync/confdb.h
+usr/lib/libconfdb.a
+usr/lib/libconfdb.so
+usr/lib/pkgconfig/libconfdb.pc

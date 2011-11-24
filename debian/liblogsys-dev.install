@@ -1,0 +1,4 @@
+usr/include/corosync/engine/logsys.h
+usr/lib/liblogsys.a
+usr/lib/liblogsys.so
+usr/lib/pkgconfig/liblogsys.pc

@@ -16,7 +16,11 @@ configure-stamp:
 		    --with-socket-dir=/var/run/corosync
 	touch configure-stamp
 
-build: configure-stamp
+build: configure-stamp build-arch build-indep
+build-arch: build-stamp
+build-indep: build-stamp
+
+build-stamp:
 	$(MAKE)
 
 clean:

@@ -1,0 +1,4 @@
+usr/include/corosync/sam.h
+usr/lib/libsam.a
+usr/lib/libsam.so
+usr/lib/pkgconfig/libsam.pc

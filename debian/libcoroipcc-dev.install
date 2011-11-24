@@ -1,0 +1,4 @@
+usr/include/corosync/coroipcc.h
+usr/lib/libcoroipcc.a
+usr/lib/libcoroipcc.so
+usr/lib/pkgconfig/libcoroipcc.pc

@@ -1,0 +1,4 @@
+usr/include/corosync/cpg.h
+usr/lib/libcpg.a
+usr/lib/libcpg.so
+usr/lib/pkgconfig/libcpg.pc

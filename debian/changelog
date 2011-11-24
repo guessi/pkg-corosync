@@ -1,3 +1,12 @@
+corosync (1.4.2-2) unstable; urgency=low
+
+  * debian/control: Package split to make this package comply with the
+    Debian policy better than before; every library file has its own
+    package now. 
+  * debian/control: Bumped Standards-Version to 3.9.2.
+
+ -- Martin Loschwitz <madkiss@debian.org>  Thu, 24 Nov 2011 17:27:10 +0000
+
 corosync (1.4.2-1) unstable; urgency=low
 
   * Changed my email address in debian/control

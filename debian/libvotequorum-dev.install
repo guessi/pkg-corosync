@@ -1,0 +1,4 @@
+usr/include/corosync/votequorum.h
+usr/lib/libvotequorum.a
+usr/lib/libvotequorum.so
+usr/lib/pkgconfig/libvotequorum.pc

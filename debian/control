@@ -352,7 +352,7 @@ Description: Standards-based cluster framework, Votequorum library
 Package: libcfg-dev
 Section: libdevel 
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcfg4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1)
 Conflicts: libcorosync-dev (<= 1.4.2-1)
 Description: Standards-based cluster framework, Cfg devel files
@@ -372,7 +372,7 @@ Description: Standards-based cluster framework, Cfg devel files
 Package: libconfdb-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libconfdb4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1)
 Conflicts: libcorosync-dev (<= 1.4.2-1)
 Description: Standards-based cluster framework, Confdb devel files
@@ -392,7 +392,7 @@ Description: Standards-based cluster framework, Confdb devel files
 Package: libcoroipcc-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcoroipcc4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1)
 Conflicts: libcorosync-dev (<= 1.4.2-1)
 Description: Standards-based cluster framework, CoroIPCC devel files
@@ -412,7 +412,7 @@ Description: Standards-based cluster framework, CoroIPCC devel files
 Package: libcoroipcs-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcoroipcs4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1)
 Conflicts: libcorosync-dev (<= 1.4.2-1)
 Description: Standards-based cluster framework, CoroIPCS devel files
@@ -432,7 +432,7 @@ Description: Standards-based cluster framework, CoroIPCS devel files
 Package: libcpg-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcpg4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1)
 Conflicts: libcorosync-dev (<= 1.4.2-1)
 Description: Standards-based cluster framework, Cpg devel files
@@ -452,7 +452,7 @@ Description: Standards-based cluster framework, Cpg devel files
 Package: libevs-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libevs4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1)
 Conflicts: libcorosync-dev (<= 1.4.2-1)
 Description: Standards-based cluster framework, Evs devel files
@@ -472,7 +472,7 @@ Description: Standards-based cluster framework, Evs devel files
 Package: liblogsys-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, liblogsys4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1)
 Conflicts: libcorosync-dev (<= 1.4.2-1)
 Description: Standards-based cluster framework, Logsys devel files
@@ -492,7 +492,7 @@ Description: Standards-based cluster framework, Logsys devel files
 Package: libpload-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libpload4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1)
 Conflicts: libcorosync-dev (<= 1.4.2-1)
 Description: Standards-based cluster framework, Pload devel files
@@ -512,7 +512,7 @@ Description: Standards-based cluster framework, Pload devel files
 Package: libquorum-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libquorum4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1)
 Conflicts: libcorosync-dev (<= 1.4.2-1)
 Description: Standards-based cluster framework, Quorum devel files
@@ -532,7 +532,7 @@ Description: Standards-based cluster framework, Quorum devel files
 Package: libsam-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libsam4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1)
 Conflicts: libcorosync-dev (<= 1.4.2-1)
 Description: Standards-based cluster framework, Sam devel files
@@ -552,7 +552,7 @@ Description: Standards-based cluster framework, Sam devel files
 Package: libtotem-pg-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libtotem-pg4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1)
 Conflicts: libcorosync-dev (<= 1.4.2-1)
 Description: Standards-based cluster framework, Totem devel files
@@ -572,7 +572,7 @@ Description: Standards-based cluster framework, Totem devel files
 Package: libvotequorum-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libvotequorum4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1)
 Conflicts: libcorosync-dev (<= 1.4.2-1)
 Description: Standards-based cluster framework, VoteQuorum devel files

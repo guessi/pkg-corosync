@@ -1,3 +1,11 @@
+corosync (1.4.2-3) unstable; urgency=low
+
+  [ Martin Loschwitz ]
+  * debian/control: Make sure that every library development package depends 
+    on its library counterpath (Closes: #671843)
+
+ -- Martin Loschwitz <madkiss@debian.org>  Tue, 08 May 2012 07:01:05 +0000
+
 corosync (1.4.2-2) unstable; urgency=low
 
   * debian/control: Package split to make this package comply with the

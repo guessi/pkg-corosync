@@ -78,7 +78,7 @@ AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h netinet/in.h stdint.h \
 		  stdlib.h string.h sys/ioctl.h sys/param.h sys/socket.h \
 		  sys/time.h syslog.h unistd.h sys/types.h getopt.h malloc.h \
-		  sys/sockio.h])
+		  sys/sockio.h net/if_var.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -272,6 +272,7 @@ AC_ARG_ENABLE([snmp],
 # OS detection
 # THIS SECTION MUST DIE!
 CP=cp
+CP_ARGS="-a"
 OS_LDL="-ldl"
 case "$host_os" in
 	*linux*)
@@ -319,6 +320,11 @@ case "$host_os" in
 				AC_DEFINE_UNQUOTED([COROSYNC_FREEBSD_GE_8], [1],
 					   [Compiling for FreeBSD >= 8 platform])
 			;;
+			*netbsd*)
+				AC_DEFINE_UNQUOTED([_SEM_SEMUN_UNDEFINED], [1],
+					   [The semun structure is undefined])
+				CP_ARGS="-RpP"
+			;;
 		esac
 	;;
 	*solaris*)
@@ -342,6 +348,7 @@ case "$host_os" in
 esac
 
 AC_SUBST(CP)
+AC_SUBST(CP_ARGS)
 # *FLAGS handling goes here
 
 ENV_CFLAGS="$CFLAGS"

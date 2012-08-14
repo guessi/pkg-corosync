@@ -11,8 +11,8 @@
 #
 ### BEGIN INIT INFO
 # Provides:		corosync-notifyd
-# Required-Start:	$corosync $cman
-# Required-Stop:	$corosync $cman
+# Required-Start:	corosync
+# Required-Stop:	corosync
 # Default-Start:
 # Default-Stop:
 # Short-Description:	Starts and stops Corosync Notifier.
@@ -23,7 +23,7 @@ desc="Corosync Notifier"
 prog="corosync-notifyd"
 
 # set secure PATH
-PATH="/sbin:/bin:/usr/sbin:/usr/bin:@SBINDIR@"
+PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/sbin"
 
 success()
 {
@@ -48,16 +48,16 @@ status()
 }
 
 # rpm based distros
-if [ -d @SYSCONFDIR@/sysconfig ]; then
-	[ -f @INITDDIR@/functions ] && . @INITDDIR@/functions
-	[ -f @SYSCONFDIR@/sysconfig/$prog ] && . @SYSCONFDIR@/sysconfig/$prog
-	[ -z "$LOCK_FILE" ] && LOCK_FILE="@LOCALSTATEDIR@/lock/subsys/$prog"
+if [ -d /etc/sysconfig ]; then
+	[ -f /etc/init.d/functions ] && . /etc/init.d/functions
+	[ -f /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
+	[ -z "$LOCK_FILE" ] && LOCK_FILE="/var/lock/subsys/$prog"
 fi
 
 # deb based distros
-if [ -d @SYSCONFDIR@/default ]; then
-	[ -f @SYSCONFDIR@/default/$prog ] && . @SYSCONFDIR@/default/$prog
-	[ -z "$LOCK_FILE" ] && LOCK_FILE="@LOCALSTATEDIR@/lock/$prog"
+if [ -d /etc/default ]; then
+	[ -f /etc/default/$prog ] && . /etc/default/$prog
+	[ -z "$LOCK_FILE" ] && LOCK_FILE="/var/lock/$prog"
 fi
 
 # The version of __pids_pidof in /etc/init.d/functions calls pidof with -x
@@ -73,11 +73,11 @@ start()
 {
 	echo -n "Starting $desc ($prog): "
 
-	# most recent distributions use tmpfs for @LOCALSTATEDIR@/run
+	# most recent distributions use tmpfs for /var/run
 	# to avoid to clean it up on every boot.
 	# they also assume that init scripts will create
 	# required subdirectories for proper operations
-	mkdir -p @LOCALSTATEDIR@/run
+	mkdir -p /var/run
 
 	if status $prog > /dev/null 2>&1; then
 		success

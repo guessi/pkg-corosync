@@ -3,6 +3,9 @@
 # Uncomment this to turn on verbose mode.
 # export DH_VERBOSE=1
 
+# enable hardened building
+export DEB_BUILD_HARDENING=1
+
 STAMPS_DIR = debian/stamps
 
 export COROSYNC_BUILD=$(if $(findstring debug,$(DEB_BUILD_OPTIONS)),DEBUG,RELEASE)
@@ -40,6 +43,8 @@ install: build
 	dh_installdocs
 	dh_installexamples
 	dh_installinit -p corosync -- defaults 19 1
+	dh_installinit -p corosync --name=corosync-notifyd -- default 30 1
+
 	dh_installlogrotate
 	dh_strip --dbg-package=corosync-dbg
 ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))

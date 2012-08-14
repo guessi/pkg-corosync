@@ -1088,7 +1088,10 @@ static void message_handler_req_exec_cpg_procjoin (
 {
 	const struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = message;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got procjoin message from cluster node %d\n", nodeid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got procjoin message from cluster node %d (%s) for pid %u",
+		nodeid,
+		api->totem_ifaces_print(nodeid),
+		(unsigned int)req_exec_cpg_procjoin->pid);
 
 	do_proc_join (&req_exec_cpg_procjoin->group_name,
 		req_exec_cpg_procjoin->pid, nodeid,
@@ -1326,6 +1329,11 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 			error = CPG_ERR_TRY_AGAIN;
 			goto response_send;
 		}
+	}
+
+	if (req_lib_cpg_join->group_name.length > CPG_MAX_NAME_LENGTH) {
+		error = CS_ERR_NAME_TOO_LONG;
+		goto response_send;
 	}
 
 	switch (cpd->cpd_state) {

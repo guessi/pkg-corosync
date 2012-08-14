@@ -2377,9 +2377,6 @@ static void update_aru (
 	}
 
 	range = instance->my_high_seq_received - instance->my_aru;
-	if (range > 1024) {
-		return;
-	}
 
 	my_aru_saved = instance->my_aru;
 	for (i = 1; i <= range; i++) {
@@ -2685,9 +2682,9 @@ static int token_send (
 	orf_token_size = sizeof (struct orf_token) +
 		(orf_token->rtr_list_entries * sizeof (struct rtr_item));
 
+	orf_token->header.nodeid = instance->my_id.addr[0].nodeid;
 	memcpy (instance->orf_token_retransmit, orf_token, orf_token_size);
 	instance->orf_token_retransmit_size = orf_token_size;
-	orf_token->header.nodeid = instance->my_id.addr[0].nodeid;
 	assert (orf_token->header.nodeid);
 
 	if (forward_token == 0) {
@@ -2867,6 +2864,7 @@ static int memb_state_commit_token_send_recovery (
 	memb_list = (struct memb_commit_token_memb_entry *)(addr + commit_token->addr_entries);
 
 	commit_token->token_seq++;
+	commit_token->header.nodeid = instance->my_id.addr[0].nodeid;
 	commit_token_size = sizeof (struct memb_commit_token) +
 		((sizeof (struct srp_addr) +
 			sizeof (struct memb_commit_token_memb_entry)) * commit_token->addr_entries);
@@ -2900,6 +2898,7 @@ static int memb_state_commit_token_send (
 	memb_list = (struct memb_commit_token_memb_entry *)(addr + instance->commit_token->addr_entries);
 
 	instance->commit_token->token_seq++;
+	instance->commit_token->header.nodeid = instance->my_id.addr[0].nodeid;
 	commit_token_size = sizeof (struct memb_commit_token) +
 		((sizeof (struct srp_addr) +
 			sizeof (struct memb_commit_token_memb_entry)) * instance->commit_token->addr_entries);
@@ -4022,7 +4021,7 @@ static void memb_join_process (
 
 			memb_state_commit_enter (instance);
 		} else {
-			return;
+			goto out;
 		}
 	} else
 	if (memb_set_subset (proc_list,
@@ -4035,12 +4034,12 @@ static void memb_join_process (
 		instance->my_failed_list,
 		instance->my_failed_list_entries)) {
 
-		return;
+		goto out;
 	} else
 	if (memb_set_subset (&memb_join->system_from, 1,
 		instance->my_failed_list, instance->my_failed_list_entries)) {
 
-		return;
+		goto out;
 	} else {
 		memb_set_merge (proc_list,
 			memb_join->proc_list_entries,
@@ -4085,6 +4084,8 @@ static void memb_join_process (
 		memb_state_gather_enter (instance, 11);
 		gather_entered = 1;
 	}
+
+out:
 	if (gather_entered == 0 &&
 		instance->memb_state == MEMB_STATE_OPERATIONAL) {
 

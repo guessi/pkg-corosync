@@ -3,7 +3,7 @@ Section: admin
 Priority: optional
 Maintainer: Debian HA Maintainers <debian-ha-maintainers@lists.alioth.debian.org>
 Uploaders: Martin Loschwitz <madkiss@debian.org>, Guido Günther <agx@sigxcpu.org>
-Standards-Version: 3.9.2
+Standards-Version: 3.9.3
 Build-Depends: debhelper (>> 5), libnss3-dev, pkg-config, groff
 Vcs-Git: git://git.debian.org/debian-ha/corosync.git
 Vcs-Browser: http://git.debian.org/?p=debian-ha/corosync.git;a=summary

@@ -135,6 +135,7 @@ CP = @CP@
 CPG_SONAME = @CPG_SONAME@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
+CP_ARGS = @CP_ARGS@
 CYGPATH_W = @CYGPATH_W@
 DARWIN_OPTS = @DARWIN_OPTS@
 DBUS_CFLAGS = @DBUS_CFLAGS@
@@ -288,6 +289,7 @@ dist_man_MANS = \
 	confdb_object_parent_get.3 \
 	confdb_context_get.3 \
 	confdb_context_set.3 \
+	confdb_keys.8 \
 	cpg_context_get.3 \
 	cpg_context_set.3 \
 	cpg_dispatch.3 \

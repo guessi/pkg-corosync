@@ -1,3 +1,9 @@
+corosync (1.4.4-2) unstable; urgency=low
+
+  * [19ea126] Fix update-rc.d installation in postinst (Closes: #685060)
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 06 Sep 2012 09:10:31 +0200
+
 corosync (1.4.4-1) unstable; urgency=low
 
   * New upstream release

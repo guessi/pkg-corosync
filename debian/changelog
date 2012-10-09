@@ -1,3 +1,14 @@
+corosync (1.4.4-3) unstable; urgency=low
+
+  * debian/corosync.corosync-notifyd.init: Add the "-l" parameter to the
+    command line to make sure that the daemon starts up (Closes: #685060)
+  * debian/rules: Make sure that corosync-notifyd is not automatically
+    started at package installation or upgrade (it will refuse to start
+    if Corosync is not running, which will make the package installation
+    fail on systems where Corosync is installed for the first time)
+
+ -- Martin Loschwitz <madkiss@debian.org>  Tue, 09 Oct 2012 09:19:26 +0000
+
 corosync (1.4.4-2) unstable; urgency=low
 
   * [19ea126] Fix update-rc.d installation in postinst (Closes: #685060)

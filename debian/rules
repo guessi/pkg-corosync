@@ -43,7 +43,7 @@ install: build
 	dh_installdocs
 	dh_installexamples
 	dh_installinit -p corosync -- defaults 19 1
-	dh_installinit -p corosync --name=corosync-notifyd -- defaults 30 1
+	dh_installinit -p corosync --name=corosync-notifyd --no-start -- defaults 30 1
 
 	dh_installlogrotate
 	dh_strip --dbg-package=corosync-dbg

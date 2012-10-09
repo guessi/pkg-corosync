@@ -21,6 +21,7 @@
 
 desc="Corosync Notifier"
 prog="corosync-notifyd"
+OPTIONS="-l"
 
 # set secure PATH
 PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/sbin"

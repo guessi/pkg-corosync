@@ -424,14 +424,20 @@ static int corosync_main_config_set (
 	}
 
 	if (!objdb_get_string (objdb, object_handle, "debug", &value)) {
+		if (strcmp (value, "trace") == 0) {
+			if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_TRACE) < 0) {
+				error_reason = "unable to set debug on";
+				goto parse_error;
+			}
+		} else
 		if (strcmp (value, "on") == 0) {
-			if (logsys_config_debug_set (subsys, 1) < 0) {
+			if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_ON) < 0) {
 				error_reason = "unable to set debug on";
 				goto parse_error;
 			}
 		} else
 		if (strcmp (value, "off") == 0) {
-			if (logsys_config_debug_set (subsys, 0) < 0) {
+			if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_OFF) < 0) {
 				error_reason = "unable to set debug off";
 				goto parse_error;
 			}
@@ -574,21 +580,46 @@ static int uid_determine (const char *req_user)
 	struct passwd* pwdptr = &passwd;
 	struct passwd* temp_pwd_pt;
 	char *pwdbuffer;
-	int  pwdlinelen;
+	int  pwdlinelen, rc;
+	long int id;
+	char *ep;
+
+	id = strtol(req_user, &ep, 10);
+	if (*ep == '\0' && id >= 0 && id <= UINT_MAX) {
+		return (id);
+	}
 
 	pwdlinelen = sysconf (_SC_GETPW_R_SIZE_MAX);
 
 	if (pwdlinelen == -1) {
-		pwdlinelen = 256;
+	        pwdlinelen = 256;
 	}
 
 	pwdbuffer = malloc (pwdlinelen);
 
-	if ((getpwnam_r (req_user, pwdptr, pwdbuffer, pwdlinelen, &temp_pwd_pt)) != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR,
-			"ERROR: The '%s' user is not found in /etc/passwd, please read the documentation.\n",
-			req_user);
-		corosync_exit_error (AIS_DONE_UID_DETERMINE);
+	while ((rc = getpwnam_r (req_user, pwdptr, pwdbuffer, pwdlinelen, &temp_pwd_pt)) == ERANGE) {
+		char *n;
+
+		pwdlinelen *= 2;
+		if (pwdlinelen <= 32678) {
+			n = realloc (pwdbuffer, pwdlinelen);
+			if (n != NULL) {
+				pwdbuffer = n;
+				continue;
+			}
+		}
+	}
+	if (rc != 0) {
+		free (pwdbuffer);
+	        log_printf (LOGSYS_LEVEL_ERROR, "getpwnam_r(): %s", strerror(rc));
+	        corosync_exit_error (AIS_DONE_UID_DETERMINE);
+	}
+	if (temp_pwd_pt == NULL) {
+		free (pwdbuffer);
+	        log_printf (LOGSYS_LEVEL_ERROR,
+	                "The '%s' user is not found in /etc/passwd, please read the documentation.",
+	                req_user);
+	        corosync_exit_error (AIS_DONE_UID_DETERMINE);
 	}
 	pw_uid = passwd.pw_uid;
 	free (pwdbuffer);
@@ -598,57 +629,165 @@ static int uid_determine (const char *req_user)
 
 static int gid_determine (const char *req_group)
 {
-	int ais_gid = 0;
+	int corosync_gid = 0;
 	struct group group;
 	struct group * grpptr = &group;
 	struct group * temp_grp_pt;
 	char *grpbuffer;
-	int  grplinelen;
+	int  grplinelen, rc;
+	long int id;
+	char *ep;
+
+	id = strtol(req_group, &ep, 10);
+	if (*ep == '\0' && id >= 0 && id <= UINT_MAX) {
+		return (id);
+	}
 
 	grplinelen = sysconf (_SC_GETGR_R_SIZE_MAX);
 
 	if (grplinelen == -1) {
-		grplinelen = 256;
+	        grplinelen = 256;
 	}
 
 	grpbuffer = malloc (grplinelen);
 
-	if ((getgrnam_r (req_group, grpptr, grpbuffer, grplinelen, &temp_grp_pt)) != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR,
-			"ERROR: The '%s' group is not found in /etc/group, please read the documentation.\n",
-			req_group);
-		corosync_exit_error (AIS_DONE_GID_DETERMINE);
+	while ((rc = getgrnam_r (req_group, grpptr, grpbuffer, grplinelen, &temp_grp_pt)) == ERANGE) {
+		char *n;
+
+		grplinelen *= 2;
+		if (grplinelen <= 32678) {
+			n = realloc (grpbuffer, grplinelen);
+			if (n != NULL) {
+				grpbuffer = n;
+				continue;
+			}
+		}
 	}
-	ais_gid = group.gr_gid;
+	if (rc != 0) {
+		free (grpbuffer);
+	        log_printf (LOGSYS_LEVEL_ERROR, "getgrnam_r(): %s", strerror(rc));
+	        corosync_exit_error (AIS_DONE_GID_DETERMINE);
+	}
+	if (temp_grp_pt == NULL) {
+		free (grpbuffer);
+	        log_printf (LOGSYS_LEVEL_ERROR,
+	                "The '%s' group is not found in /etc/group, please read the documentation.",
+	                req_group);
+	        corosync_exit_error (AIS_DONE_GID_DETERMINE);
+	}
+	corosync_gid = group.gr_gid;
 	free (grpbuffer);
 
-	return ais_gid;
+	return corosync_gid;
 }
 
+static unsigned int logging_handle_find (
+	struct objdb_iface_ver0 *objdb,
+	hdb_handle_t *logging_find_handle)
+{
+	hdb_handle_t object_find_handle;
+	unsigned int res;
+
+	objdb->object_find_create (
+		OBJECT_PARENT_HANDLE,
+		"logging",
+		strlen ("logging"),
+		&object_find_handle);
+
+	res = objdb->object_find_next (
+		object_find_handle,
+		logging_find_handle);
+
+	objdb->object_find_destroy (object_find_handle);
+
+	if (res == -1) {
+		return (-1);
+	}
+
+	return (0);
+}
+
+static void logsys_objdb_key_change_notify(object_change_type_t change_type,
+			      hdb_handle_t parent_object_handle,
+			      hdb_handle_t object_handle,
+			      const void *object_name_pt, size_t object_name_len,
+			      const void *key_name_pt, size_t key_len,
+			      const void *key_value_pt, size_t key_value_len,
+			      void *priv_data_pt)
+{
+	const char *error_string;
+
+	if (logsys_format_set(NULL) == -1) {
+		fprintf (stderr, "Unable to setup logging format.\n");
+	}
+	corosync_main_config_read_logging(global_objdb,
+					  &error_string);
+}
 
 static void main_objdb_reload_notify(objdb_reload_notify_type_t type, int flush,
 				     void *priv_data_pt)
 {
 	const char *error_string;
+	hdb_handle_t logsys_object_handle;
 
-	if (type == OBJDB_RELOAD_NOTIFY_END) {
+	/*
+	 * A new logsys {} key might exist, cancel the
+	 * existing notification at the start of reload,
+	 * and start a new one on the new object when
+	 * it's all settled.
+	 */
+	if (type == OBJDB_RELOAD_NOTIFY_START) {
+		global_objdb->object_track_stop(
+			logsys_objdb_key_change_notify,
+			NULL,
+			NULL,
+			NULL,
+			NULL);
+	}
 
-		/*
-		 * Reload the logsys configuration
-		 */
-		if (logsys_format_set(NULL) == -1) {
-			fprintf (stderr, "Unable to setup logging format.\n");
+	if (type == OBJDB_RELOAD_NOTIFY_END || type == OBJDB_RELOAD_NOTIFY_FAILED) {
+		if (!logging_handle_find(global_objdb, &logsys_object_handle)) {
+			/*
+			 * Reload the logsys configuration
+			 */
+			if (logsys_format_set(NULL) == -1) {
+				fprintf (stderr, "Unable to setup logging format.\n");
+			}
+			corosync_main_config_read_logging(global_objdb,
+							  &error_string);
+
+			global_objdb->object_track_start(logsys_object_handle,
+						  1,
+						  logsys_objdb_key_change_notify,
+						  NULL, // object_create_notify,
+						  NULL, // object_destroy_notify,
+						  NULL, // object_reload_notify
+						  NULL); // priv_data
+		} else {
+			log_printf(LOGSYS_LEVEL_ERROR, "logsys objdb tracking stopped, cannot find logsys{} handle on objdb\n");
 		}
-		corosync_main_config_read_logging(global_objdb,
-						  &error_string);
 	}
 }
+
 
 static void add_logsys_config_notification(
 	struct objdb_iface_ver0 *objdb)
 {
+	hdb_handle_t logsys_object_handle;
 
 	global_objdb = objdb;
+
+	if (!logging_handle_find(global_objdb, &logsys_object_handle)) {
+		objdb->object_track_start(logsys_object_handle,
+					  1,
+					  logsys_objdb_key_change_notify,
+					  NULL, // object_create_notify,
+					  NULL, // object_destroy_notify,
+					  NULL, // object_reload_notify
+					  NULL); // priv_data
+	} else {
+		log_printf(LOGSYS_LEVEL_ERROR, "logsys objdb tracking stopped, cannot find logsys{} handle on objdb\n");
+	}
 
 	objdb->object_track_start(OBJECT_PARENT_HANDLE,
 				  1,

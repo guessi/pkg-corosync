@@ -218,10 +218,10 @@ retry_sem_wait:
 			return (CS_ERR_LIBRARY);
 		}
 
+retry_sem_timedwait:
 		timeout.tv_sec = time(NULL) + IPC_SEMWAIT_TIMEOUT;
 		timeout.tv_nsec = 0;
 
-retry_sem_timedwait:
 		res = sem_timedwait (sem, &timeout);
 		if (res == -1 && errno == ETIMEDOUT) {
 			pfd.fd = fd;
@@ -243,9 +243,7 @@ retry_poll:
 			}
 
 			if (res == 1) {
-				if (pfd.revents == POLLERR ||
-					pfd.revents == POLLHUP ||
-					pfd.revents == POLLNVAL) {
+				if (pfd.revents & (POLLERR|POLLHUP|POLLNVAL)) {
 
 					return (CS_ERR_LIBRARY);
 				}

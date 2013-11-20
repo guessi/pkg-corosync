@@ -1,3 +1,591 @@
+2013-05-29  Jan Friesse  <jfriesse@redhat.com>
+
+	Lock sync_in_process variable
+	sync_in_process is changed by coropoll thread (main thread) but used by
+	all IPC connections. To ensure correct value is read, mutex is added.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2013-05-23  Jan Friesse  <jfriesse@redhat.com>
+
+	Remove unnecessary mmap in memory_map ipc
+	This is similar patch as master e684e4ca6fed709c14d79d8d81f254aa48e1c65a
+	but for whole IPC.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2013-05-06  Jan Friesse  <jfriesse@redhat.com>
+
+	confdb: Make objdb_notify_dispatch preemptable
+	objdb_notify_dispatch traverse thru confdb_ipc_message_holder_list list
+	until it's empty. If IPC connection is still feeding confdb/objdb with
+	changes then iteration will never end. To prevent this and let corosync
+	properly preempt, terminal condition is enhanced with maximum number of
+	processed items from list. Change makes confdb preemptable so corosync
+	can accept new connections, receive/send token, ...
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Handle SIGPIPE in req_setup_send
+	When IPC client exits exactly when req_setup_send function calls send,
+	SIGPIPE is generated and corosync (because SIGPIPE is not handled)
+	exits. Solution is to use MSG_NOSIGNAL as flag.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2013-05-02  Jan Friesse  <jfriesse@redhat.com>
+
+	Free confdb message holder list on confdb exit
+	This operation will not only properly free memory, but also decreases
+	connection reference(s). This should solve deadloop in
+	coroipcs_ipc_service_exit, because confdb_exit_fn removes not only
+	notify_pipe but also deletes poll_dispatch, so nobody is left to
+	unreference connections.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2013-04-16  Jan Friesse  <jfriesse@redhat.com>
+
+	Install sysconfig/corosync-notifyd in specfile
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Improve corosync-notifyd example
+	Example now contains default option -d, so corosync-notifyd init script
+	don't fall. Also description is improved a little bit.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2013-04-08  Jan Friesse  <jfriesse@redhat.com>
+
+	Detect big scheduling pauses
+	Add poll timer scheduler to be called 3 times per token timeout.
+	If poll timer was not called for more then 0.8 * token timeout, it means
+	corosync process was not scheduled and ether token_timeout should be
+	increased or load should be reduced (useful for VM, where host is
+	overcommitted so VM is not scheduled as expected).
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2013-04-04  Jan Friesse  <jfriesse@redhat.com>
+
+	Improve handling of getpwnam_r() and getgrnam_r()
+	ERANGE from above functions are now correctly handled. Error is
+	correctly returned back (instead of using errno what is nonsense for
+	reentrant functions). Existence of user/group is now correctly
+	handled. Also numerical uid/gid works as expected.
+
+	Backport of 52f88d04eaf2ad6c65df34a3401417d0583c6a45,
+	005e7fd3b9de79bc32894f9f15431a7cf32a3b27 and
+	86b074dc1a72f9696ab5a3d302c7719b2961d8d6 from master
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2013-04-02  Jan Friesse  <jfriesse@redhat.com>
+
+	corosync-fplay: Check incorrect idx and cycle
+	If idx is too large, segfault can happen. Also cycle is now detected
+	properly.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	fplay: Check minimum record size
+	For records in fdata smaller then 4 display error, because such record
+	is invalid.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Logsys: Ensure logging PID is really corosync
+	When serivce plugin calls fork and child uses logsys, it may lead to
+	corrupted fdata (idx is updated but it's not shared between child and
+	parent, but fdata is mmaped file and this is shared).
+
+	Solutions is to:
+	- Store corosync pid
+	- On log, check if current pid == corosync pid
+	- If so -> store in fdata, if not -> don't store
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2013-03-21  Jan Friesse  <jfriesse@redhat.com>
+
+	totempg: Store and restore global variables
+	It's used when trans_ack is changed so after change, we have clean room
+	and/or previous state.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Remove exit thread and replace it by exit pipe
+	When exit is called, exit thread will create schedwrk. This usually
+	works, but sadly there is race between main thread (coropoll) and this
+	thread in totemsrp_callback_token_create (main thread is reading values
+	and iterate thru list and exit thread is adding to list).
+
+	Solution is to remove exit thread. Create pipe and connect one end to
+	coropoll (so main thread) and let corosync_shutdown_request simply write
+	byte (= create notification) to coropoll, which executes shutdown
+	sequence.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	schedwrk: Set values before create callback
+	When totem callback is called before setting value, NULL can be called,
+	resulting in segfault.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Fix race for sending_allowed
+	Sending_allowed use sync_in_process. If sync_in process is set in the
+	middle of sending_allowed and api->handler_fn_get, results are
+	unpredictable. Solution is to enlarge lock.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	totempg: Make iov_delv local variable
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	cfgtool: Retry shutdown on CS_ERR_TRY_AGAIN
+	It may be nice to deliver macro cs_repeat as default in some include
+	file.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	cfg: When send_shutdown fails, clear shutdown_con
+	When (for example) CS_ERR_TRY_AGAIN is returned, shutdown_con was still
+	set resulting in following situation:
+	- It was not possible to call shutdown again
+	- Shutdown didn't proceed
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2013-03-18  Jan Friesse  <jfriesse@redhat.com>
+
+	Properly lock pending_semops
+	pending_semops variable can be changed in two threads. One is actual IPC
+	connection and second is coropoll. It's really scholar example of race
+	(one thread doing i++, second doing i--). If socket is full, it can
+	happen that IPC will increase value and coropoll will decrease,
+	resulting in unpredictable value. This means, that client IPC can be
+	informed about more messages then really available, resulting
+	in reading of garbage messages in library dispatch function.
+
+	Solution is to properly lock variable.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2013-03-08  Jan Friesse  <jfriesse@redhat.com>
+
+	coroipcs: Ensure rb data are not overwritten
+	With introduce of rb alignment (55600762), it's not enough to subtract
+	one from number of free bytes, but also alignment must be taken to
+	account. Easiest solution is to subtract 9 bytes.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2013-02-27  jason  <huzhijiang@gmail.com>
+
+	Move corosync exit semaphore initialization
+	When signal is delivered before initialization of exit semaphore,
+	corosync will never exit. Solution is to initialize semaphore earlier.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2013-02-26  Jan Friesse  <jfriesse@redhat.com>
+
+	Handle config file with service without name
+	If part of config file looks like:
+
+	service {
+	    ver: 1
+	}
+
+	corosync will read unitialized memory probably resulting in fail.
+	Solution is to properly check result of object_key_get.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2013-02-25  Jan Friesse  <jfriesse@redhat.com>
+
+	Properly check result of coroipcc_dispatch_put
+	When result of coroipcc_dispatch_put it can happen, that one message is
+	delivered to user application multiple times.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Put handle to hdb in dispatch on unknown message
+	When we receive unknown dispatch type, we should put handle to hdb,
+	because it was correctly obtained. This problem is only cfg and confdb
+	libraries, cpg, evs, quorum, ... are not affected and works correctly.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2013-01-31  Jan Friesse  <jfriesse@redhat.com>
+
+	Handle unexpected closing brace in config file
+	If configuration file contains closing brace before opening brace
+	at top level, configuration parsing is stopped and file is not
+	completely parsed. Solution is to detect extra closing brace and display
+	error.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+	(backport from needle)
+
+	Handle colon in configuration file
+	If colon was entered as part of value on end of value, it is deleted.
+	This makes impossible to enter (legal) IPv6 address ending with :: (like
+	fed0::).
+
+	Also when line contains both brace and colon, it is parsed twice (first
+	as key = value and second as start of section). This is
+	handled by continue in if section.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+	(backport from needle)
+
+2013-01-23  Jan Friesse  <jfriesse@redhat.com>
+
+	totemip: Properly detect ipv6 address
+	Commit a853b618 introduced regression in finding IPv6 address. For IPv6,
+	IFA_ADDRESS must be checked, instead of IFA_LOCAL, because IFA_LOCAL is
+	returned empty.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2013-01-15  Jan Friesse  <jfriesse@redhat.com>
+
+	ipcc: Return dup of socket fd to user application
+	This will protect library from closing fd returned to user application.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-12-10  Jan Friesse  <jfriesse@redhat.com>
+
+	coroipc: Handle pfd.revents as bit-field
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-12-06  Jan Friesse  <jfriesse@redhat.com>
+
+	Check socket_recv error code in ipc_dispatch_get
+	Also do not assert on error.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	On places with POLLERR check also POLLNVAL
+	POLLNVAL is returned on invalid FD. We must also check it.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	coroipc: Don't spin when waiting on semaphore
+	Set timeout correctly before each call of sem_timedwait.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-11-30  Jan Friesse  <jfriesse@redhat.com>
+
+	log: Avoid deadlock caused by previous commit
+
+2012-11-29  jason  <huzhijiang@gmail.com>
+
+	log: Handle race in printf_to_logs and format_set
+	When logsys_format_set is called, it can set format to NULL and if
+	logsys thread is actually reading it, corosync can segfault (NULL
+	pointer access).
+
+	Solution is to lock format in log_printf_to_logs function.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-11-28  Jan Friesse  <jfriesse@redhat.com>
+
+	objdb: Don't read uninitialized memory in inc/dec
+	When object_key_increment or _decrement is called on [u]int16 value,
+	uninitialized value is read as result value.
+
+	Solution is to read really only 16-bits.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-11-22  Jan Friesse  <jfriesse@redhat.com>
+
+	Add waiting_trans_ack also to fragmentation layer
+	Patch for support waiting_trans_ack may fail if there is synchronization
+	happening between delivery of fragmented message. In such situation,
+	fragmentation layer is waiting for message with correct number, but it
+	will never arrive.
+
+	Solution is to handle (callback) change of waiting_trans_ack and use
+	different queue.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+	(backported from neddle)
+
+	Handle segfault in backlog_get
+	If instance->memb_state is not OPERATION or RECOVERY, we was passing
+	NULL to cs_queue_used call.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+	(backport from needle)
+
+	Fix problem with sync operations under very rare circumstances
+	This patch creates a special message queue for synchronization messages.
+	This prevents a situation in which messages are queued in the
+	new_message_queue but have not yet been originated from corrupting the
+	synchronization process.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+	(backport from needle)
+
+2012-11-20  Jan Friesse  <jfriesse@redhat.com>
+
+	Don't call reload on corosync-objctl actions
+	confdb reload is used only for reloading of file, not for triggering
+	changes.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Track changes for confdb logging object
+	This makes possible to track changes in logging object (and it's
+	sub objects) for changes, so reload is no longer needed.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Add link to confdb_keys in corosync-objctl mpage
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-11-07  Jan Friesse  <jfriesse@redhat.com>
+
+	manpages: Add confdb_key_get man page
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	manpages: Add links for referenced confdb calls
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	manpages: Fix typo in evs* manpages
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-11-06  Zane Bitter  <zane.bitter@gmail.com>
+
+	Fix minor errors in man page documentation for corosync.conf
+	* Correct 'See Also' reference to corosync.conf(5) in corosync(8) man page
+	* Update path to default config (now /etc/corosync/corosync.conf)
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(cherry picked from commit 230352512595462ea01dfa27bc8c7e81e5adbff3)
+
+2012-11-05  Jan Friesse  <jfriesse@redhat.com>
+
+	If failed_to_recv is set, consensus can be empty
+	If failed_to_recv is set (node detect itself not able to receive
+	message), we can end up with assert, because my_failed_list and
+	my_member_list are same list. This is happening because we are not
+	following specification and we allow to mark node itself as failed.
+	Because if failed_to_recv is set and we reached consensus across nodes,
+	single node membership is created (ignoring both fail list and
+	member_list), we can skip assert.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+	(cherry picked from commit d4db2ea5353c8eedb64a88ae413c04e0757378c9)
+
+	Ignore sync barrier msgs if sync doesn't started
+	On start of corosync, we can receive sync barrier message. If so,
+	our sync_ring_id is set to NULL, and memcpy of message ring_id will
+	segfault. Instead of that, sync barrier message is ignored if
+	sync_ring_id is NULL.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-10-18  Jan Friesse  <jfriesse@redhat.com>
+
+	Make service_build contain correct number of msgs
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+	(backported from commit a273be58ae97f192712661b2f5a19f8d89183065)
+
+	Handle sync and service unload correctly
+	When sync started and service is unloaded in meantime, it can happen that
+	sync will call sync_* functions on unloaded service.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+	(backported from commit 6f6988afff632c6c5068becc855aa4a37a656183)
+
+	Don't call sync_* funcs for unloaded services
+	When service is unloaded, sync shouldn't call sync_init|process|activate
+	and abort functions. It happens very rare, but in process of unloading
+	all services, totem can recreate membership and bad things can happen
+	(service is unloaded, so there may be access to already freed memory,
+	...)
+
+	Solution is to fetch services sync handlers in every time when we are
+	building service list instead of using precreated one.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(backported from commit fed7fc23e14e098dbb52842a4c79879a376f6ded)
+
+2012-10-09  Jan Friesse  <jfriesse@redhat.com>
+
+	Enhance spec file
+	Weird construct buildtrunk is gone. Instead of that, we use bcond
+	feature. Also buildtrunk is renamed to runautogen, because SVN era is
+	gone.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Return back "Totem is unable to form..." message
+	This patch returns back SUBJ functionality. It rely on fact, that
+	sendmsg will return error, and if such error is returned for long time,
+	it's probably because of firewall.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+	(backported to flatiron)
+
+	Move "Totem is unable to form..." message to main
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+	(backported to flatiron)
+
+2012-10-08  Jan Friesse  <jfriesse@redhat.com>
+
+	Use unix socket for local multicast loop
+	Instead of rely on multicast loop functionality of kernel, we now use
+	unix socket created by socketpair to deliver multicast messages to
+	local node. This handles problems with improperly configured local
+	firewall. So if output/input to/from ethernet interface is blocked, node
+	is still able to create single node membership.
+
+	Dark side of the patch is fact, that membership is always created, so
+	"Totem is unable to form a cluster..." will never appear (same applies
+	to continuous_gather key).
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-10-04  Jan Friesse  <jfriesse@redhat.com>
+
+	cpg: Enhance downlist selection algorithm
+	Let's say we have 2 nodes:
+	- node 2 is paused
+	- node 1 create membership (one node)
+	- node 2 is unpaused
+
+	Result is that node 1 downlist is selected, so it means that
+	from node 2 point of view, node 1 was never down.
+
+	Patch solves situation by adding additional check for largest
+	previous membership.
+
+	So current tests are:
+	1) largest (previous #nodes - #nodes know to have left)
+	2) (then) largest previous membership
+	3) (and last as a tie-breaker) node with smallest nodeid
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	cpg: Process join list after downlists
+	let's say following situation will happen:
+	- we have 3 nodes
+	- on wire messages looks like D1,J1,D2,J2,D3,J3 (D is downlist, J is
+	  joinlist)
+	- let's say, D1 and D3 contains node 2
+	- it means that J2 is applied, but right after that, D1 (or D3) is
+	  applied what means, node 2 is again considered down
+
+	It's solved by collecting joinlists and apply them after downlist, so
+	order is:
+	- apply best matching downlist
+	- apply all joinlists
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	cpg: Never choose downlist with localnode
+	Test scenario is follows:
+	- node 1, node 2
+	- node 1 is paused
+	- node 2 sees node 1 dead
+	- node 1 unpaused
+	- node 1 and 2 both choose same dowlist message which includes node 2 ->
+	node 2 is efectivelly disconnected
+
+	Patch includes additional test if left_node is localnode. If so, such
+	downlist is ignored.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	(backported to flatiron)
+
+2012-10-04  Angus Salkeld  <asalkeld@redhat.com>
+
+	Fix cpg_membership_get()
+	The wrong size was getting set in exec/cpg.c
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+	(cherry picked from commit 0e86aa4ac6f98ee0e33a24c9095ca240d9cede81)
+
+2012-09-27  Jan Friesse  <jfriesse@redhat.com>
+
+	Don't access invalid mem in totemconfig
+	When ringnumber in config file was set to value bigger or equal to
+	INTERFACE_MAX, we are using this big value as index to totemconfig
+	interfaces array, resulting to access to invalid memory and segfault.
+
+	Instead of that, ringnumber is now checked and proper error message is
+	printed if value is too big.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-09-24  Jan Friesse  <jfriesse@redhat.com>
+
+	Move some totem and cpg messages to trace level
+	Messages which are flow messages, rather then lifecycle are now
+	logged in trace level.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Add support for debug level trace in config file
+	Because logsys uses 3-bits for log level encoded in rec, it's impossible
+	to add trace log level in clean way. Instead of that, we are using
+	recid of TRACE1 for trace messages. So if trace is allowed in
+	configuration file, we change old condition to log only LOGSYS_RECID_LOG
+	to log also LOGSYS_RECID_TRACE1.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-08-21  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	sa-confdb: fix crash due to incorrect malloc size
+	with recent changes, confdb and saconfdb were allocating two different
+	sizes for the same results. While on x86_64 this was masked nicely,
+	on i686 it causes crashes.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-08-21  Tim Beale  <tlbeale@gmail.com>
+
+	Remove unused structure
+	Nowhere in the corosync codebase references this structure.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	man: corosync.conf seqno_unchanged_const description incorrect
+	seqno_unchanged_const is used to determine when the rep should hold the
+	token. The merge detection timeout is started after any idle rotation of
+	the token.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-08-20  Jan Friesse  <jfriesse@redhat.com>
+
+	Fix autogen.sh errors
+	Based on original patch from Dan Frincu <df.cluster@gmail.com>
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-08-16  Jan Friesse  <jfriesse@redhat.com>
+
+	flatiron: Free outq items list on conn exit
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Fix dbus part of corosync-notifyd
+	Function dbus_connection_read_write which causes block for 0.5 sec is
+	replaced by correct dispatching of input and flushing of output buffer.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
 2012-08-14  Jan Friesse  <jfriesse@redhat.com>
 
 	example conf: Remove unused amf section

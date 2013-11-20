@@ -74,6 +74,7 @@
 
 struct ipc_instance {
 	int fd;
+	int user_app_fd;
 	struct control_buffer *control_buffer;
 	char *request_buffer;
 	char *response_buffer;
@@ -404,7 +405,6 @@ static int
 memory_map (char *path, const char *file, void **buf, size_t bytes)
 {
 	int32_t fd;
-	void *addr_orig;
 	void *addr;
 	int32_t res;
 	char *buffer;
@@ -450,28 +450,22 @@ retry_write:
 	}
 	free (buffer);
 
-	addr_orig = mmap (NULL, bytes, PROT_NONE,
-		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
-	if (addr_orig == MAP_FAILED) {
-		goto error_close_unlink;
-	}
+	addr = mmap (NULL, bytes, PROT_READ | PROT_WRITE,
+		MAP_SHARED, fd, 0);
 
-	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
-		MAP_FIXED | MAP_SHARED, fd, 0);
-
-	if (addr != addr_orig) {
+	if (addr == MAP_FAILED) {
 		goto error_close_unlink;
 	}
 #if (defined COROSYNC_BSD && defined MADV_NOSYNC)
-	madvise(addr_orig, bytes, MADV_NOSYNC);
+	madvise(addr, bytes, MADV_NOSYNC);
 #endif
 
 	res = close (fd);
 	if (res) {
 		return (-1);
 	}
-	*buf = addr_orig;
+	*buf = addr;
 
 	return 0;
 
@@ -609,6 +603,11 @@ coroipcc_service_connect (
 	request_fd = socket (PF_LOCAL, SOCK_STREAM, 0);
 #endif
 	if (request_fd == -1) {
+		return (CS_ERR_LIBRARY);
+	}
+	ipc_instance->user_app_fd = dup(request_fd);
+	if (ipc_instance->user_app_fd == -1) {
+		close(request_fd);
 		return (CS_ERR_LIBRARY);
 	}
 #ifdef SO_NOSIGPIPE
@@ -810,6 +809,7 @@ coroipcc_service_disconnect (
 
 	shutdown (ipc_instance->fd, SHUT_RDWR);
 	close (ipc_instance->fd);
+	close (ipc_instance->user_app_fd);
 	hdb_handle_destroy (&ipc_hdb, handle);
 	hdb_handle_put (&ipc_hdb, handle);
 	return (CS_OK);
@@ -847,7 +847,7 @@ coroipcc_fd_get (
 		return (res);
 	}
 
-	*fd = ipc_instance->fd;
+	*fd = ipc_instance->user_app_fd;
 
 	hdb_handle_put (&ipc_hdb, handle);
 	return (res);
@@ -902,20 +902,15 @@ coroipcc_dispatch_get (
 		error = CS_ERR_TRY_AGAIN;
 		goto error_put;
 	}
-	if (poll_events == 1 && (ufds.revents & (POLLERR|POLLHUP))) {
+	if (poll_events == 1 && (ufds.revents & (POLLERR|POLLHUP|POLLNVAL))) {
 		error = CS_ERR_LIBRARY;
 		goto error_put;
 	}
 
 	error = socket_recv (ipc_instance->fd, &buf, 1);
-#if defined(COROSYNC_SOLARIS) || defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
-	/* On many OS poll() never returns POLLHUP or POLLERR.
-	 * EOF is detected when recvmsg() return 0.
-	 */
-	if ( error == CS_ERR_LIBRARY )
+	if (error != CS_OK) {
 		goto error_put;
-#endif
-	assert (error == CS_OK);
+	}
 
 	if (shared_mem_dispatch_bytes_left (ipc_instance) > (ipc_instance->dispatch_size/2)) {
 		/*

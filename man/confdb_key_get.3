@@ -1,9 +1,9 @@
 .\"/*
-.\" * Copyright (c) 2007 Red Hat, Inc.
+.\" * Copyright (c) 2012 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
-.\" * Author: Patrick Caulfield <pcaulfie@redhat.com>
+.\" * Author: Jan Friesse <jfriesse@redhat.com>
 .\" *
 .\" * This software licensed under BSD license, the text of which follows:
 .\" *
@@ -31,34 +31,51 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH EVS_CONTEXT_GET 3 2004-08-31 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH CONFDB_KEY_GET 3 2012-11-07 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
-evs_context_get \- Gets the context variable for a EVS instance
+confdb_key_get \- Retreive key value from the Configuration Database
 .SH SYNOPSIS
-.B #include <corosync/evs.h>
+.B #include <corosync/confdb.h>
 .sp
-.BI "int evs_context_get(evs_handle_t " handle ", void **" context ");
+.BI "cs_error_t confdb_key_get (confdb_handle_t " handle ",
+.BI	hdb_handle_t " parent_object_handle ",
+.BI	void " *key_name ",
+.BI	size_t " key_name_len ",
+.BI	void " *value ",
+.BI	size_t " *value_len"); "
+
 .SH DESCRIPTION
 The
-.B evs_context_get
-function is used to retrieve the context variable previously stored using
-.B evs_context_set(3)
+.B confdb_key_get
+function retreive key value for key with given name from specified parent object.
+.BR
+Unlike objects, keys do not have handles, so you can't go directly to a non-unique key
+without using the
+.B confdb_key_iter
+function, so
+.B confdb_key_get
+returns only first found key.
 .SH RETURN VALUE
-This call returns the EVS_OK value if successful, otherwise an error is returned.
+This call returns the CONFDB_OK value if successful, otherwise an error is returned.
 .PP
 .SH ERRORS
 The errors are undocumented.
 .SH "SEE ALSO"
-.BR evs_overview (8),
-.BR evs_initialize (3),
-.BR evs_finalize (3),
-.BR evs_fd_get (3),
-.BR evs_dispatch (3),
-.BR evs_join (3),
-.BR evs_leave (3),
-.BR evs_mcast_joined (3),
-.BR evs_mcast_groups (3),
-.BR evs_membership_get (3)
-.BR evs_context_get (3)
-.BR evs_context_set (3)
+.BR confdb_overview (8),
+.BR confdb_initialize (3),
+.BR confdb_finalize (3),
+.BR confdb_dispatch (3),
+.BR confdb_object_create (3),
+.BR confdb_object_destroy (3),
+.BR confdb_object_parent_get (3),
+.BR confdb_key_create (3),
+.BR confdb_key_delete (3),
+.BR confdb_key_get (3),
+.BR confdb_key_replace (3),
+.BR confdb_object_find_start (3),
+.BR confdb_object_find (3),
+.BR confdb_object_iter_start (3),
+.BR confdb_object_iter (3),
+.BR confdb_key_iter_start (3),
+.BR confdb_key_iter (3),
 .PP

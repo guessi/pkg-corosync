@@ -78,3 +78,7 @@ usr/share/man/man3/votequorum_setvotes.3
 usr/share/man/man3/evs_finalize.3
 usr/share/man/man3/sam_warn_signal_set.3
 usr/share/man/man3/evs_mcast_joined.3
+usr/share/man/man3/confdb_object_find_start.3 
+usr/share/man/man3/confdb_key_get.3
+usr/share/man/man3/confdb_key_iter_start.3
+usr/share/man/man3/confdb_object_iter_start.3 

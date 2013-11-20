@@ -127,6 +127,8 @@ static enum cs_sync_mode minimum_sync_mode;
 
 static int sync_in_process = 1;
 
+static pthread_mutex_t sync_in_process_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static hdb_handle_t corosync_poll_handle;
 
 struct sched_param global_sched_param;
@@ -137,9 +139,7 @@ static hdb_handle_t object_memb_handle;
 
 static corosync_timer_handle_t corosync_stats_timer_handle;
 
-static pthread_t corosync_exit_thread;
-
-static sem_t corosync_exit_sem;
+static int corosync_exit_pipe[2] = {0, 0};
 
 static const char *corosync_lock_file = LOCALSTATEDIR"/run/corosync.pid";
 
@@ -181,33 +181,37 @@ static void unlink_all_completed (void)
 
 void corosync_shutdown_request (void)
 {
-	static int called = 0;
-	if (called) {
-		return;
-	}
-	if (called == 0) {
-		called = 1;
+	char buf = 0;
+
+	if (corosync_exit_pipe[1] == 0) {
+		corosync_exit_error (AIS_DONE_EXIT);
 	}
 
-	sem_post (&corosync_exit_sem);
+	write(corosync_exit_pipe[1], &buf, sizeof(buf));
 }
 
-static void *corosync_exit_thread_handler (void *arg)
+static int corosync_exit_dispatch_fn (
+    hdb_handle_t handle,
+    int fd,
+    int revents,
+    void *data)
 {
 	totempg_stats_t * stats;
+	char buf;
 
-	sem_wait (&corosync_exit_sem);
+	read(corosync_exit_pipe[0], &buf, sizeof(buf));
 
 	stats = api->totem_get_stats();
 	if (stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ||
 	    stats->mrp->srp->operational_entered == 0) {
+
 		unlink_all_completed ();
 		/* NOTREACHED */
 	}
 
 	corosync_service_unlink_all (api, unlink_all_completed);
 
-	return arg;
+	return (-1);
 }
 
 static void sigusr2_handler (int num)
@@ -272,7 +276,15 @@ static void corosync_sync_completed (void)
 {
 	log_printf (LOGSYS_LEVEL_NOTICE,
 		"Completed service synchronization, ready to provide service.\n");
+
+	pthread_mutex_lock(&sync_in_process_mutex);
 	sync_in_process = 0;
+	/*
+	 * Inform totem to start using new message queue again
+	 */
+	totempg_trans_ack();
+
+	pthread_mutex_unlock(&sync_in_process_mutex);
 }
 
 static int corosync_sync_callbacks_retrieve (int sync_id,
@@ -300,6 +312,11 @@ static int corosync_sync_callbacks_retrieve (int sync_id,
 		res = evil_callbacks_load (sync_id, callbacks);
 		return (res);
 	}
+
+	if (callbacks == NULL) {
+		return (0);
+	}
+
 	callbacks->name = ais_service[ais_service_index]->name;
 	callbacks->sync_init_api.sync_init_v1 = ais_service[ais_service_index]->sync_init;
 	callbacks->api_version = 1;
@@ -331,6 +348,10 @@ static int corosync_sync_v2_callbacks_retrieve (
 	}
 	if (minimum_sync_mode == CS_SYNC_V1 && ais_service[service_id]->sync_mode != CS_SYNC_V2) {
 		return (-1);
+	}
+
+	if (callbacks == NULL) {
+		return (0);
 	}
 
 	callbacks->name = ais_service[service_id]->name;
@@ -432,10 +453,14 @@ static void confchg_fn (
 	int i;
 	int abort_activate = 0;
 
+	pthread_mutex_lock(&sync_in_process_mutex);
+
 	if (sync_in_process == 1) {
 		abort_activate = 1;
 	}
 	sync_in_process = 1;
+
+	pthread_mutex_unlock(&sync_in_process_mutex);
 	serialize_lock ();
 	memcpy (&corosync_ring_id, ring_id, sizeof (struct memb_ring_id));
 
@@ -640,8 +665,22 @@ static void corosync_totem_stats_updater (void *data)
 	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
 		"continuous_gather", strlen("continuous_gather"),
 		&stats->mrp->srp->continuous_gather, sizeof (stats->mrp->srp->continuous_gather));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"continuous_sendmsg_failures", strlen("continuous_sendmsg_failures"),
+		&stats->mrp->srp->continuous_sendmsg_failures, sizeof (stats->mrp->srp->continuous_sendmsg_failures));
 
-	firewall_enabled_or_nic_failure = (stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ? 1 : 0);
+	if (stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ||
+	    stats->mrp->srp->continuous_sendmsg_failures > MAX_NO_CONT_SENDMSG_FAILURES) {
+		log_printf (LOGSYS_LEVEL_WARNING,
+			"Totem is unable to form a cluster because of an "
+			"operating system or network fault. The most common "
+			"cause of this message is that the local firewall is "
+			"configured improperly.");
+		firewall_enabled_or_nic_failure = 1;
+	} else {
+		firewall_enabled_or_nic_failure = 0;
+	}
+
 	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
 		"firewall_enabled_or_nic_failure", strlen("firewall_enabled_or_nic_failure"),
 		&firewall_enabled_or_nic_failure, sizeof (firewall_enabled_or_nic_failure));
@@ -812,6 +851,9 @@ static void corosync_totem_stats_init (void)
 			sizeof (zero_64), OBJDB_VALUETYPE_UINT64);
 		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
 			"continuous_gather", &zero_32,
+			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"continuous_sendmsg_failures", &zero_32,
 			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
 		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
 			"firewall_enabled_or_nic_failure", &zero_32,
@@ -1020,6 +1062,8 @@ static int corosync_sending_allowed (
 		return (-1);
 	}
 
+	pthread_mutex_lock(&sync_in_process_mutex);
+
 	sending_allowed =
 		(corosync_quorum_is_quorate() == 1 ||
 		ais_service[service]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) &&
@@ -1027,6 +1071,8 @@ static int corosync_sending_allowed (
 		((ais_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_REQUIRED) &&
 		(pd->reserved_msgs) &&
 		(sync_in_process == 0)));
+
+	pthread_mutex_unlock(&sync_in_process_mutex);
 
 	return (sending_allowed);
 }
@@ -1262,6 +1308,49 @@ static struct coroipcs_init_state_v2 ipc_init_state_v2 = {
 	.stats_increment_value		= corosync_stats_increment_value,
 	.stats_decrement_value		= corosync_stats_decrement_value,
 };
+
+struct scheduler_pause_timeout_data {
+	struct totem_config *totem_config;
+	poll_timer_handle handle;
+	unsigned long long tv_prev;
+	unsigned long long max_tv_diff;
+};
+
+static void timer_function_scheduler_timeout (void *data)
+{
+	struct scheduler_pause_timeout_data *timeout_data = (struct scheduler_pause_timeout_data *)data;
+	unsigned long long tv_current;
+	unsigned long long tv_diff;
+
+	tv_current = timerlist_nano_current_get ();
+
+	if (timeout_data->tv_prev == 0) {
+		/*
+		 * Initial call -> just pretent everything is ok
+		 */
+		timeout_data->tv_prev = tv_current;
+		timeout_data->max_tv_diff = 0;
+	}
+
+	tv_diff = tv_current - timeout_data->tv_prev;
+	timeout_data->tv_prev = tv_current;
+
+	if (tv_diff > timeout_data->max_tv_diff) {
+		log_printf (LOGSYS_LEVEL_WARNING, "Corosync main process was not scheduled for %0.4f ms "
+		    "(threshold is %0.4f ms). Consider token timeout increase.",
+		    (float)tv_diff / TIMERLIST_NS_IN_MSEC, (float)timeout_data->max_tv_diff / TIMERLIST_NS_IN_MSEC);
+	}
+
+	/*
+	 * Set next threshold, because token_timeout can change
+	 */
+	timeout_data->max_tv_diff = timeout_data->totem_config->token_timeout * TIMERLIST_NS_IN_MSEC * 0.8;
+	poll_timer_add (corosync_poll_handle,
+		timeout_data->totem_config->token_timeout / 3,
+		timeout_data,
+		timer_function_scheduler_timeout,
+		&timeout_data->handle);
+}
 
 static void corosync_setscheduler (void)
 {
@@ -1544,6 +1633,7 @@ int main (int argc, char **argv, char **envp)
 	char corosync_lib_dir[PATH_MAX];
 	hdb_handle_t object_runtime_handle;
 	enum e_ais_done flock_err;
+	struct scheduler_pause_timeout_data scheduler_pause_timeout_data;
 
  	/* default configuration
 	 */
@@ -1589,7 +1679,6 @@ int main (int argc, char **argv, char **envp)
 
 	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.\n", VERSION);
 	log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "\n");
-
 
 	(void)signal (SIGINT, sigintr_handler);
 	(void)signal (SIGUSR2, sigusr2_handler);
@@ -1752,10 +1841,6 @@ int main (int argc, char **argv, char **envp)
 	}
 	logsys_fork_completed();
 
-	if ((flock_err = corosync_flock (corosync_lock_file, getpid ())) != AIS_DONE_EXIT) {
-		corosync_exit_error (flock_err);
-	}
-
 	corosync_timer_init (
 		serialize_lock,
 		serialize_unlock,
@@ -1764,27 +1849,25 @@ int main (int argc, char **argv, char **envp)
 	corosync_poll_handle = poll_create ();
 	poll_low_fds_event_set(corosync_poll_handle, main_low_fds_event);
 
-	/*
-	 * Sleep for a while to let other nodes in the cluster
-	 * understand that this node has been away (if it was
-	 * an corosync restart).
-	 */
-
-// TODO what is this hack for?	usleep(totem_config.token_timeout * 2000);
+	memset(&scheduler_pause_timeout_data, 0, sizeof(scheduler_pause_timeout_data));
+	scheduler_pause_timeout_data.totem_config = &totem_config;
+	timer_function_scheduler_timeout (&scheduler_pause_timeout_data);
 
 	/*
-	 * Create semaphore and start "exit" thread
+	 * Create exit pipe
 	 */
-	res = sem_init (&corosync_exit_sem, 0, 0);
+	res = pipe(corosync_exit_pipe);
+	if (res == 0) {
+		res = poll_dispatch_add(corosync_poll_handle, corosync_exit_pipe[0],
+			POLLIN, NULL, corosync_exit_dispatch_fn);
+	}
 	if (res != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create exit thread.\n");
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create exit pipe.\n");
 		corosync_exit_error (AIS_DONE_FATAL_ERR);
 	}
 
-	res = pthread_create (&corosync_exit_thread, NULL, corosync_exit_thread_handler, NULL);
-	if (res != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create exit thread.\n");
-		corosync_exit_error (AIS_DONE_FATAL_ERR);
+	if ((flock_err = corosync_flock (corosync_lock_file, getpid ())) != AIS_DONE_EXIT) {
+		corosync_exit_error (flock_err);
 	}
 
 	/*

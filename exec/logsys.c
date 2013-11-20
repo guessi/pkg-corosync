@@ -144,6 +144,7 @@ struct logsys_logger {
 	int logfile_priority;			/* priority to file */
 	int init_status;			/* internal field to handle init queues
 						   for subsystems */
+	unsigned int trace1_allowed;
 };
 
 
@@ -203,6 +204,8 @@ static char *format_buffer=NULL;
 static int logsys_dropped_messages = 0;
 
 void *logsys_rec_end;
+
+static pid_t startup_pid = 0;
 
 static DECLARE_LIST_INIT(logsys_print_finished_records);
 
@@ -439,12 +442,15 @@ static void log_printf_to_logs (
 	int c;
 	struct tm tm_res;
 
-	if (LOGSYS_DECODE_RECID(rec_ident) != LOGSYS_RECID_LOG) {
+	subsysid = LOGSYS_DECODE_SUBSYSID(rec_ident);
+	level = LOGSYS_DECODE_LEVEL(rec_ident);
+
+	if (!((LOGSYS_DECODE_RECID(rec_ident) == LOGSYS_RECID_LOG) ||
+	      (logsys_loggers[subsysid].trace1_allowed && LOGSYS_DECODE_RECID(rec_ident) == LOGSYS_RECID_TRACE1))) {
 		return;
 	}
 
-	subsysid = LOGSYS_DECODE_SUBSYSID(rec_ident);
-	level = LOGSYS_DECODE_LEVEL(rec_ident);
+	pthread_mutex_lock (&logsys_config_mutex);
 
 	while ((c = format_buffer[format_buffer_idx])) {
 		cutoff = 0;
@@ -536,6 +542,8 @@ static void log_printf_to_logs (
 			break;
 		}
 	}
+
+	pthread_mutex_unlock (&logsys_config_mutex);
 
 	normal_output_buffer[normal_output_buffer_idx] = '\0';
 	syslog_output_buffer[syslog_output_buffer_idx] = '\0';
@@ -960,6 +968,7 @@ int _logsys_system_setup(
 	logsys_loggers[i].mode = mode;
 
 	logsys_loggers[i].debug = debug;
+	logsys_loggers[i].trace1_allowed = 0;
 
 	if (logsys_config_file_set_unlocked (i, &errstr, logfile) < 0) {
 		pthread_mutex_unlock (&logsys_config_mutex);
@@ -1235,16 +1244,20 @@ void _logsys_log_vprintf (
 		short_file_name++; /* move past the "/" */
 #endif /* BUILDING_IN_PLACE */
 
-	/*
-	 * Create a log record
-	 */
-	_logsys_log_rec (
-		rec_ident,
-		function_name,
-		short_file_name,
-		file_line,
-		logsys_print_buffer, len + 1,
-		LOGSYS_REC_END);
+	if (startup_pid == 0 || startup_pid == getpid()) {
+		/*
+		 * Create a log record if we are really true corosync
+		 * process (not fork of some service) or if we didn't finished
+		 * initialization yet.
+		 */
+		_logsys_log_rec (
+			rec_ident,
+			function_name,
+			short_file_name,
+			file_line,
+			logsys_print_buffer, len + 1,
+			LOGSYS_REC_END);
+	}
 
 	/*
 	 * If logsys is not going to print a message to a log target don't
@@ -1317,6 +1330,8 @@ int _logsys_config_subsys_get (const char *subsys)
 void logsys_fork_completed (void)
 {
 	logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].mode &= ~LOGSYS_MODE_FORK;
+	startup_pid = getpid();
+
 	(void)_logsys_wthread_create ();
 }
 
@@ -1495,12 +1510,32 @@ int logsys_config_debug_set (
 	if (subsys != NULL) {
 		i = _logsys_config_subsys_get_unlocked (subsys);
 		if (i >= 0) {
-			logsys_loggers[i].debug = debug;
+			switch (debug) {
+			case LOGSYS_DEBUG_OFF:
+			case LOGSYS_DEBUG_ON:
+				logsys_loggers[i].debug = debug;
+				logsys_loggers[i].trace1_allowed = 0;
+				break;
+			case LOGSYS_DEBUG_TRACE:
+				logsys_loggers[i].debug = LOGSYS_DEBUG_ON;
+				logsys_loggers[i].trace1_allowed = 1;
+				break;
+			}
 			i = 0;
 		}
 	} else {
 		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
-			logsys_loggers[i].debug = debug;
+			switch (debug) {
+			case LOGSYS_DEBUG_OFF:
+			case LOGSYS_DEBUG_ON:
+				logsys_loggers[i].debug = debug;
+				logsys_loggers[i].trace1_allowed = 0;
+				break;
+			case LOGSYS_DEBUG_TRACE:
+				logsys_loggers[i].debug = LOGSYS_DEBUG_ON;
+				logsys_loggers[i].trace1_allowed = 1;
+				break;
+			}
 		}
 		i = 0;
 	}

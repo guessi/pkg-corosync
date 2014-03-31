@@ -12,6 +12,7 @@ export COROSYNC_BUILD=$(if $(findstring debug,$(DEB_BUILD_OPTIONS)),DEBUG,RELEAS
 
 configure-stamp:
 	dh_testdir
+	dh_autotools-dev_updateconfig
 	./configure --prefix=/usr \
 		    --libexecdir=/usr/lib/ \
 		    --localstatedir=/var \
@@ -29,6 +30,7 @@ build-stamp:
 clean:
 	dh_testdir
 	[ ! -f Makefile ] || $(MAKE) distclean
+	dh_autotools-dev_restoreconfig
 	dh_clean configure-stamp
 
 install: build

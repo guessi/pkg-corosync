@@ -756,7 +756,7 @@ uninstall-am: uninstall-libLIBRARIES uninstall-local \
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so.$(SOMAJOR)
 
 lint:
-	-splint $(LINT_FLAGS) $(CFLAGS) *.c
+	-splint $(INCLUDES) $(LINT_FLAGS) $(CFLAGS) *.c
 
 all-local: $(LCRSO_OBJS) $(LCRSO) $(SHARED_LIBS)
 	@echo Built corosync Executive

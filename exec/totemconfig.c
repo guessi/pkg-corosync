@@ -559,7 +559,7 @@ int totem_config_validate (
 		goto parse_error;
 	}
 
-	if (totem_config->consensus_timeout <= 1.2 * totem_config->token_timeout) {
+	if (totem_config->consensus_timeout < 1.2 * totem_config->token_timeout) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
 			"The consensus timeout parameter (%d ms) must be atleast 1.2 * token (%d ms).",
 			totem_config->consensus_timeout, (int) ((float)1.2 * totem_config->token_timeout));
@@ -690,12 +690,14 @@ static int read_keyfile (
 	int res;
 	ssize_t expected_key_len = sizeof (totem_config->private_key);
 	int saved_errno;
+	char error_str[100];
 
 	fd = open (key_location, O_RDONLY);
 	if (fd == -1) {
+		strerror_r (errno, error_str, 100);
 		snprintf (error_string_response, sizeof(error_string_response),
 			"Could not open %s: %s\n",
-			 key_location, strerror (errno));
+			 key_location, error_str);
 		goto parse_error;
 	}
 
@@ -704,9 +706,10 @@ static int read_keyfile (
 	close (fd);
 
 	if (res == -1) {
+		strerror_r (errno, error_str, 100);
 		snprintf (error_string_response, sizeof(error_string_response),
 			"Could not read %s: %s\n",
-			 key_location, strerror (saved_errno));
+			 key_location, error_str);
 		goto parse_error;
 	}
 

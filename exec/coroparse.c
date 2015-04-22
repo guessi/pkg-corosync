@@ -49,6 +49,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <limits.h>
+#include <stddef.h>
 
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/objdb.h>
@@ -115,6 +116,7 @@ static int parse_section(FILE *fp,
 	char line[512];
 	int i;
 	char *loc;
+	int ignore_line;
 
 	while (fgets (line, sizeof (line), fp)) {
 		if (strlen(line) > 0) {
@@ -133,10 +135,20 @@ static int parse_section(FILE *fp,
 				break;
 			}
 		}
+
+		ignore_line = 1;
+		for (i = 0; i < strlen (line); i++) {
+			if (line[i] != '\t' && line[i] != ' ') {
+				if (line[i] != '#')
+					ignore_line = 0;
+
+				break;
+			}
+		}
 		/*
 		 * Clear out comments and empty lines
 		 */
-		if (line[0] == '#' || line[0] == '\0') {
+		if (ignore_line) {
 			continue;
 		}
 
@@ -253,8 +265,11 @@ static int read_uidgid_files_into_objdb(
 	const char *dirname;
 	DIR *dp;
 	struct dirent *dirent;
+	struct dirent *entry;
 	char filename[PATH_MAX + FILENAME_MAX + 1];
 	int res = 0;
+	size_t len;
+	int return_code;
 	struct stat stat_buf;
 
 	dirname = COROSYSCONFDIR "/uidgid.d";
@@ -263,7 +278,14 @@ static int read_uidgid_files_into_objdb(
 	if (dp == NULL)
 		return 0;
 
-	while ((dirent = readdir (dp))) {
+	len = offsetof(struct dirent, d_name) +
+                     pathconf(dirname, _PC_NAME_MAX) + 1;
+	entry = malloc(len);
+
+	for (return_code = readdir_r(dp, entry, &dirent);
+		dirent != NULL && return_code == 0;
+		return_code = readdir_r(dp, entry, &dirent)) {
+
 		snprintf(filename, sizeof (filename), "%s/%s", dirname, dirent->d_name);
 		stat (filename, &stat_buf);
 		if (S_ISREG(stat_buf.st_mode)) {
@@ -282,6 +304,7 @@ static int read_uidgid_files_into_objdb(
 	}
 
 error_exit:
+	free (entry);
 	closedir(dp);
 
 	return res;
@@ -295,9 +318,12 @@ static int read_service_files_into_objdb(
 	const char *dirname;
 	DIR *dp;
 	struct dirent *dirent;
+	struct dirent *entry;
 	char filename[PATH_MAX + FILENAME_MAX + 1];
 	int res = 0;
 	struct stat stat_buf;
+	size_t len;
+	int return_code;
 
 	dirname = COROSYSCONFDIR "/service.d";
 	dp = opendir (dirname);
@@ -305,7 +331,14 @@ static int read_service_files_into_objdb(
 	if (dp == NULL)
 		return 0;
 
-	while ((dirent = readdir (dp))) {
+	len = offsetof(struct dirent, d_name) +
+                     pathconf(dirname, _PC_NAME_MAX) + 1;
+	entry = malloc(len);
+
+	for (return_code = readdir_r(dp, entry, &dirent);
+		dirent != NULL && return_code == 0;
+		return_code = readdir_r(dp, entry, &dirent)) {
+
 		snprintf(filename, sizeof (filename), "%s/%s", dirname, dirent->d_name);
 		stat (filename, &stat_buf);
 		if (S_ISREG(stat_buf.st_mode)) {
@@ -324,6 +357,7 @@ static int read_service_files_into_objdb(
 	}
 
 error_exit:
+	free (entry);
 	closedir(dp);
 
 	return res;
@@ -345,9 +379,11 @@ static int read_config_file_into_objdb(
 
 	fp = fopen (filename, "r");
 	if (fp == NULL) {
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
 		snprintf (error_reason, sizeof(error_string_response),
 			"Can't read file %s reason = (%s)\n",
-			 filename, strerror (errno));
+			 filename, error_str);
 		*error_string = error_reason;
 		return -1;
 	}

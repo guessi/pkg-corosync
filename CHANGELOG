@@ -1,4 +1,383 @@
 ------------------------------------------------------------------------
+r2722 | sdake | 2010-03-23 13:35:23 -0700 (Tue, 23 Mar 2010) | 6 lines
+
+Merge trunk revision 2721:
+r2721 | sdake | 2010-03-23 10:16:39 -0700 (Tue, 23 Mar 2010) | 2 lines
+
+Tone down noisy logging from ipcs system.
+
+
+------------------------------------------------------------------------
+r2720 | sdake | 2010-03-22 15:11:48 -0700 (Mon, 22 Mar 2010) | 7 lines
+
+Merge trunk revision 2719:
+r2719 | sdake | 2010-03-22 15:07:01 -0700 (Mon, 22 Mar 2010) | 3 lines
+
+Fix lockup that occurs rarely with pthread_join() is called in atexit()
+handler.
+
+
+------------------------------------------------------------------------
+r2718 | sdake | 2010-03-22 09:37:37 -0700 (Mon, 22 Mar 2010) | 8 lines
+
+Merge trunk revision 2685:
+------------------------------------------------------------------------
+r2685 | sdake | 2010-03-20 13:08:38 -0700 (Sat, 20 Mar 2010) | 3 lines
+
+Fix problem where retransmissions don't occur resulting in failure to receive
+condition.
+
+
+------------------------------------------------------------------------
+r2717 | sdake | 2010-03-22 09:36:27 -0700 (Mon, 22 Mar 2010) | 6 lines
+
+Merge trunk revision 2682:
+r2682 | asalkeld | 2010-03-10 17:27:04 -0700 (Wed, 10 Mar 2010) | 2 lines
+
+Remove warnings.
+
+
+------------------------------------------------------------------------
+r2716 | sdake | 2010-03-22 09:34:23 -0700 (Mon, 22 Mar 2010) | 11 lines
+
+Merge trunk revision 2676:
+r2676 | honzaf | 2010-03-04 05:17:47 -0700 (Thu, 04 Mar 2010) | 7 lines
+
+Support for lib_cpg_finalize
+
+Add support for MESSAGE_REQ_CPG_FINALIZE message. This will allow us
+remove cpg_pd from list of active connections, and remove problem, when
+cpg_finalize + cpg_initialize + cpg_join can result in CPG_ERR_EXIST
+error.
+
+
+------------------------------------------------------------------------
+r2715 | sdake | 2010-03-22 09:33:01 -0700 (Mon, 22 Mar 2010) | 18 lines
+
+Merge trunk revision 2675:
+r2675 | honzaf | 2010-03-04 05:12:24 -0700 (Thu, 04 Mar 2010) | 14 lines
+
+Cpg join with undelivered leave message
+
+Patch handles situation, when on one node, one process:
+- join cpg
+- do same actions
+- leave cpg
+- join cpg again
+
+Following sequence can (racy) end with broken process_info list.
+
+To solve this problem, one more check is done in
+message_handler_req_lib_cpg_join so if process_info with same pid and
+group as new join request exists, CPG_ERR_TRY_AGAIN is returned.
+
+
+------------------------------------------------------------------------
+r2714 | sdake | 2010-03-22 09:32:28 -0700 (Mon, 22 Mar 2010) | 6 lines
+
+Merge trunk revision 2674:
+r2674 | asalkeld | 2010-03-03 14:52:08 -0700 (Wed, 03 Mar 2010) | 2 lines
+
+Fix some "make lint" problems
+
+
+------------------------------------------------------------------------
+r2713 | sdake | 2010-03-22 09:31:33 -0700 (Mon, 22 Mar 2010) | 6 lines
+
+Merge trunk revision 2673:
+r2673 | sdake | 2010-03-03 12:43:50 -0700 (Wed, 03 Mar 2010) | 2 lines
+
+Specify the ringnumber parameter must start at 0 in the corosync.conf man page.
+
+
+------------------------------------------------------------------------
+r2712 | sdake | 2010-03-22 09:31:11 -0700 (Mon, 22 Mar 2010) | 5 lines
+
+Merge trunk revision 2672:
+r2672 | sdake | 2010-03-03 12:19:12 -0700 (Wed, 03 Mar 2010) | 2 lines
+
+Fix error handling to avoid segfaults/leaks on error in coroipcc_service_connect.
+
+------------------------------------------------------------------------
+r2711 | sdake | 2010-03-22 09:30:00 -0700 (Mon, 22 Mar 2010) | 8 lines
+
+Merge trunk revision 2667:
+r2667 | chrissie | 2010-02-26 08:30:38 -0700 (Fri, 26 Feb 2010) | 5 lines
+
+Reduce the number of times the quorum message is displayed.
+
+Patch from David Teigland
+
+
+------------------------------------------------------------------------
+r2710 | sdake | 2010-03-22 09:28:48 -0700 (Mon, 22 Mar 2010) | 6 lines
+
+Merge trunk revision 2666:
+r2666 | asalkeld | 2010-02-25 12:29:49 -0700 (Thu, 25 Feb 2010) | 2 lines
+
+convert giduid calls to reentrant versions.
+
+
+------------------------------------------------------------------------
+r2709 | sdake | 2010-03-22 09:27:41 -0700 (Mon, 22 Mar 2010) | 5 lines
+
+r2665 | asalkeld | 2010-02-25 12:28:36 -0700 (Thu, 25 Feb 2010) | 2 lines
+
+convert strerror() into strerror_r()
+
+
+------------------------------------------------------------------------
+r2708 | sdake | 2010-03-22 09:27:08 -0700 (Mon, 22 Mar 2010) | 6 lines
+
+Merge trunk revision 2664:
+r2664 | asalkeld | 2010-02-25 12:26:54 -0700 (Thu, 25 Feb 2010) | 2 lines
+
+convert readdir into readdir_r
+
+
+------------------------------------------------------------------------
+r2707 | sdake | 2010-03-22 09:25:55 -0700 (Mon, 22 Mar 2010) | 6 lines
+
+Merge trunk revision 2663:
+r2663 | asalkeld | 2010-02-25 12:25:20 -0700 (Thu, 25 Feb 2010) | 2 lines
+
+convert strtok to strtok_r
+
+
+------------------------------------------------------------------------
+r2706 | sdake | 2010-03-22 09:25:12 -0700 (Mon, 22 Mar 2010) | 6 lines
+
+Merge trunk revision 2661:
+r2661 | asalkeld | 2010-02-18 13:10:36 -0700 (Thu, 18 Feb 2010) | 2 lines
+
+Correct testcpg's groupname.length
+
+
+------------------------------------------------------------------------
+r2705 | sdake | 2010-03-22 09:24:29 -0700 (Mon, 22 Mar 2010) | 7 lines
+
+Merge trunk revision 2660:
+r2660 | sdake | 2010-02-18 13:08:39 -0700 (Thu, 18 Feb 2010) | 3 lines
+
+Patch to set unset value in token hold cancel structure as to not crash
+wireshark.
+
+
+------------------------------------------------------------------------
+r2704 | sdake | 2010-03-22 09:21:32 -0700 (Mon, 22 Mar 2010) | 11 lines
+
+Merge trunk revision 2657:
+r2657 | honzaf | 2010-02-16 04:29:14 -0700 (Tue, 16 Feb 2010) | 7 lines
+
+Fix corosync shutdown process
+
+This patch change corosync shutdown process, so now:
+- exit function of service engine is called
+- all IPC connections are closed and removed from poll
+- service engine is unlocked
+
+
+------------------------------------------------------------------------
+r2703 | sdake | 2010-03-22 09:20:53 -0700 (Mon, 22 Mar 2010) | 7 lines
+
+Merge trunk revision 2656:
+r2656 | sdake | 2010-02-15 14:39:33 -0700 (Mon, 15 Feb 2010) | 3 lines
+
+Use nodeid instead of localhost ip for the case when binding to a
+loalhost interface.
+
+
+------------------------------------------------------------------------
+r2702 | sdake | 2010-03-22 09:20:30 -0700 (Mon, 22 Mar 2010) | 9 lines
+
+Merge trunk revision 2655:
+r2655 | chrissie | 2010-02-12 00:46:02 -0700 (Fri, 12 Feb 2010) | 6 lines
+
+Remove a double list_del() when a tracking CFG client shuts down without
+calling cfg_track_stop. This caused corosync to crash.
+
+The extra list_empty() check is redundant too because it also happens in remove_ci_from_shutdown()
+
+
+------------------------------------------------------------------------
+r2701 | sdake | 2010-03-22 09:19:31 -0700 (Mon, 22 Mar 2010) | 6 lines
+
+Merge trunk revision 2654:
+r2654 | sdake | 2010-02-04 14:36:21 -0700 (Thu, 04 Feb 2010) | 2 lines
+
+Merge of Dejan's on=yes patch for the config parser options to ease migration.
+
+
+------------------------------------------------------------------------
+r2700 | sdake | 2010-03-22 09:19:02 -0700 (Mon, 22 Mar 2010) | 5 lines
+
+r2653 | asalkeld | 2010-02-03 17:18:51 -0700 (Wed, 03 Feb 2010) | 2 lines
+
+pass transitional members into the sync_init() callbacks.
+
+
+------------------------------------------------------------------------
+r2699 | sdake | 2010-03-22 09:18:36 -0700 (Mon, 22 Mar 2010) | 7 lines
+
+Merge trunk revision 2652:
+r2652 | asalkeld | 2010-02-03 17:13:27 -0700 (Wed, 03 Feb 2010) | 2 lines
+
+move sync_v2_init() into main_service_ready
+
+
+
+------------------------------------------------------------------------
+r2698 | sdake | 2010-03-22 09:18:06 -0700 (Mon, 22 Mar 2010) | 6 lines
+
+Merge trunk revision 2651:
+r2651 | asalkeld | 2010-02-01 23:24:01 -0700 (Mon, 01 Feb 2010) | 3 lines
+
+totemsrp: fix transitional configuration changes with long token timeouts
+
+
+------------------------------------------------------------------------
+r2697 | sdake | 2010-03-22 09:17:35 -0700 (Mon, 22 Mar 2010) | 7 lines
+
+Merge trunk revision 2650:
+r2650 | sdake | 2010-01-30 16:02:40 -0700 (Sat, 30 Jan 2010) | 3 lines
+
+Fix coroipcs message corruption that occurs when a message fills the remainder
+of the dispatch buffer with a full message.
+
+
+------------------------------------------------------------------------
+r2696 | sdake | 2010-03-22 09:16:56 -0700 (Mon, 22 Mar 2010) | 10 lines
+
+Merge trunk revision 2649:
+
+r2649 | honzaf | 2010-01-22 02:45:29 -0700 (Fri, 22 Jan 2010) | 5 lines
+
+Add schedwrk_create_nolock function
+
+This patch adds schedwrk_create_nolock, which will not call
+serialize_lock before execution of callback.
+
+
+------------------------------------------------------------------------
+r2695 | sdake | 2010-03-22 09:16:12 -0700 (Mon, 22 Mar 2010) | 5 lines
+
+r2648 | honzaf | 2010-01-21 05:48:30 -0700 (Thu, 21 Jan 2010) | 2 lines
+
+Pass correct poll handle to poll_stop on exit
+
+
+------------------------------------------------------------------------
+r2694 | sdake | 2010-03-22 09:15:35 -0700 (Mon, 22 Mar 2010) | 9 lines
+
+Merge trunk revision 2647:
+r2647 | honzaf | 2010-01-21 05:46:09 -0700 (Thu, 21 Jan 2010) | 5 lines
+
+poll_dispatch_delete - ability to return 0
+
+Patch fixes poll_dispatch_delete, so it is able to return 0
+(success), when requested FD was found.
+
+
+------------------------------------------------------------------------
+r2693 | sdake | 2010-03-22 09:15:12 -0700 (Mon, 22 Mar 2010) | 10 lines
+
+Merge trunk revision 2646:
+r2646 | honzaf | 2010-01-20 06:22:38 -0700 (Wed, 20 Jan 2010) | 5 lines
+
+Fix setting invalid mode in log destination
+
+This fixes problem in revision 2642, when only last
+
+line of log destination setting is really applied.
+
+
+------------------------------------------------------------------------
+r2692 | sdake | 2010-03-22 09:14:22 -0700 (Mon, 22 Mar 2010) | 11 lines
+
+r2644 | honzaf | 2010-01-14 05:54:46 -0700 (Thu, 14 Jan 2010) | 8 lines
+
+Fix malloc deadlock in signal handler
+
+This patch solves situations, where malloc is called
+inside signal handler. It creates thread, which waits
+for semaphore unlock and then starts shutdown sequence.
+
+RHBZ#547511
+
+
+------------------------------------------------------------------------
+r2691 | sdake | 2010-03-22 09:13:48 -0700 (Mon, 22 Mar 2010) | 11 lines
+
+r2643 | honzaf | 2010-01-14 01:39:06 -0700 (Thu, 14 Jan 2010) | 8 lines
+
+Fix freeze of IPC library connection on sem_wait
+
+This patch solves library waiting on sem_wait. It doesn't
+solve all other problems, which can make corosync not
+to exit (malloc race, global lock deadlock, ...)
+
+RHBZ#547511
+
+
+------------------------------------------------------------------------
+r2690 | sdake | 2010-03-22 09:12:29 -0700 (Mon, 22 Mar 2010) | 10 lines
+
+Merge trunk revisoin 2642:
+r2642 | honzaf | 2010-01-13 02:52:07 -0700 (Wed, 13 Jan 2010) | 6 lines
+
+Fix coroparse to allow white chars before comment
+
+- allows white characters before #
+- new function to parse log destinations (remove code duplicity)
+- clarify man page
+
+
+------------------------------------------------------------------------
+r2689 | sdake | 2010-03-22 09:10:40 -0700 (Mon, 22 Mar 2010) | 10 lines
+
+Merge trunk revision 2641:
+r2641 | honzaf | 2010-01-11 03:12:17 -0700 (Mon, 11 Jan 2010) | 5 lines
+
+Generate nodeid value when unset on BSD
+
+Generated nodeid is generated in same way as
+on Linux is.
+
+
+
+------------------------------------------------------------------------
+r2688 | sdake | 2010-03-22 09:09:40 -0700 (Mon, 22 Mar 2010) | 6 lines
+
+Merge trunk revision 2640:
+r2640 | sdake | 2009-12-15 12:22:36 -0700 (Tue, 15 Dec 2009) | 2 lines
+
+Remove invalid assertion in totemsrp.
+
+
+------------------------------------------------------------------------
+r2687 | sdake | 2010-03-22 09:08:57 -0700 (Mon, 22 Mar 2010) | 11 lines
+
+Merge trunk revision 2639:
+r2639 | beekhof | 2009-12-15 04:52:48 -0700 (Tue, 15 Dec 2009) | 7 lines
+
+Correctly determine current state in init script
+
+If two stop actions are ever performed simultaneously, then neither will terminate.
+With the default implementaiton of __pids_pidof, the status() function from
+/etc/init.d/functions incorrectly thinks the other stop action is a real
+corosync process.
+
+
+------------------------------------------------------------------------
+r2686 | sdake | 2010-03-22 09:08:23 -0700 (Mon, 22 Mar 2010) | 6 lines
+
+Merge trunk revision 2638:
+r2638 | asalkeld | 2009-12-08 00:48:53 -0700 (Tue, 08 Dec 2009) | 2 lines
+
+Allow empty (default) consensus timeout.
+
+
+------------------------------------------------------------------------
 r2637 | sdake | 2009-12-07 18:09:51 -0700 (Mon, 07 Dec 2009) | 6 lines
 
 Merge trunk revision 2581:

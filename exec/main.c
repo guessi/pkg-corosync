@@ -56,6 +56,7 @@
 #include <signal.h>
 #include <sched.h>
 #include <time.h>
+#include <semaphore.h>
 
 #include <corosync/swab.h>
 #include <corosync/corotypes.h>
@@ -121,8 +122,6 @@ static struct corosync_api_v1 *api = NULL;
 
 static enum cs_sync_mode minimum_sync_mode;
 
-static enum cs_sync_mode minimum_sync_mode;
-
 static int sync_in_process = 1;
 
 static hdb_handle_t corosync_poll_handle;
@@ -132,6 +131,10 @@ struct sched_param global_sched_param;
 static hdb_handle_t object_connection_handle;
 
 static corosync_timer_handle_t corosync_stats_timer_handle;
+
+static pthread_t corosync_exit_thread;
+
+static sem_t corosync_exit_sem;
 
 hdb_handle_t corosync_poll_handle_get (void)
 {
@@ -151,9 +154,8 @@ void corosync_state_dump (void)
 
 static void unlink_all_completed (void)
 {
-	poll_stop (0);
+	poll_stop (corosync_poll_handle);
 	totempg_finalize ();
-	coroipcs_ipc_exit ();
 
 	corosync_exit_error (AIS_DONE_EXIT);
 }
@@ -167,7 +169,17 @@ void corosync_shutdown_request (void)
 	if (called == 0) {
 		called = 1;
 	}
+
+	sem_post (&corosync_exit_sem);
+}
+
+static void *corosync_exit_thread_handler (void *arg)
+{
+	sem_wait (&corosync_exit_sem);
+
 	corosync_service_unlink_all (api, unlink_all_completed);
+
+	return arg;
 }
 
 static void sigusr2_handler (int num)
@@ -261,7 +273,8 @@ static int corosync_sync_callbacks_retrieve (int sync_id,
 		ais_service_index++) {
 
 		if (ais_service[ais_service_index] != NULL
-			&& ais_service[ais_service_index]->sync_mode == CS_SYNC_V1) {
+			&& (ais_service[ais_service_index]->sync_mode == CS_SYNC_V1
+				|| ais_service[ais_service_index]->sync_mode == CS_SYNC_V1_APIV2)) {
 			if (ais_service_index == sync_id) {
 				break;
 			}
@@ -275,7 +288,11 @@ static int corosync_sync_callbacks_retrieve (int sync_id,
 		return (res);
 	}
 	callbacks->name = ais_service[ais_service_index]->name;
-	callbacks->sync_init = ais_service[ais_service_index]->sync_init;
+	callbacks->sync_init_api.sync_init_v1 = ais_service[ais_service_index]->sync_init;
+	callbacks->api_version = 1;
+	if (ais_service[ais_service_index]->sync_mode == CS_SYNC_V1_APIV2) {
+		callbacks->api_version = 2;
+	}
 	callbacks->sync_process = ais_service[ais_service_index]->sync_process;
 	callbacks->sync_activate = ais_service[ais_service_index]->sync_activate;
 	callbacks->sync_abort = ais_service[ais_service_index]->sync_abort;
@@ -304,7 +321,13 @@ static int corosync_sync_v2_callbacks_retrieve (
 	}
 
 	callbacks->name = ais_service[service_id]->name;
-	callbacks->sync_init = ais_service[service_id]->sync_init;
+
+	callbacks->api_version = 1;
+	if (ais_service[service_id]->sync_mode == CS_SYNC_V1_APIV2) {
+		callbacks->api_version = 2;
+	}
+
+	callbacks->sync_init_api.sync_init_v1 = ais_service[service_id]->sync_init;
 	callbacks->sync_process = ais_service[service_id]->sync_process;
 	callbacks->sync_activate = ais_service[service_id]->sync_activate;
 	callbacks->sync_abort = ais_service[service_id]->sync_abort;
@@ -345,6 +368,9 @@ static void confchg_fn (
 
 	if (abort_activate) {
 		sync_v2_abort ();
+	}
+	if (minimum_sync_mode == CS_SYNC_V2 && configuration_type == TOTEM_CONFIGURATION_TRANSITIONAL) {
+		sync_v2_save_transitional (member_list, member_list_entries, ring_id);
 	}
 	if (minimum_sync_mode == CS_SYNC_V2 && configuration_type == TOTEM_CONFIGURATION_REGULAR) {
 		sync_v2_start (member_list, member_list_entries, ring_id);
@@ -425,7 +451,11 @@ static void corosync_mlockall (void)
 #else
 	res = mlockall (MCL_CURRENT | MCL_FUTURE);
 	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_WARNING, "Could not lock memory of service to avoid page faults: %s\n", strerror (errno));
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
+		log_printf (LOGSYS_LEVEL_WARNING,
+			"Could not lock memory of service to avoid page faults: %s\n",
+			error_str);
 	};
 #endif
 }
@@ -828,7 +858,7 @@ static int corosync_security_valid (int euid, int egid)
 
 static int corosync_service_available (unsigned int service)
 {
-	return (ais_service[service] != NULL);
+	return (ais_service[service] != NULL && !ais_service_exiting[service]);
 }
 
 struct sending_allowed_private_data_struct {
@@ -934,6 +964,12 @@ static void corosync_poll_dispatch_modify (
 		corosync_poll_handler_dispatch);
 }
 
+static void corosync_poll_dispatch_destroy (
+    int fd,
+    void *context)
+{
+	poll_dispatch_delete (corosync_poll_handle, fd);
+}
 
 static hdb_handle_t corosync_stats_create_connection (const char* name,
                        const pid_t pid, const int fd)
@@ -1071,6 +1107,7 @@ static struct coroipcs_init_state_v2 ipc_init_state_v2 = {
 	.poll_accept_add		= corosync_poll_accept_add,
 	.poll_dispatch_add		= corosync_poll_dispatch_add,
 	.poll_dispatch_modify		= corosync_poll_dispatch_modify,
+	.poll_dispatch_destroy		= corosync_poll_dispatch_destroy,
 	.init_fn_get			= corosync_init_fn_get,
 	.exit_fn_get			= corosync_exit_fn_get,
 	.handler_fn_get			= corosync_handler_fn_get,
@@ -1091,9 +1128,11 @@ static void corosync_setscheduler (void)
 		global_sched_param.sched_priority = sched_priority;
 		res = sched_setscheduler (0, SCHED_RR, &global_sched_param);
 		if (res == -1) {
+			char error_str[100];
+			strerror_r (errno, error_str, 100);
 			global_sched_param.sched_priority = 0;
 			log_printf (LOGSYS_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n",
-				global_sched_param.sched_priority, strerror (errno));
+				global_sched_param.sched_priority, error_str);
 
 			logsys_thread_priority_set (SCHED_OTHER, NULL, 1);
 		} else {
@@ -1114,7 +1153,11 @@ static void corosync_setscheduler (void)
 			}
 		}
 	} else {
-		log_printf (LOGSYS_LEVEL_WARNING, "Could not get maximum scheduler priority: %s\n", strerror (errno));
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
+		log_printf (LOGSYS_LEVEL_WARNING,
+			"Could not get maximum scheduler priority: %s\n",
+			error_str);
 		sched_priority = 0;
 	}
 #else
@@ -1166,6 +1209,26 @@ static void main_service_ready (void)
 	evil_init (api);
 	corosync_stats_init ();
 	corosync_totem_stats_init ();
+	if (minimum_sync_mode == CS_SYNC_V2) {
+		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to none.  Using V2 of the synchronization engine.\n");
+		sync_v2_init (
+			corosync_sync_v2_callbacks_retrieve,
+			corosync_sync_completed);
+	} else
+	if (minimum_sync_mode == CS_SYNC_V1) {
+		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to whitetank.  Using V1 and V2 of the synchronization engine.\n");
+		sync_register (
+			corosync_sync_callbacks_retrieve,
+			sync_v2_memb_list_determine,
+			sync_v2_memb_list_abort,
+			sync_v2_start);
+
+		sync_v2_init (
+			corosync_sync_v2_callbacks_retrieve,
+			corosync_sync_completed);
+	}
+
+
 }
 
 int main (int argc, char **argv)
@@ -1181,6 +1244,7 @@ int main (int argc, char **argv)
 	const char *config_iface_init;
 	char *config_iface;
 	char *iface;
+	char *strtok_save_pt;
 	int res, ch;
 	int background, setprio;
 	struct stat stat_out;
@@ -1288,7 +1352,7 @@ int main (int argc, char **argv)
 		corosync_exit_error (AIS_DONE_OBJDB);
 	}
 
-	iface = strtok(config_iface, ":");
+	iface = strtok_r(config_iface, ":", &strtok_save_pt);
 	while (iface)
 	{
 		res = lcr_ifact_reference (
@@ -1312,7 +1376,7 @@ int main (int argc, char **argv)
 		log_printf (LOGSYS_LEVEL_NOTICE, "%s", error_string);
 		config_modules[num_config_modules++] = config;
 
-		iface = strtok(NULL, ":");
+		iface = strtok_r(NULL, ":", &strtok_save_pt);
 	}
 	free(config_iface);
 
@@ -1421,6 +1485,21 @@ int main (int argc, char **argv)
 // TODO what is this hack for?	usleep(totem_config.token_timeout * 2000);
 
 	/*
+	 * Create semaphore and start "exit" thread
+	 */
+	res = sem_init (&corosync_exit_sem, 0, 0);
+	if (res != 0) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create exit thread.\n");
+		corosync_exit_error (AIS_DONE_FATAL_ERR);
+	}
+
+	res = pthread_create (&corosync_exit_thread, NULL, corosync_exit_thread_handler, NULL);
+	if (res != 0) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create exit thread.\n");
+		corosync_exit_error (AIS_DONE_FATAL_ERR);
+	}
+
+	/*
 	 * if totempg_initialize doesn't have root priveleges, it cannot
 	 * bind to a specific interface.  This only matters if
 	 * there is more then one interface in a system, so
@@ -1446,26 +1525,6 @@ int main (int argc, char **argv)
 		corosync_group_handle,
 		&corosync_group,
 		1);
-
-	if (minimum_sync_mode == CS_SYNC_V2) {
-		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to none.  Using V2 of the synchronization engine.\n");
-		sync_v2_init (
-			corosync_sync_v2_callbacks_retrieve,
-			corosync_sync_completed);
-	} else
-	if (minimum_sync_mode == CS_SYNC_V1) {
-		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to whitetank.  Using V1 and V2 of the synchronization engine.\n");
-		sync_register (
-			corosync_sync_callbacks_retrieve,
-			sync_v2_memb_list_determine,
-			sync_v2_memb_list_abort,
-			sync_v2_start);
-
-		sync_v2_init (
-			corosync_sync_v2_callbacks_retrieve,
-			corosync_sync_completed);
-	}
-
 
 	/*
 	 * Drop root privleges to user 'ais'

@@ -41,11 +41,9 @@ corosync.conf - corosync executive configuration file
 
 .SH DESCRIPTION
 The corosync.conf instructs the corosync executive about various parameters
-needed to control the corosync executive.  The configuration file consists of
-bracketed top level directives.  The possible directive choices are
-.IR "totem  { } , logging { }.  It is also possible to specify the top level
-parameter compatibility.
- These directives are described below.
+needed to control the corosync executive.  Empty lines and lines starting with
+# character are ignored.  The configuration file consists of bracketed top level
+directives.  The possible directive choices are:
 
 .TP
 totem { }
@@ -59,12 +57,12 @@ This top level directive contains configuration options for the event service.
 
 .PP
 .PP
-The
-.B compatibility
-directive indicates the level of compatibility requested by the user.  The
+It is also possible to specify the top level parameter
+.B compatibility.
+This directive indicates the level of compatibility requested by the user.  The
 option whitetank can be specified to remain backward compatable with
 openais-0.80.z.  The option none can be specified to only be compatable
-with corsoync-1.Y.Z.  Extra processing during configuration changes is
+with corosync-1.Y.Z.  Extra processing during configuration changes is
 required to remain backward compatable.
 
 The default is whitetank. (backwards compatibility)
@@ -86,7 +84,7 @@ ringnumber
 This specifies the ring number for the interface.  When using the redundant
 ring protocol, each interface should specify separate ring numbers to uniquely
 identify to the membership protocol which interface to use for which redundant
-ring.
+ring. The ringnumber must start at 0.
 
 .TP
 bindnetaddr
@@ -490,6 +488,31 @@ and
 
 The default is syslog and stderr.
 
+Please note, if you are using to_logfile and want to rotate the file, use logrotate(8)
+with the option 
+.B
+copytruncate.
+eg.
+.IP
+.RS
+.ne 18
+.nf
+.ta 4n 30n 33n
+/var/log/corosync.log {
+	missingok
+	compress
+	notifempty
+	daily
+	rotate 7
+	copytruncate
+}
+.ta
+.fi
+.RE
+.IP
+.PP
+
+
 .TP
 logfile
 If the
@@ -564,5 +587,6 @@ required.
 The corosync executive configuration file.
 
 .SH "SEE ALSO"
-.BR corosync_overview (8)
+.BR corosync_overview (8),
+.BR logrotate (8)
 .PP

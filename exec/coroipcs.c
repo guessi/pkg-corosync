@@ -98,6 +98,8 @@ static struct coroipcs_init_state_v2 *api = NULL;
 
 DECLARE_LIST_INIT (conn_info_list_head);
 
+DECLARE_LIST_INIT (conn_info_exit_list_head);
+
 struct outq_item {
 	void *msg;
 	size_t mlen;
@@ -464,6 +466,7 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 
 	list_del (&conn_info->list);
 	list_init (&conn_info->list);
+	list_add (&conn_info->list, &conn_info_exit_list_head);
 
 	if (conn_info->state == CONN_STATE_THREAD_REQUEST_EXIT) {
 		res = pthread_join (conn_info->thread, &retval);
@@ -982,6 +985,7 @@ static void _corosync_ipc_init(void)
 	int server_fd;
 	struct sockaddr_un un_addr;
 	int res;
+
 	/*
 	 * Create socket for IPC clients, name socket, listen for connections
 	 */
@@ -997,7 +1001,9 @@ static void _corosync_ipc_init(void)
 
 	res = fcntl (server_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_CRIT, "Could not set non-blocking operation on server socket: %s\n", strerror (errno));
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
+		log_printf (LOGSYS_LEVEL_CRIT, "Could not set non-blocking operation on server socket: %s\n", error_str);
 		api->fatal_error ("Could not set non-blocking operation on server socket");
 	}
 
@@ -1024,7 +1030,9 @@ static void _corosync_ipc_init(void)
 
 	res = bind (server_fd, (struct sockaddr *)&un_addr, COROSYNC_SUN_LEN(&un_addr));
 	if (res) {
-		log_printf (LOGSYS_LEVEL_CRIT, "Could not bind AF_UNIX (%s): %s.\n", un_addr.sun_path, strerror (errno));
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
+		log_printf (LOGSYS_LEVEL_CRIT, "Could not bind AF_UNIX (%s): %s.\n", un_addr.sun_path, error_str);
 		api->fatal_error ("Could not bind to AF_UNIX socket\n");
 	}
 
@@ -1054,6 +1062,11 @@ void coroipcs_ipc_exit (void)
 
 		conn_info = list_entry (list, struct conn_info, list);
 
+		if (conn_info->state != CONN_STATE_THREAD_ACTIVE)
+			continue;
+
+		ipc_disconnect (conn_info);
+
 #if _POSIX_THREAD_PROCESS_SHARED > 0
 		sem_destroy (&conn_info->control_buffer->sem0);
 		sem_destroy (&conn_info->control_buffer->sem1);
@@ -1073,9 +1086,51 @@ void coroipcs_ipc_exit (void)
 			conn_info->response_size);
 		res = circular_memory_unmap (conn_info->dispatch_buffer,
 			conn_info->dispatch_size);
-
-		sem_post_exit_thread (conn_info);
 	}
+}
+
+int coroipcs_ipc_service_exit (unsigned int service)
+{
+	struct list_head *list, *list_next;
+	struct conn_info *conn_info;
+
+	for (list = conn_info_list_head.next; list != &conn_info_list_head;
+		list = list_next) {
+
+		list_next = list->next;
+
+		conn_info = list_entry (list, struct conn_info, list);
+
+		if (conn_info->service != service ||
+		    (conn_info->state != CONN_STATE_THREAD_ACTIVE && conn_info->state != CONN_STATE_THREAD_REQUEST_EXIT)) {
+			continue;
+		}
+
+		ipc_disconnect (conn_info);
+		api->poll_dispatch_destroy (conn_info->fd, NULL);
+		while (conn_info_destroy (conn_info) != -1)
+			;
+
+		/*
+		 * We will return to prevent token loss. Schedwrk will call us again.
+		 */
+		return (-1);
+	}
+
+	/*
+	 * No conn info left in active list. We will traverse thru exit list. If there is any
+	 * conn_info->service == service, we will wait to proper end -> return -1
+	 */
+
+	for (list = conn_info_exit_list_head.next; list != &conn_info_exit_list_head; list = list->next) {
+		conn_info = list_entry (list, struct conn_info, list);
+
+		if (conn_info->service == service) {
+			return (-1);
+		}
+	}
+
+	return (0);
 }
 
 /*
@@ -1176,6 +1231,10 @@ static int shared_mem_dispatch_bytes_left (const struct conn_info *conn_info)
 	} else {
 		bytes_left = n_read - n_write;
 	}
+	if (bytes_left > 0) {
+		bytes_left--;
+	}
+
 	return (bytes_left);
 }
 
@@ -1203,10 +1262,10 @@ static int flow_control_event_send (struct conn_info *conn_info, char event)
 
 	if (conn_info->flow_control_state != new_fc) {
 		if (new_fc == 1) {
-			log_printf (LOGSYS_LEVEL_INFO, "Enabling flow control for %d, event %d\n",
+			log_printf (LOGSYS_LEVEL_DEBUG, "Enabling flow control for %d, event %d\n",
 				conn_info->client_pid, event);
 		} else {
-			log_printf (LOGSYS_LEVEL_INFO, "Disabling flow control for %d, event %d\n",
+			log_printf (LOGSYS_LEVEL_DEBUG, "Disabling flow control for %d, event %d\n",
 				conn_info->client_pid, event);
 		}
 		conn_info->flow_control_state = new_fc;
@@ -1467,16 +1526,20 @@ retry_accept:
 	}
 
 	if (new_fd == -1) {
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
 		log_printf (LOGSYS_LEVEL_ERROR,
-			"Could not accept Library connection: %s\n", strerror (errno));
+			"Could not accept Library connection: %s\n", error_str);
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
 	}
 
 	res = fcntl (new_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
 		log_printf (LOGSYS_LEVEL_ERROR,
 			"Could not set non-blocking operation on library connection: %s\n",
-			strerror (errno));
+			error_str);
 		close (new_fd);
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
 	}

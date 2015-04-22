@@ -66,6 +66,8 @@
 #include <corosync/list.h>
 #include <corosync/engine/logsys.h>
 
+#include "util.h"
+
 #define YIELD_AFTER_LOG_OPS 10
 
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -190,17 +192,9 @@ static sem_t logsys_thread_start;
 
 static sem_t logsys_print_finished;
 
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-static pthread_spinlock_t logsys_flt_spinlock;
-#else
 static pthread_mutex_t logsys_flt_mutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
 
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-static pthread_spinlock_t logsys_wthread_spinlock;
-#else
 static pthread_mutex_t logsys_wthread_mutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
 
 static int logsys_buffer_full = 0;
 
@@ -307,16 +301,6 @@ error_exit:
 	return (error_return);
 }
 
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-static void logsys_flt_lock (void)
-{
-	pthread_spin_lock (&logsys_flt_spinlock);
-}
-static void logsys_flt_unlock (void)
-{
-	pthread_spin_unlock (&logsys_flt_spinlock);
-}
-#else
 static void logsys_flt_lock (void)
 {
 	pthread_mutex_lock (&logsys_flt_mutex);
@@ -325,18 +309,7 @@ static void logsys_flt_unlock (void)
 {
 	pthread_mutex_unlock (&logsys_flt_mutex);
 }
-#endif
 
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-static void logsys_wthread_lock (void)
-{
-	pthread_spin_lock (&logsys_wthread_spinlock);
-}
-static void logsys_wthread_unlock (void)
-{
-	pthread_spin_unlock (&logsys_wthread_spinlock);
-}
-#else
 static void logsys_wthread_lock (void)
 {
 	pthread_mutex_lock (&logsys_wthread_mutex);
@@ -345,7 +318,6 @@ static void logsys_wthread_unlock (void)
 {
 	pthread_mutex_unlock (&logsys_wthread_mutex);
 }
-#endif
 
 /*
  * Before any write operation, a reclaim on the buffer area must be executed
@@ -508,7 +480,7 @@ static void log_printf_to_logs (
 					break;
 
 				case 'l':
-					sprintf (line_no, "%d", file_line);
+					snprintf (line_no, sizeof (line_no), "%d", file_line);
 					normal_p = line_no;
 					syslog_p = line_no;
 					break;
@@ -906,14 +878,28 @@ static int logsys_config_file_set_unlocked (
 
 	logsys_loggers[subsysid].logfile_fp = fopen (file, "a+");
 	if (logsys_loggers[subsysid].logfile_fp == NULL) {
-		char error_str[100];
-		strerror_r (errno, error_str, 100);
+		int err;
+		char error_str[LOGSYS_MAX_PERROR_MSG_LEN];
+		const char *error_ptr;
+
+		err = errno;
+#ifdef COROSYNC_LINUX
+		/* The GNU version of strerror_r returns a (char*) that *must* be used */
+		error_ptr = strerror_r(err, error_str, sizeof(error_str));
+#else
+		/* The XSI-compliant strerror_r() return 0 or -1 (in case the buffer is full) */
+		if ( strerror_r(err, error_str, sizeof(error_str)) < 0 )
+			error_ptr = "";
+		else
+			error_ptr = error_str;
+#endif
+
 		free(logsys_loggers[subsysid].logfile);
 		logsys_loggers[subsysid].logfile = NULL;
 		snprintf (error_string_response,
 			sizeof(error_string_response),
-			"Can't open logfile '%s' for reason (%s).\n",
-				 file, error_str);
+			"Can't open logfile '%s' for reason: %s (%d).\n",
+				 file, error_ptr, err);
 		*error_string = error_string_response;
 		return (-1);
 	}
@@ -936,7 +922,9 @@ static void logsys_subsys_init (
 			LOGSYS_LOGGER_INIT_DONE;
 	}
 	strncpy (logsys_loggers[subsysid].subsys, subsys,
-		LOGSYS_MAX_SUBSYS_NAMELEN);
+		sizeof (logsys_loggers[subsysid].subsys));
+	logsys_loggers[subsysid].subsys[
+		sizeof (logsys_loggers[subsysid].subsys) - 1] = '\0';
 }
 
 /*
@@ -992,7 +980,8 @@ int _logsys_system_setup(
 			(logsys_loggers[i].init_status ==
 			 LOGSYS_LOGGER_NEEDS_INIT)) {
 				strncpy (tempsubsys, logsys_loggers[i].subsys,
-					LOGSYS_MAX_SUBSYS_NAMELEN);
+					sizeof (tempsubsys));
+				tempsubsys[sizeof (tempsubsys) - 1] = '\0';
 				logsys_subsys_init(tempsubsys, i);
 		}
 	}
@@ -1052,11 +1041,6 @@ int _logsys_rec_init (unsigned int fltsize)
 
 	sem_init (&logsys_print_finished, 0, 0);
 
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-	pthread_spin_init (&logsys_flt_spinlock, 1);
-	pthread_spin_init (&logsys_wthread_spinlock, 1);
-#endif
-
 	/*
 	 * XXX: kill me for 1.1 because I am a dirty hack
 	 * temporary workaround that will be replaced by supporting
@@ -1074,11 +1058,6 @@ int _logsys_rec_init (unsigned int fltsize)
 	if (res == -1) {
 		sem_destroy (&logsys_thread_start);
 		sem_destroy (&logsys_print_finished);
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-		pthread_spin_destroy (&logsys_flt_spinlock);
-		pthread_spin_destroy (&logsys_wthread_spinlock);
-#endif
-		return (-1);
 	}
 
 	memset (flt_data, 0, flt_real_size * 2);
@@ -1241,7 +1220,7 @@ void _logsys_log_vprintf (
 	subsysid = LOGSYS_DECODE_SUBSYSID(rec_ident);
 	level = LOGSYS_DECODE_LEVEL(rec_ident);
 
-	len = vsprintf (logsys_print_buffer, format, ap);
+	len = vsnprintf (logsys_print_buffer, sizeof (logsys_print_buffer), format, ap);
 	if (logsys_print_buffer[len - 1] == '\n') {
 		logsys_print_buffer[len - 1] = '\0';
 		len -= 1;
@@ -1338,7 +1317,7 @@ int _logsys_config_subsys_get (const char *subsys)
 void logsys_fork_completed (void)
 {
 	logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].mode &= ~LOGSYS_MODE_FORK;
-	_logsys_wthread_create ();
+	(void)_logsys_wthread_create ();
 }
 
 int logsys_config_mode_set (const char *subsys, unsigned int mode)
@@ -1617,6 +1596,8 @@ int logsys_log_rec_store (const char *filename)
 		return (-1);
 	}
 
+	logsys_flt_lock();
+
 	this_write_size = write (fd, &flt_data_size, sizeof(uint32_t));
 	if (this_write_size != sizeof(unsigned int)) {
 		goto error_exit;
@@ -1642,10 +1623,13 @@ int logsys_log_rec_store (const char *filename)
 	if (written_size != ((flt_data_size + 3) * sizeof (uint32_t))) { 
 		goto error_exit;
 	}
-	
+
+	logsys_flt_unlock();
+	close (fd);
 	return (0);
 
 error_exit:
+	logsys_flt_unlock();
 	close (fd);
 	return (-1);
 }

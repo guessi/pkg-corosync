@@ -54,6 +54,8 @@
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
+#define LOGSYS_UTILS_ONLY 1
+#include <corosync/engine/logsys.h>
 
 #include "util.h"
 
@@ -254,7 +256,8 @@ static int read_uidgid_files_into_objdb(
 
 	entry = malloc(len);
 	if (entry == NULL) {
-		return 0;
+		res = 0;
+		goto error_exit;
 	}
 
 	for (return_code = readdir_r(dp, entry, &dirent);
@@ -310,7 +313,8 @@ static int read_service_files_into_objdb(
 
 	entry = malloc(len);
 	if (entry == NULL) {
-		return 0;
+		res = 0;
+		goto error_exit;
 	}
 
 	for (return_code = readdir_r(dp, entry, &dirent);
@@ -358,10 +362,11 @@ static int read_config_file_into_objdb(
 	fp = fopen (filename, "r");
 	if (fp == NULL) {
 		char error_str[100];
-		strerror_r (errno, error_str, 100);
+		const char *error_ptr;
+		LOGSYS_STRERROR_R (error_ptr, errno, error_str, sizeof(error_str));
 		snprintf (error_reason, sizeof(error_string_response),
 			"Can't read file %s reason = (%s)\n",
-			 filename, error_str);
+			 filename, error_ptr);
 		*error_string = error_reason;
 		return -1;
 	}

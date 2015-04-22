@@ -117,17 +117,6 @@ struct zcb_mapped {
 	size_t size;
 };
 
-#if _POSIX_THREAD_PROCESS_SHARED < 1
-#if defined(_SEM_SEMUN_UNDEFINED)
-union semun {
-	int val;
-	struct semid_ds *buf;
-	unsigned short int *array;
-	struct seminfo *__buf;
-};
-#endif
-#endif
-
 
 enum conn_state {
 	CONN_STATE_THREAD_INACTIVE = 0,
@@ -357,12 +346,12 @@ circular_memory_unmap (void *buf, size_t bytes)
 	return (res);
 }
 
-static void flow_control_state_set (
+static int32_t flow_control_state_set (
 	struct conn_info *conn_info,
 	int flow_control_state)
 {
 	if (conn_info->control_buffer->flow_control_enabled == flow_control_state) {
-		return;
+		return 0;
 	}
 	if (flow_control_state == 0) {
 		log_printf (LOGSYS_LEVEL_DEBUG,
@@ -375,14 +364,18 @@ static void flow_control_state_set (
 			conn_info->client_pid);
 	}
 
-
 	conn_info->control_buffer->flow_control_enabled = flow_control_state;
-	api->stats_update_value (conn_info->stats_handle,
-		"flow_control",
-		&flow_control_state,
-		sizeof(flow_control_state));
-	api->stats_increment_value (conn_info->stats_handle,
-		"flow_control_count");
+	return 1;
+}
+
+static void flow_control_stats_update (
+	hdb_handle_t stats_handle,
+	int flow_control_state)
+{
+	uint32_t fc_state = flow_control_state;
+	api->stats_update_value (stats_handle, "flow_control",
+				 &fc_state, sizeof(fc_state));
+	api->stats_increment_value (stats_handle, "flow_control_count");
 }
 
 static inline int zcb_free (struct zcb_mapped *zcb_mapped)
@@ -523,15 +516,15 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 		return (0);
 	}
 
-	api->serialize_lock ();
 	/*
 	 * Retry library exit function if busy
 	 */
 	if (conn_info->state == CONN_STATE_THREAD_DESTROYED) {
-		api->stats_destroy_connection (conn_info->stats_handle);
+		api->serialize_lock ();
 		res = api->exit_fn_get (conn_info->service) (conn_info);
+		api->serialize_unlock ();
+		api->stats_destroy_connection (conn_info->stats_handle);
 		if (res == -1) {
-			api->serialize_unlock ();
 			return (0);
 		} else {
 			conn_info->state = CONN_STATE_LIB_EXIT_CALLED;
@@ -541,7 +534,6 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	pthread_mutex_lock (&conn_info->mutex);
 	if (conn_info->refcount > 0) {
 		pthread_mutex_unlock (&conn_info->mutex);
-		api->serialize_unlock ();
 		return (0);
 	}
 	list_del (&conn_info->list);
@@ -579,7 +571,6 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	res = circular_memory_unmap (conn_info->dispatch_buffer, conn_info->dispatch_size);
 	zcb_all_free (conn_info);
 	api->free (conn_info);
-	api->serialize_unlock ();
 	return (-1);
 }
 
@@ -714,6 +705,7 @@ static void *pthread_ipc_consumer (void *conn)
 		 * parameter, such as an invalid size
 		 */
 		if (send_ok == -1) {
+			api->stats_increment_value (conn_info->stats_handle, "invalid_request");
 			coroipc_response_header.size = sizeof (coroipc_response_header_t);
 			coroipc_response_header.id = 0;
 			coroipc_response_header.error = CS_ERR_INVALID_PARAM;
@@ -722,14 +714,15 @@ static void *pthread_ipc_consumer (void *conn)
 				sizeof (coroipc_response_header_t));
 		} else 
 		if (send_ok) {
-			api->serialize_lock();
 			api->stats_increment_value (conn_info->stats_handle, "requests");
+			api->serialize_lock();
 			api->handler_fn_get (conn_info->service, header->id) (conn_info, header);
 			api->serialize_unlock();
 		} else {
 			/*
 			 * Overload, tell library to retry
 			 */
+			api->stats_increment_value (conn_info->stats_handle, "overload");
 			coroipc_response_header.size = sizeof (coroipc_response_header_t);
 			coroipc_response_header.id = 0;
 			coroipc_response_header.error = CS_ERR_TRY_AGAIN;
@@ -1039,9 +1032,8 @@ static void _corosync_ipc_init(void)
 
 	res = fcntl (server_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		char error_str[100];
-		strerror_r (errno, error_str, 100);
-		log_printf (LOGSYS_LEVEL_CRIT, "Could not set non-blocking operation on server socket: %s\n", error_str);
+		LOGSYS_PERROR (errno, LOGSYS_LEVEL_CRIT,
+			"Could not set non-blocking operation on server socket");
 		api->fatal_error ("Could not set non-blocking operation on server socket");
 	}
 
@@ -1068,9 +1060,8 @@ static void _corosync_ipc_init(void)
 
 	res = bind (server_fd, (struct sockaddr *)&un_addr, COROSYNC_SUN_LEN(&un_addr));
 	if (res) {
-		char error_str[100];
-		strerror_r (errno, error_str, 100);
-		log_printf (LOGSYS_LEVEL_CRIT, "Could not bind AF_UNIX (%s): %s.\n", un_addr.sun_path, error_str);
+		LOGSYS_PERROR (errno, LOGSYS_LEVEL_CRIT,
+				"Could not bind AF_UNIX (%s)", un_addr.sun_path);
 		api->fatal_error ("Could not bind to AF_UNIX socket\n");
 	}
 
@@ -1240,7 +1231,7 @@ static void memcpy_dwrap (struct conn_info *conn_info, void *msg, unsigned int l
 	write_idx = conn_info->control_buffer->write;
 
 	memcpy (&conn_info->dispatch_buffer[write_idx], msg, len);
-	conn_info->control_buffer->write = (write_idx + len) % conn_info->dispatch_size;
+	conn_info->control_buffer->write = ((write_idx + len + 7) & 0xFFFFFFF8) % conn_info->dispatch_size;
 }
 
 static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
@@ -1267,8 +1258,6 @@ static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
 	}
 
 	ipc_sem_post (conn_info->control_buffer, SEMAPHORE_DISPATCH);
-
-	api->stats_increment_value (conn_info->stats_handle, "dispatched");
 }
 
 static void outq_flush (struct conn_info *conn_info) {
@@ -1276,11 +1265,17 @@ static void outq_flush (struct conn_info *conn_info) {
 	struct outq_item *outq_item;
 	unsigned int bytes_left;
 	struct iovec iov;
+	int32_t q_size_dec = 0;
+	int32_t i;
+	int32_t fc_set;
 
 	pthread_mutex_lock (&conn_info->mutex);
 	if (list_empty (&conn_info->outq_head)) {
-		flow_control_state_set (conn_info, 0);
+		fc_set = flow_control_state_set (conn_info, 0);
 		pthread_mutex_unlock (&conn_info->mutex);
+		if (fc_set) {
+			flow_control_stats_update (conn_info->stats_handle, 0);
+		}
 		return;
 	}
 	for (list = conn_info->outq_head.next;
@@ -1296,12 +1291,20 @@ static void outq_flush (struct conn_info *conn_info) {
 			list_del (list);
 			api->free (iov.iov_base);
 			api->free (outq_item);
-			api->stats_decrement_value (conn_info->stats_handle, "queue_size");
+			q_size_dec++;
 		} else {
 			break;
 		}
 	}
 	pthread_mutex_unlock (&conn_info->mutex);
+
+	/*
+	 * these need to be sent out of the conn_info->mutex
+	 */
+	for (i = 0; i < q_size_dec; i++) {
+		api->stats_decrement_value (conn_info->stats_handle, "queue_size");
+		api->stats_increment_value (conn_info->stats_handle, "dispatched");
+	}
 }
 
 static int priv_change (struct conn_info *conn_info)
@@ -1375,7 +1378,9 @@ static void msg_send_or_queue (void *conn, const struct iovec *iov, unsigned int
 		bytes_msg += iov[i].iov_len;
 	}
 	if (bytes_left < bytes_msg || list_empty (&conn_info->outq_head) == 0) {
-		flow_control_state_set (conn_info, 1);
+		if (flow_control_state_set (conn_info, 1)) {
+			flow_control_stats_update(conn_info->stats_handle, 1);
+		}
 		outq_item = api->malloc (sizeof (struct outq_item));
 		if (outq_item == NULL) {
 			ipc_disconnect (conn);
@@ -1402,6 +1407,7 @@ static void msg_send_or_queue (void *conn, const struct iovec *iov, unsigned int
 		return;
 	}
 	msg_send (conn, iov, iov_len, MSG_SEND_LOCKED);
+	api->stats_increment_value (conn_info->stats_handle, "dispatched");
 }
 
 void coroipcs_refcount_inc (void *conn)
@@ -1461,20 +1467,15 @@ retry_accept:
 	}
 
 	if (new_fd == -1) {
-		char error_str[100];
-		strerror_r (errno, error_str, 100);
-		log_printf (LOGSYS_LEVEL_ERROR,
-			"Could not accept Library connection: %s\n", error_str);
+		LOGSYS_PERROR (errno, LOGSYS_LEVEL_ERROR,
+			"Could not accept Library connection");
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
 	}
 
 	res = fcntl (new_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		char error_str[100];
-		strerror_r (errno, error_str, 100);
-		log_printf (LOGSYS_LEVEL_ERROR,
-			"Could not set non-blocking operation on library connection: %s\n",
-			error_str);
+		LOGSYS_PERROR (errno, LOGSYS_LEVEL_ERROR,
+			"Could not set non-blocking operation on library connection");
 		close (new_fd);
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
 	}
@@ -1545,17 +1546,29 @@ static char * pid_to_name (pid_t pid, char *out_name, size_t name_len)
 static void coroipcs_init_conn_stats (
 	struct conn_info *conn)
 {
-	char conn_name[42];
-	char proc_name[32];
+	char conn_name[CS_MAX_NAME_LENGTH];
+	char proc_name[CS_MAX_NAME_LENGTH];
+	char int_str[4];
 
 	if (conn->client_pid > 0) {
-		if (pid_to_name (conn->client_pid, proc_name, sizeof(proc_name)))
-			snprintf (conn_name, sizeof(conn_name), "%s:%d:%d", proc_name, conn->client_pid, conn->fd);
-		else
-			snprintf (conn_name, sizeof(conn_name), "%d:%d", conn->client_pid, conn->fd);
-	} else
-		snprintf (conn_name, sizeof(conn_name), "%d", conn->fd);
-
+		if (pid_to_name (conn->client_pid, proc_name, sizeof(proc_name))) {
+			snprintf (conn_name, sizeof(conn_name),
+				"%s:%s:%d:%d", proc_name,
+				short_service_name_get(conn->service, int_str, 4),
+				conn->client_pid, conn->fd);
+		} else {
+			snprintf (conn_name, sizeof(conn_name),
+				"proc:%s:%d:%d",
+				short_service_name_get(conn->service, int_str, 4),
+				conn->client_pid,
+				conn->fd);
+		}
+	} else {
+		snprintf (conn_name, sizeof(conn_name),
+			"proc:%s:pid:%d",
+			short_service_name_get(conn->service, int_str, 4),
+			conn->fd);
+	}
 	conn->stats_handle = api->stats_create_connection (conn_name, conn->client_pid, conn->fd);
 	api->stats_update_value (conn->stats_handle, "service_id",
 		&conn->service, sizeof(conn->service));
@@ -1569,7 +1582,7 @@ int coroipcs_handler_dispatch (
 	mar_req_setup_t *req_setup;
 	struct conn_info *conn_info = (struct conn_info *)context;
 	int res;
-	char buf;
+	char buf = 0;
 
 
 	if (ipc_thread_exiting (conn_info)) {
@@ -1605,14 +1618,14 @@ int coroipcs_handler_dispatch (
 		req_setup = (mar_req_setup_t *)conn_info->setup_msg;
 		/*
 		 * Is the service registered ?
+		 * Has service init function ?
 		 */
-		if (api->service_available (req_setup->service) == 0) {
+		if (api->service_available (req_setup->service) == 0 ||
+		    api->init_fn_get (req_setup->service) == NULL) {
 			req_setup_send (conn_info, CS_ERR_NOT_EXIST);
 			ipc_disconnect (conn_info);
 			return (0);
 		}
-		req_setup_send (conn_info, CS_OK);
-
 #if _POSIX_THREAD_PROCESS_SHARED < 1
 		conn_info->semkey = req_setup->semkey;
 #endif
@@ -1620,25 +1633,46 @@ int coroipcs_handler_dispatch (
 			req_setup->control_file,
 			req_setup->control_size,
 			(void *)&conn_info->control_buffer);
+		if (res == -1) {
+			goto send_setup_response;
+		}
 		conn_info->control_size = req_setup->control_size;
 
 		res = memory_map (
 			req_setup->request_file,
 			req_setup->request_size,
 			(void *)&conn_info->request_buffer);
+		if (res == -1) {
+			goto send_setup_response;
+		}
 		conn_info->request_size = req_setup->request_size;
 
 		res = memory_map (
 			req_setup->response_file,
 			req_setup->response_size,
 			(void *)&conn_info->response_buffer);
+		if (res == -1) {
+			goto send_setup_response;
+		}
 		conn_info->response_size = req_setup->response_size;
 
 		res = circular_memory_map (
 			req_setup->dispatch_file,
 			req_setup->dispatch_size,
 			(void *)&conn_info->dispatch_buffer);
+		if (res == -1) {
+			goto send_setup_response;
+		}
 		conn_info->dispatch_size = req_setup->dispatch_size;
+
+ send_setup_response:
+		if (res == 0) {
+			req_setup_send (conn_info, CS_OK);
+		} else {
+			req_setup_send (conn_info, CS_ERR_LIBRARY);
+			ipc_disconnect (conn_info);
+			return (0);
+		}
 
 		conn_info->service = req_setup->service;
 		conn_info->refcount = 0;
@@ -1685,7 +1719,7 @@ int coroipcs_handler_dispatch (
 		 * the ipc connection
 		 */
 		if (conn_info->service == SOCKET_SERVICE_INIT) {
-			conn_info->service = -1;
+			conn_info->service = SOCKET_SERVICE_SECURITY_VIOLATION;
 		}
 	} else
 	if (revent & POLLIN) {

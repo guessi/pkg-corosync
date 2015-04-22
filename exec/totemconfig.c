@@ -73,15 +73,17 @@
 #define JOIN_TIMEOUT				50
 #define MERGE_TIMEOUT				200
 #define DOWNCHECK_TIMEOUT			1000
-#define FAIL_TO_RECV_CONST			50
+#define FAIL_TO_RECV_CONST			2500
 #define	SEQNO_UNCHANGED_CONST			30
 #define MINIMUM_TIMEOUT				(int)(1000/HZ)*3
 #define MAX_NETWORK_DELAY			50
 #define WINDOW_SIZE				50
 #define MAX_MESSAGES				17
+#define MISS_COUNT_CONST			5
 #define RRP_PROBLEM_COUNT_TIMEOUT		2000
 #define RRP_PROBLEM_COUNT_THRESHOLD_DEFAULT	10
 #define RRP_PROBLEM_COUNT_THRESHOLD_MIN		5
+#define RRP_AUTORECOVERY_CHECK_TIMEOUT		1000
 
 static char error_string_response[512];
 static struct objdb_iface_ver0 *global_objdb;
@@ -211,14 +213,18 @@ static void totem_volatile_config_read (
 
 	objdb_get_int (objdb,object_totem_handle, "rrp_problem_count_threshold", &totem_config->rrp_problem_count_threshold);
 
+	objdb_get_int (objdb,object_totem_handle, "rrp_autorecovery_check_timeout", &totem_config->rrp_autorecovery_check_timeout);
+
 	objdb_get_int (objdb,object_totem_handle, "heartbeat_failures_allowed", &totem_config->heartbeat_failures_allowed);
 
 	objdb_get_int (objdb,object_totem_handle, "max_network_delay", &totem_config->max_network_delay);
 
 	objdb_get_int (objdb,object_totem_handle, "window_size", &totem_config->window_size);
-	objdb_get_string (objdb, object_totem_handle, "vsftype", &totem_config->vsf_type);
+	(void)objdb_get_string (objdb, object_totem_handle, "vsftype", &totem_config->vsf_type);
 
 	objdb_get_int (objdb,object_totem_handle, "max_messages", &totem_config->max_messages);
+
+	objdb_get_int (objdb,object_totem_handle, "miss_count_const", &totem_config->miss_count_const);
 }
 
 
@@ -370,8 +376,6 @@ printf ("couldn't find totem handle\n");
 					&totem_config->interfaces[ringnumber].mcast_addr,
 					"255.255.255.255", 0);
 			}
-
-
 		}
 
 		/*
@@ -389,6 +393,15 @@ printf ("couldn't find totem handle\n");
 			res = totemip_parse (&totem_config->interfaces[ringnumber].bindnet, str,
 					     totem_config->interfaces[ringnumber].mcast_addr.family);
 		}
+
+		/*
+		 * Get the TTL
+		 */
+		totem_config->interfaces[ringnumber].ttl = 1;
+		if (!objdb_get_string (objdb, object_interface_handle, "ttl", &str)) {
+			totem_config->interfaces[ringnumber].ttl = atoi (str);
+		}
+
 		objdb->object_find_create (
 			object_interface_handle,
 			"member",
@@ -413,7 +426,8 @@ printf ("couldn't find totem handle\n");
 	add_totem_config_notification(objdb, totem_config, object_totem_handle);
 
 	totem_config->transport_number = TOTEM_TRANSPORT_UDP;
-	objdb_get_string (objdb, object_totem_handle, "transport", &transport_type);
+	(void)objdb_get_string (objdb, object_totem_handle, "transport", &transport_type);
+
 	if (transport_type) {
 		if (strcmp (transport_type, "udpu") == 0) {
 			totem_config->transport_number = TOTEM_TRANSPORT_UDPU;
@@ -460,6 +474,16 @@ int totem_config_validate (
 
 		if (totem_config->interfaces[i].ip_port == 0) {
 			error_reason = "No multicast port specified";
+			goto parse_error;
+		}
+
+		if (totem_config->interfaces[i].ttl > 255) {
+			error_reason = "Invalid TTL (should be 0..255)";
+			goto parse_error;
+		}
+		if (totem_config->transport_number != TOTEM_TRANSPORT_UDP &&
+		    totem_config->interfaces[i].ttl != 1) {
+			error_reason = "Can only set ttl on multicast transport types";
 			goto parse_error;
 		}
 
@@ -536,6 +560,10 @@ int totem_config_validate (
 
 	if (totem_config->max_messages == 0) {
 		totem_config->max_messages = MAX_MESSAGES;
+	}
+
+	if (totem_config->miss_count_const == 0) {
+		totem_config->miss_count_const = MISS_COUNT_CONST;
 	}
 
 	if (totem_config->token_timeout < MINIMUM_TIMEOUT) {
@@ -657,6 +685,10 @@ int totem_config_validate (
 		goto parse_error;
 	}
 
+	if (totem_config->rrp_autorecovery_check_timeout == 0) {
+		totem_config->rrp_autorecovery_check_timeout = RRP_AUTORECOVERY_CHECK_TIMEOUT;
+	}
+
 	if (strcmp (totem_config->rrp_mode, "none") == 0) {
 		interface_max = 1;
 	}
@@ -720,13 +752,14 @@ static int read_keyfile (
 	ssize_t expected_key_len = sizeof (totem_config->private_key);
 	int saved_errno;
 	char error_str[100];
+	const char *error_ptr;
 
 	fd = open (key_location, O_RDONLY);
 	if (fd == -1) {
-		strerror_r (errno, error_str, 100);
+		LOGSYS_STRERROR_R (error_ptr, errno, error_str, sizeof(error_str));
 		snprintf (error_string_response, sizeof(error_string_response),
 			"Could not open %s: %s\n",
-			 key_location, error_str);
+			 key_location, error_ptr);
 		goto parse_error;
 	}
 
@@ -735,10 +768,10 @@ static int read_keyfile (
 	close (fd);
 
 	if (res == -1) {
-		strerror_r (errno, error_str, 100);
+		LOGSYS_STRERROR_R (error_ptr, saved_errno, error_str, sizeof(error_str));
 		snprintf (error_string_response, sizeof(error_string_response),
 			"Could not read %s: %s\n",
-			 key_location, error_str);
+			 key_location, error_ptr);
 		goto parse_error;
 	}
 

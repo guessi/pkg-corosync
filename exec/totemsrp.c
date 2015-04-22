@@ -90,6 +90,7 @@
 
 #include "crypto.h"
 #include "tlist.h"
+#include "util.h"
 
 #define LOCALHOST_IP				inet_addr("127.0.0.1")
 #define QUEUE_RTR_ITEMS_SIZE_MAX		16384 /* allow 16384 retransmit items */
@@ -502,9 +503,12 @@ struct totemsrp_instance {
 	struct memb_commit_token *commit_token;
 
 	totemsrp_stats_t stats;
+
+	uint32_t orf_token_discard;
+	
 	void * token_recv_event_handle;
 	void * token_sent_event_handle;
-	char commit_token_storage[9000];
+	char commit_token_storage[40000];
 };
 
 struct message_handlers {
@@ -663,6 +667,8 @@ static void totemsrp_instance_initialize (struct totemsrp_instance *instance)
 	instance->my_high_seq_received = SEQNO_START_MSG;
 
 	instance->my_high_delivered = SEQNO_START_MSG;
+
+	instance->orf_token_discard = 0;
 
 	instance->commit_token = (struct memb_commit_token *)instance->commit_token_storage;
 }
@@ -841,6 +847,10 @@ int totemsrp_initialize (
 		totem_config->window_size, totem_config->max_messages);
 
 	log_printf (instance->totemsrp_log_level_debug,
+		"missed count const (%d messages)\n",
+		totem_config->miss_count_const);
+
+	log_printf (instance->totemsrp_log_level_debug,
 		"send threads (%d threads)\n", totem_config->threads);
 	log_printf (instance->totemsrp_log_level_debug,
 		"RRP token expired timeout (%d ms)\n",
@@ -851,6 +861,9 @@ int totemsrp_initialize (
 	log_printf (instance->totemsrp_log_level_debug,
 		"RRP threshold (%d problem count)\n",
 		totem_config->rrp_problem_count_threshold);
+	log_printf (instance->totemsrp_log_level_debug,
+		"RRP automatic recovery check timeout (%d ms)\n",
+		totem_config->rrp_autorecovery_check_timeout);
 	log_printf (instance->totemsrp_log_level_debug,
 		"RRP mode set to %s.\n", instance->totem_config->rrp_mode);
 
@@ -1042,7 +1055,8 @@ int totemsrp_ring_reenable (
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)srp_context;
 
-	totemrrp_ring_reenable (instance->totemrrp_context);
+	totemrrp_ring_reenable (instance->totemrrp_context,
+		instance->totem_config->interface_count);
 
 	return (0);
 }
@@ -1402,18 +1416,13 @@ static void old_ring_state_save (struct totemsrp_instance *instance)
 	}
 }
 
-static void ring_state_restore (struct totemsrp_instance *instance)
+static void old_ring_state_restore (struct totemsrp_instance *instance)
 {
-	if (instance->old_ring_state_saved) {
-		memcpy (&instance->my_ring_id, &instance->my_old_ring_id,
-			sizeof (struct memb_ring_id));
-
-		instance->my_aru = instance->old_ring_state_aru;
-		instance->my_high_seq_received = instance->old_ring_state_high_seq_received;
-		log_printf (instance->totemsrp_log_level_debug,
-			"Restoring instance->my_aru %x my high seq received %x\n",
-			instance->my_aru, instance->my_high_seq_received);
-	}
+	instance->my_aru = instance->old_ring_state_aru;
+	instance->my_high_seq_received = instance->old_ring_state_high_seq_received;
+	log_printf (instance->totemsrp_log_level_debug,
+		"Restoring instance->my_aru %x my high seq received %x\n",
+		instance->my_aru, instance->my_high_seq_received);
 }
 
 static void old_ring_state_reset (struct totemsrp_instance *instance)
@@ -1522,6 +1531,13 @@ static void timer_function_pause_timeout (void *data)
 	reset_pause_timeout (instance);
 }
 
+static void memb_recovery_state_token_loss (struct totemsrp_instance *instance)
+{
+	old_ring_state_restore (instance);
+	memb_state_gather_enter (instance, 5);
+	instance->stats.recovery_token_lost++;
+}
+
 static void timer_function_orf_token_timeout (void *data)
 {
 	struct totemsrp_instance *instance = data;
@@ -1555,9 +1571,8 @@ static void timer_function_orf_token_timeout (void *data)
 		case MEMB_STATE_RECOVERY:
 			log_printf (instance->totemsrp_log_level_debug,
 				"The token was lost in the RECOVERY state.\n");
-			ring_state_restore (instance);
-			memb_state_gather_enter (instance, 5);
-			instance->stats.recovery_token_lost++;
+			memb_recovery_state_token_loss (instance);
+			instance->orf_token_discard = 1;
 			break;
 	}
 }
@@ -1689,6 +1704,8 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	unsigned int trans_memb_list_totemip[PROCESSOR_COUNT_MAX];
 	unsigned int new_memb_list_totemip[PROCESSOR_COUNT_MAX];
 	unsigned int left_list[PROCESSOR_COUNT_MAX];
+	unsigned int i;
+	unsigned int res;
 
 	memb_consensus_reset (instance);
 
@@ -1763,7 +1780,6 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	 */
 	sq_copy (&instance->regular_sort_queue, &instance->recovery_sort_queue);
 	instance->my_last_aru = SEQNO_START_MSG;
-	sq_items_release (&instance->regular_sort_queue, SEQNO_START_MSG - 1);
 
 	/* When making my_proc_list smaller, ensure that the
 	 * now non-used entries are zero-ed out. There are some suspect
@@ -1779,8 +1795,21 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		sizeof (struct srp_addr) * instance->my_memb_entries);
 
 	instance->my_failed_list_entries = 0;
-	instance->my_high_delivered = instance->my_aru;
-// TODO the recovery messages are leaked
+	instance->my_high_delivered = instance->my_high_seq_received;
+
+	for (i = 0; i <= instance->my_high_delivered; i++) {
+		void *ptr;
+
+		res = sq_item_get (&instance->regular_sort_queue, i, &ptr);
+		if (res == 0) {
+			struct sort_queue_item *regular_message;
+
+			regular_message = ptr;
+			free (regular_message->mcast);
+		}
+	}
+	sq_items_release (&instance->regular_sort_queue, instance->my_high_delivered);
+	instance->last_released = instance->my_high_delivered;
 
 	log_printf (instance->totemsrp_log_level_debug,
 		"entering OPERATIONAL state.\n");
@@ -1789,6 +1818,8 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	instance->memb_state = MEMB_STATE_OPERATIONAL;
 
 	instance->stats.operational_entered++;
+	instance->stats.continuous_gather = 0;
+
 	instance->my_received_flg = 1;
 
 	reset_pause_timeout (instance);
@@ -1808,6 +1839,8 @@ static void memb_state_gather_enter (
 	struct totemsrp_instance *instance,
 	int gather_from)
 {
+	instance->orf_token_discard = 1;
+
 	memb_set_merge (
 		&instance->my_id, 1,
 		instance->my_proc_list, &instance->my_proc_list_entries);
@@ -1854,6 +1887,21 @@ static void memb_state_gather_enter (
 	instance->memb_state = MEMB_STATE_GATHER;
 	instance->stats.gather_entered++;
 
+	if (gather_from == 3) {
+		/*
+		 * State 3 means gather, so we are continuously gathering.
+		 */
+		instance->stats.continuous_gather++;
+	}
+
+	if (instance->stats.continuous_gather > MAX_NO_CONT_GATHER) {
+		log_printf (instance->totemsrp_log_level_warning,
+			"Totem is unable to form a cluster because of an "
+			"operating system or network fault. The most common "
+			"cause of this message is that the local firewall is "
+			"configured improperly.\n");
+	}
+
 	return;
 }
 
@@ -1897,6 +1945,7 @@ static void memb_state_commit_enter (
 	reset_token_timeout (instance); // REVIEWED
 
 	instance->stats.commit_entered++;
+	instance->stats.continuous_gather = 0;
 
 	/*
 	 * reset all flow control variables since we are starting a new ring
@@ -1927,6 +1976,8 @@ static void memb_state_recovery_enter (
 
 	log_printf (instance->totemsrp_log_level_debug,
 		"entering RECOVERY state.\n");
+
+	instance->orf_token_discard = 0;
 
 	instance->my_high_ring_delivered = 0;
 
@@ -2093,6 +2144,8 @@ originated:
 
 	instance->memb_state = MEMB_STATE_RECOVERY;
 	instance->stats.recovery_entered++;
+	instance->stats.continuous_gather = 0;
+
 	return;
 }
 
@@ -2345,16 +2398,6 @@ static int orf_token_mcast (
 			break;
 		}
 		message_item = (struct message_item *)cs_queue_item_get (mcast_queue);
-		/* preincrement required by algo */
-		if (instance->old_ring_state_saved &&
-			(instance->memb_state == MEMB_STATE_GATHER ||
-			instance->memb_state == MEMB_STATE_COMMIT)) {
-
-			log_printf (instance->totemsrp_log_level_debug,
-				"not multicasting at seqno is %d\n",
-			token->seq);
-			return (0);
-		}
 
 		message_item->mcast->seq = ++token->seq;
 		message_item->mcast->this_seqno = instance->global_seqno++;
@@ -2435,7 +2478,7 @@ static int orf_token_rtr (
 			strcat (retransmit_msg, value);
 		}
 		strcat (retransmit_msg, "\n");
-		log_printf (instance->totemsrp_log_level_debug,
+		log_printf (instance->totemsrp_log_level_notice,
 			"%s", retransmit_msg);
 	}
 
@@ -2500,6 +2543,20 @@ static int orf_token_rtr (
 		 */
 		res = sq_item_inuse (sort_queue, instance->my_aru + i);
 		if (res == 0) {
+			/*
+			 * Determine how many times we have missed receiving
+			 * this sequence number.  sq_item_miss_count increments
+			 * a counter for the sequence number.  The miss count
+			 * will be returned and compared.  This allows time for
+			 * delayed multicast messages to be received before
+			 * declaring the message is missing and requesting a
+			 * retransmit.
+			 */
+			res = sq_item_miss_count (sort_queue, instance->my_aru + i);
+			if (res < instance->totem_config->miss_count_const) {
+				continue;
+			}
+
 			/*
 			 * Determine if missing message is already in retransmit list
 			 */
@@ -2917,7 +2974,7 @@ static void memb_state_commit_token_create (
 
 static void memb_join_message_send (struct totemsrp_instance *instance)
 {
-	char memb_join_data[10000];
+	char memb_join_data[40000];
 	struct memb_join *memb_join = (struct memb_join *)memb_join_data;
 	char *addr;
 	unsigned int addr_idx;
@@ -2969,7 +3026,7 @@ static void memb_join_message_send (struct totemsrp_instance *instance)
 
 static void memb_leave_message_send (struct totemsrp_instance *instance)
 {
-	char memb_join_data[10000];
+	char memb_join_data[40000];
 	struct memb_join *memb_join = (struct memb_join *)memb_join_data;
 	char *addr;
 	unsigned int addr_idx;
@@ -3061,35 +3118,37 @@ static void memb_ring_id_create_or_load (
 	struct memb_ring_id *memb_ring_id)
 {
 	int fd;
-	int res;
-	char filename[256];
-	char error_str[100];
+	int res = 0;
+	char filename[PATH_MAX];
 
 	snprintf (filename, sizeof(filename), "%s/ringid_%s",
 		rundir, totemip_print (&instance->my_id.addr[0]));
 	fd = open (filename, O_RDONLY, 0700);
-	if (fd > 0) {
-		res = read (fd, &memb_ring_id->seq, sizeof (unsigned long long));
-		assert (res == sizeof (unsigned long long));
+	/*
+	 * If file can be opened and read, read the ring id
+	 */
+	if (fd != -1) {
+		res = read (fd, &memb_ring_id->seq, sizeof (uint64_t));
 		close (fd);
-	} else
-	if (fd == -1 && errno == ENOENT) {
+	}
+	/*
+ 	 * If file could not be opened or read, create a new ring id
+ 	 */
+	if ((fd == -1) || (res != sizeof (uint64_t))) {
 		memb_ring_id->seq = 0;
 		umask(0);
 		fd = open (filename, O_CREAT|O_RDWR, 0700);
-		if (fd >= 0) {
-			res = write (fd, &memb_ring_id->seq, sizeof (unsigned long long));
-			assert (res == sizeof (unsigned long long));
+		if (fd != -1) {
+			res = write (fd, &memb_ring_id->seq, sizeof (uint64_t));
 			close (fd);
+			if (res == -1) {
+				LOGSYS_PERROR (errno, instance->totemsrp_log_level_warning,
+					"Couldn't write ringid file '%s'", filename);
+			}
 		} else {
-			strerror_r (errno, error_str, 100);
-			log_printf (instance->totemsrp_log_level_warning,
-				"Couldn't create %s %s\n", filename, error_str);
+			LOGSYS_PERROR (errno, instance->totemsrp_log_level_warning,
+				"Couldn't create ringid file '%s'", filename);
 		}
-	} else {
-		strerror_r (errno, error_str, 100);
-		log_printf (instance->totemsrp_log_level_warning,
-			"Couldn't open %s %s\n", filename, error_str);
 	}
 
 	totemip_copy(&memb_ring_id->rep, &instance->my_id.addr[0]);
@@ -3115,11 +3174,9 @@ static void memb_ring_id_set_and_store (
 		fd = open (filename, O_CREAT|O_RDWR, 0777);
 	}
 	if (fd == -1) {
-		char error_str[100];
-		strerror_r(errno, error_str, 100);
-		log_printf (instance->totemsrp_log_level_warning,
-			"Couldn't store new ring id %llx to stable storage (%s)\n",
-				instance->my_ring_id.seq, error_str);
+		LOGSYS_PERROR(errno, instance->totemsrp_log_level_warning,
+			"Couldn't store new ring id %llx to stable storage",
+			instance->my_ring_id.seq);
 		assert (0);
 		return;
 	}
@@ -3340,6 +3397,9 @@ static int message_handler_orf_token (
 	"Time since last token %0.4f ms\n", ((float)tv_diff) / 1000000.0);
 #endif
 
+	if (instance->orf_token_discard) {
+		return (0);
+	}
 #ifdef TEST_DROP_ORF_TOKEN_PERCENTAGE
 	if (random()%100 < TEST_DROP_ORF_TOKEN_PERCENTAGE) {
 		return (0);
@@ -4182,9 +4242,8 @@ static int message_handler_memb_join (
 
 				memb_join->ring_seq >= instance->my_ring_id.seq) {
 
-				ring_state_restore (instance);
-
 				memb_join_process (instance, memb_join);
+				memb_recovery_state_token_loss (instance);
 				memb_state_gather_enter (instance, 14);
 			}
 			break;
@@ -4307,13 +4366,6 @@ void main_deliver_fn (
 		return;
 	}
 
-	if ((int)message_header->type >= totemsrp_message_handlers.count) {
-		log_printf (instance->totemsrp_log_level_security, "Type of received message is wrong...  ignoring %d.\n", (int)message_header->type);
-printf ("wrong message type\n");
-		instance->stats.rx_msg_dropped++;
-		return;
-	}
-
 	switch (message_header->type) {
 	case MESSAGE_TYPE_ORF_TOKEN:
 		instance->stats.orf_token_rx++;
@@ -4334,7 +4386,10 @@ printf ("wrong message type\n");
 		instance->stats.token_hold_cancel_rx++;
 		break;
 	default:
-		break;
+		log_printf (instance->totemsrp_log_level_security, "Type of received message is wrong...  ignoring %d.\n", (int)message_header->type);
+printf ("wrong message type\n");
+		instance->stats.rx_msg_dropped++;
+		return;
 	}
 	/*
 	 * Handle incoming message
@@ -4366,17 +4421,19 @@ void main_iface_change_fn (
 			"Created or loaded sequence id %lld.%s for this ring.\n",
 			instance->my_ring_id.seq,
 			totemip_print (&instance->my_ring_id.rep));
-		for (i = 0; i < instance->totem_config->interfaces[iface_no].member_count; i++) {
-			totemsrp_member_add (instance,
-				&instance->totem_config->interfaces[iface_no].member_list[i],
-				iface_no);
 
-		}
 		if (instance->totemsrp_service_ready_fn) {
 			instance->totemsrp_service_ready_fn ();
 		}
 
 	}
+
+	for (i = 0; i < instance->totem_config->interfaces[iface_no].member_count; i++) {
+		totemsrp_member_add (instance,
+			&instance->totem_config->interfaces[iface_no].member_list[i],
+			iface_no);
+	}
+
 	if (instance->iface_changes >= instance->totem_config->interface_count) {
 		memb_state_gather_enter (instance, 15);
 	}

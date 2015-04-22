@@ -49,6 +49,7 @@
 #include <corosync/totem/coropoll.h>
 #include <corosync/list.h>
 #include "tlist.h"
+#include "util.h"
 
 typedef int (*dispatch_fn_t) (hdb_handle_t hdb_handle, int fd, int revents, void *data);
 
@@ -258,7 +259,9 @@ int poll_dispatch_modify (
 			poll_instance->poll_entries[i].dispatch_fn = dispatch_fn;
 			if (change_notify) {
 				char buf = 1;
-				write (poll_instance->pipefds[1], &buf, 1);
+retry_write:
+				if (write (poll_instance->pipefds[1], &buf, 1) < 0 && errno == EINTR )
+					goto retry_write;
 			}
 
 			goto error_put;
@@ -416,9 +419,7 @@ static void poll_fds_usage_check(struct poll_instance *poll_instance)
 
 	if (socks_limit == 0) {
 		if (getrlimit(RLIMIT_NOFILE, &lim) == -1) {
-			char error_str[100];
-			strerror_r(errno, error_str, 100);
-			printf("getrlimit: %s\n", error_str);
+			perror("getrlimit() failed");
 			return;
 		}
 		socks_limit = lim.rlim_cur;
@@ -499,7 +500,9 @@ retry_poll:
 
 		if (poll_instance->ufds[0].revents) {
 			char buf;
-			read (poll_instance->ufds[0].fd, &buf, 1);
+retry_read:
+			if (read (poll_instance->ufds[0].fd, &buf, 1) < 0 && errno == EINTR)
+				goto retry_read;
 			goto rebuild_poll;
 		}
 		poll_entry_count = poll_instance->poll_entry_count;

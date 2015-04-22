@@ -63,6 +63,7 @@ enum e_ais_done {
 	AIS_DONE_DIR_NOT_PRESENT = 16,
 	AIS_DONE_AQUIRE_LOCK = 17,
 	AIS_DONE_ALREADY_RUNNING = 18,
+	AIS_DONE_STD_TO_NULL_REDIR = 19,
 };
 
 static inline cs_error_t hdb_error_to_cs (int res)		\
@@ -97,4 +98,10 @@ void _corosync_out_of_memory_error (void) __attribute__((noreturn));
 extern char *getcs_name_t (cs_name_t *name);
 extern void setcs_name_t (cs_name_t *name, char *str);
 extern int cs_name_tisEqual (cs_name_t *str1, char *str2);
+/**
+ * Get the short name of a service from the service_id.
+ */
+const char * short_service_name_get(uint32_t service_id,
+				    char *buf, size_t buf_size);
+
 #endif /* UTIL_H_DEFINED */

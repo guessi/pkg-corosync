@@ -212,12 +212,12 @@ typedef void (*object_key_change_notify_fn_t)(
 typedef void (*object_create_notify_fn_t) (
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
-	const uint8_t *name_pt, size_t name_len,
+	const void *name_pt, size_t name_len,
 	void *priv_data_pt);
 
 typedef void (*object_destroy_notify_fn_t) (
 	hdb_handle_t parent_object_handle,
-	const uint8_t *name_pt, size_t name_len,
+	const void *name_pt, size_t name_len,
 	void *priv_data_pt);
 
 typedef void (*object_notify_callback_fn_t)(
@@ -608,7 +608,6 @@ struct corosync_api_v1 {
 	 */
 	hdb_handle_t (*poll_handle_get) (void);
 
-
 	int (*object_key_create_typed) (
 		hdb_handle_t object_handle,
 		const char *key_name,
@@ -636,6 +635,22 @@ struct corosync_api_v1 {
 		hdb_handle_t *handle,
 		int (schedwrk_fn) (const void *),
 		const void *context);
+
+	int (*poll_dispatch_add) (hdb_handle_t handle,
+		int fd,
+		int events,
+		void *data,
+
+		int (*dispatch_fn) (hdb_handle_t handle,
+			int fd,
+			int revents,
+			void *data));
+
+
+	int (*poll_dispatch_delete) (
+		hdb_handle_t handle,
+		int fd);
+
 };
 
 #define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )

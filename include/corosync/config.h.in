@@ -186,6 +186,9 @@
 /* Define to 1 if you have the `netsnmp_transport_open_client' function. */
 #undef HAVE_NETSNMP_TRANSPORT_OPEN_CLIENT
 
+/* Define to 1 if you have the <net/if_var.h> header file. */
+#undef HAVE_NET_IF_VAR_H
+
 /* Define to 1 if you have the <net-snmp/net-snmp-config.h> header file. */
 #undef HAVE_NET_SNMP_NET_SNMP_CONFIG_H
 

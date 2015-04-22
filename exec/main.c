@@ -395,6 +395,7 @@ static void member_object_joined (unsigned int nodeid)
 			"joined", strlen("joined"),
 			OBJDB_VALUETYPE_STRING);
 	}
+	objdb->object_find_destroy (object_find_handle);
 }
 
 static void member_object_left (unsigned int nodeid)
@@ -418,6 +419,7 @@ static void member_object_left (unsigned int nodeid)
 			"status", strlen("status"),
 			"left", strlen("left"));
 	}
+	objdb->object_find_destroy (object_find_handle);
 }
 
 static void confchg_fn (
@@ -816,6 +818,8 @@ static void corosync_totem_stats_init (void)
 			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
 
 	}
+	objdb->object_find_destroy (object_find_handle);
+
 	/* start stats timer */
 	api->timer_add_duration (1500 * MILLI_2_NANO_SECONDS, NULL,
 		corosync_totem_stats_updater,
@@ -1336,6 +1340,7 @@ static void corosync_fplay_control_init (void)
 			&object_runtime_handle) != 0) {
 		return;
 	}
+	objdb->object_find_destroy (object_find_handle);
 
 	objdb->object_create (object_runtime_handle,
 		&object_blackbox_handle,
@@ -1368,6 +1373,7 @@ static void corosync_stats_init (void)
 			&object_runtime_handle) != 0) {
 		return;
 	}
+	objdb->object_find_destroy (object_find_handle);
 
 	/* Connection objects */
 	objdb->object_create (object_runtime_handle,
@@ -1724,14 +1730,6 @@ int main (int argc, char **argv, char **envp)
 	totem_config.totem_logging_configuration.log_level_notice = LOGSYS_LEVEL_NOTICE;
 	totem_config.totem_logging_configuration.log_level_debug = LOGSYS_LEVEL_DEBUG;
 	totem_config.totem_logging_configuration.log_printf = _logsys_log_printf;
-
-	res = corosync_main_config_compatibility_read (objdb,
-		&minimum_sync_mode,
-		&error_string);
-	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
-	}
 
 	res = corosync_main_config_compatibility_read (objdb,
 		&minimum_sync_mode,

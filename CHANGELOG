@@ -1,4 +1,797 @@
 ------------------------------------------------------------------------
+r2508 | sdake | 2009-09-25 02:22:25 -0700 (Fri, 25 Sep 2009) | 6 lines
+
+Merge trunk revision 2507:
+r2507 | fabbione | 2009-09-25 01:55:43 -0700 (Fri, 25 Sep 2009) | 2 lines
+
+Update spec file to enable IBA support and sync with 1.1.0 release
+
+
+------------------------------------------------------------------------
+r2506 | sdake | 2009-09-25 01:32:46 -0700 (Fri, 25 Sep 2009) | 2 lines
+
+Fix merge collision which caused make distcheck to fail.
+
+------------------------------------------------------------------------
+r2505 | sdake | 2009-09-25 00:01:37 -0700 (Fri, 25 Sep 2009) | 6 lines
+
+Merge trunk revision 2504:
+r2504 | sdake | 2009-09-25 00:00:32 -0700 (Fri, 25 Sep 2009) | 2 lines
+
+Change version to 1.1.0 in trunk.
+
+
+------------------------------------------------------------------------
+r2503 | sdake | 2009-09-24 23:56:18 -0700 (Thu, 24 Sep 2009) | 6 lines
+
+Merge trunk revision 2481:
+r2481 | sdake | 2009-09-24 23:23:04 -0700 (Thu, 24 Sep 2009) | 2 lines
+
+Totem IBA implementation.
+
+
+------------------------------------------------------------------------
+r2502 | sdake | 2009-09-24 23:55:02 -0700 (Thu, 24 Sep 2009) | 6 lines
+
+Merge trunk revision 2480:
+r2480 | sdake | 2009-09-24 23:06:31 -0700 (Thu, 24 Sep 2009) | 2 lines
+
+make main_service_ready function static.
+
+
+------------------------------------------------------------------------
+r2501 | sdake | 2009-09-24 23:54:29 -0700 (Thu, 24 Sep 2009) | 6 lines
+
+Merge trunk revision 2479:
+r2479 | sdake | 2009-09-24 23:03:50 -0700 (Thu, 24 Sep 2009) | 2 lines
+
+Remove unused variable in stress_cpgfdget.c.
+
+
+------------------------------------------------------------------------
+r2500 | sdake | 2009-09-24 23:53:53 -0700 (Thu, 24 Sep 2009) | 5 lines
+
+Merge trunk revision 2478:
+r2478 | sdake | 2009-09-24 23:01:35 -0700 (Thu, 24 Sep 2009) | 2 lines
+
+Remove pointless warning.
+
+------------------------------------------------------------------------
+r2499 | sdake | 2009-09-24 23:53:11 -0700 (Thu, 24 Sep 2009) | 6 lines
+
+Merge trunk revision 2477:
+r2477 | asalkeld | 2009-09-24 19:27:50 -0700 (Thu, 24 Sep 2009) | 3 lines
+
+turn off _POSIX_THREAD_PROCESS_SHARED for uclibc
+
+
+------------------------------------------------------------------------
+r2498 | sdake | 2009-09-24 23:51:33 -0700 (Thu, 24 Sep 2009) | 6 lines
+
+Merge trunk revision 2411:
+r2411 | asalkeld | 2009-09-09 18:51:32 -0700 (Wed, 09 Sep 2009) | 2 lines
+
+log the built-in features at startup
+
+
+------------------------------------------------------------------------
+r2497 | sdake | 2009-09-24 23:50:17 -0700 (Thu, 24 Sep 2009) | 19 lines
+
+Merge trunk revision 2410:
+r2410 | asalkeld | 2009-09-09 11:58:38 -0700 (Wed, 09 Sep 2009) | 17 lines
+
+add small-memory-footprint option to configure
+
+This adds the following option to configure:
+--enable-small-memory-footprint
+
+When enabled the following defines are set
+to reduce the overall memory footprint.
+
+MESSAGE_SIZE_MAX=1024*64
+MESSAGE_QUEUE_MAX=512
+PROCESSOR_COUNT_MAX=16
+IPC_REQUEST_SIZE=1024*64
+IPC_RESPONSE_SIZE=1024*64
+IPC_DISPATCH_SIZE=1024*64
+
+
+------------------------------------------------------------------------
+r2496 | sdake | 2009-09-24 23:43:22 -0700 (Thu, 24 Sep 2009) | 6 lines
+
+Merge trunk revision 2407:
+r2407 | chrissie | 2009-09-08 01:19:11 -0700 (Tue, 08 Sep 2009) | 2 lines
+
+Really add corosync-quorumtool
+
+
+------------------------------------------------------------------------
+r2495 | sdake | 2009-09-24 23:41:57 -0700 (Thu, 24 Sep 2009) | 6 lines
+
+Merge trunk revision 2406:
+r2406 | chrissie | 2009-09-08 01:14:58 -0700 (Tue, 08 Sep 2009) | 2 lines
+
+Add corosync-quorumtool
+
+
+------------------------------------------------------------------------
+r2494 | sdake | 2009-09-24 23:37:33 -0700 (Thu, 24 Sep 2009) | 6 lines
+
+Merge trunk revision 2401:
+r2401 | honzaf | 2009-08-31 08:58:12 -0700 (Mon, 31 Aug 2009) | 2 lines
+
+Real add of corosync-cpgtool
+
+
+------------------------------------------------------------------------
+r2493 | sdake | 2009-09-24 23:36:53 -0700 (Thu, 24 Sep 2009) | 6 lines
+
+Merge trunk revision 2400:
+r2400 | honzaf | 2009-08-31 02:57:20 -0700 (Mon, 31 Aug 2009) | 2 lines
+
+Initial version of corosync-cpgtool
+
+
+------------------------------------------------------------------------
+r2492 | sdake | 2009-09-24 23:36:15 -0700 (Thu, 24 Sep 2009) | 8 lines
+
+Merge trunk revision 2399:
+Implementation of cpg_iteration functions
+
+This functions allows iterate available cpg groups
+and their members. API is modelled like ckpt iteration
+functions.
+
+
+------------------------------------------------------------------------
+r2491 | sdake | 2009-09-24 23:34:43 -0700 (Thu, 24 Sep 2009) | 6 lines
+
+Merge trunk revision 2389:
+r2389 | sdake | 2009-08-17 11:22:51 -0700 (Mon, 17 Aug 2009) | 2 lines
+
+Add test program that finds limits of cpg message size.
+
+
+------------------------------------------------------------------------
+r2490 | sdake | 2009-09-24 23:33:45 -0700 (Thu, 24 Sep 2009) | 9 lines
+
+Merge trunk revision 2372:
+r2372 | sdake | 2009-07-26 19:00:05 -0700 (Sun, 26 Jul 2009) | 6 lines
+
+Add notification when totem has completed initialization.
+
+This triggers the initialization of the service engines which may need totem
+for initialization.
+
+
+------------------------------------------------------------------------
+r2489 | sdake | 2009-09-24 23:32:48 -0700 (Thu, 24 Sep 2009) | 7 lines
+
+Merge trunk revision 2371:
+r2371 | sdake | 2009-07-26 17:29:32 -0700 (Sun, 26 Jul 2009) | 3 lines
+
+Add a target token set completed callback in totemrrp and below layers.
+Handle management of callback in totemsrp.
+
+
+------------------------------------------------------------------------
+r2488 | sdake | 2009-09-24 23:31:13 -0700 (Thu, 24 Sep 2009) | 7 lines
+
+Merge trunk revision 2369:
+r2369 | sdake | 2009-07-22 15:10:35 -0700 (Wed, 22 Jul 2009) | 3 lines
+
+Optimization of totemsrp and below by removing hdb usage.  cpgbench shows
+results of 4% to 20% increase in tps and mbs depending on hardware.
+
+
+------------------------------------------------------------------------
+r2487 | sdake | 2009-09-24 23:30:36 -0700 (Thu, 24 Sep 2009) | 9 lines
+
+Merge trunk revision 2368:
+r2368 | honzaf | 2009-07-22 01:25:45 -0700 (Wed, 22 Jul 2009) | 5 lines
+
+Support for service.d
+
+This patch is very similar to uidgid.d patch, but support for loading
+services (so read service section).
+
+
+------------------------------------------------------------------------
+r2486 | sdake | 2009-09-24 23:29:46 -0700 (Thu, 24 Sep 2009) | 8 lines
+
+Merge trunk revision 2367 (mine-conflict):
+r2367 | sdake | 2009-07-21 11:17:15 -0700 (Tue, 21 Jul 2009) | 4 lines
+
+Initial infrastructure changes to support iba.  Split totemnet into
+totemiba and totemudp and have totemnet call the appropriate transport
+calls.
+
+
+------------------------------------------------------------------------
+r2485 | sdake | 2009-09-24 23:27:12 -0700 (Thu, 24 Sep 2009) | 9 lines
+
+Merge trunk revision 2363:
+r2363 | honzaf | 2009-07-16 05:16:06 -0700 (Thu, 16 Jul 2009) | 5 lines
+
+Add lcoroipcc as build requirement for stress_cpgcontext
+
+This is needed for build without errors on system, where
+lcoroipcc is not installed on system yet.
+
+
+------------------------------------------------------------------------
+r2484 | sdake | 2009-09-24 23:26:17 -0700 (Thu, 24 Sep 2009) | 6 lines
+
+Merge trunk revision 2359:
+r2359 | sdake | 2009-07-10 05:54:56 -0700 (Fri, 10 Jul 2009) | 2 lines
+
+add stress_cpgcontext.
+
+
+------------------------------------------------------------------------
+r2483 | sdake | 2009-09-24 23:25:32 -0700 (Thu, 24 Sep 2009) | 6 lines
+
+Merge trunk revision 2358:
+r2358 | sdake | 2009-07-10 05:29:50 -0700 (Fri, 10 Jul 2009) | 2 lines
+
+Add stress_cpgfdget test case.
+
+
+------------------------------------------------------------------------
+r2482 | sdake | 2009-09-24 23:24:50 -0700 (Thu, 24 Sep 2009) | 6 lines
+
+Merge trunk revision 2357:
+r2357 | sdake | 2009-07-10 05:05:48 -0700 (Fri, 10 Jul 2009) | 3 lines
+
+Add stress test case for cpg and coroipcc zero copy buffer alloc and free
+operations.
+
+------------------------------------------------------------------------
+r2475 | sdake | 2009-09-22 00:51:14 -0700 (Tue, 22 Sep 2009) | 1 line
+
+Bumping version to 1.0.1
+------------------------------------------------------------------------
+r2474 | sdake | 2009-09-22 00:48:18 -0700 (Tue, 22 Sep 2009) | 6 lines
+
+Merge trunk revision 2473:
+r2473 | sdake | 2009-09-22 00:46:24 -0700 (Tue, 22 Sep 2009) | 2 lines
+
+Correct pload printing operation.
+
+
+------------------------------------------------------------------------
+r2471 | sdake | 2009-09-21 13:05:28 -0700 (Mon, 21 Sep 2009) | 2 lines
+
+Fix commit error from previous merge.
+
+------------------------------------------------------------------------
+r2470 | sdake | 2009-09-21 12:10:43 -0700 (Mon, 21 Sep 2009) | 6 lines
+
+Merge trunk revision 2468:
+r2468 | sdake | 2009-09-21 12:03:16 -0700 (Mon, 21 Sep 2009) | 2 lines
+
+Patch from Jerome to fix segfault in dispatch functions.
+
+
+------------------------------------------------------------------------
+r2469 | sdake | 2009-09-21 12:09:51 -0700 (Mon, 21 Sep 2009) | 6 lines
+
+Merge trunk revision 2467:
+r2467 | sdake | 2009-09-21 11:27:37 -0700 (Mon, 21 Sep 2009) | 2 lines
+
+Fix abort with multiple cpg clients under heavy load.
+
+
+------------------------------------------------------------------------
+r2466 | sdake | 2009-09-21 09:20:11 -0700 (Mon, 21 Sep 2009) | 6 lines
+
+Merge trunk revision 2406 of the file lib/coroipcc.c:
+r2406 | chrissie | 2009-09-08 01:14:58 -0700 (Tue, 08 Sep 2009) | 2 lines
+
+Add corosync-quorumtool
+
+
+------------------------------------------------------------------------
+r2465 | sdake | 2009-09-19 23:58:37 -0700 (Sat, 19 Sep 2009) | 6 lines
+
+Merge trunk revision 2463:
+r2463 | sdake | 2009-09-19 23:56:02 -0700 (Sat, 19 Sep 2009) | 2 lines
+
+Remove warning in logsys compile related to const correctness.
+
+
+------------------------------------------------------------------------
+r2464 | sdake | 2009-09-19 23:57:23 -0700 (Sat, 19 Sep 2009) | 6 lines
+
+Merge trunk revision 2462:
+r2462 | sdake | 2009-09-19 23:53:10 -0700 (Sat, 19 Sep 2009) | 2 lines
+
+Remove warning in coroipcc.
+
+
+------------------------------------------------------------------------
+r2461 | sdake | 2009-09-19 23:37:36 -0700 (Sat, 19 Sep 2009) | 6 lines
+
+Merge trunk revision 2419:
+r2419 | sdake | 2009-09-19 22:36:52 -0700 (Sat, 19 Sep 2009) | 2 lines
+
+Fix sigpipe handling to ignore sigpipes on systems which support them.
+
+
+------------------------------------------------------------------------
+r2460 | sdake | 2009-09-19 23:36:52 -0700 (Sat, 19 Sep 2009) | 6 lines
+
+Merge trunk revision 2418:
+r2418 | sdake | 2009-09-19 22:34:41 -0700 (Sat, 19 Sep 2009) | 2 lines
+
+Make delete operation work properly in coropoll.
+
+
+------------------------------------------------------------------------
+r2459 | sdake | 2009-09-19 23:33:52 -0700 (Sat, 19 Sep 2009) | 5 lines
+
+Merge trunk revision:
+r2416 | sdake | 2009-09-14 13:27:45 -0700 (Mon, 14 Sep 2009) | 2 lines
+
+Fix error with revision 2415.
+
+------------------------------------------------------------------------
+r2458 | sdake | 2009-09-19 23:33:12 -0700 (Sat, 19 Sep 2009) | 6 lines
+
+Merge trunk revision 2416:
+r2416 | sdake | 2009-09-14 13:27:45 -0700 (Mon, 14 Sep 2009) | 2 lines
+
+Fix error with revision 2415.
+
+
+------------------------------------------------------------------------
+r2457 | sdake | 2009-09-19 23:32:29 -0700 (Sat, 19 Sep 2009) | 7 lines
+
+Merge trunk revision 2415:
+r2415 | sdake | 2009-09-14 11:58:08 -0700 (Mon, 14 Sep 2009) | 3 lines
+
+Fix dispatch returning TRY_AGAIN when using DISPATCH_ALL parameter because of
+regression caused by revision 2046:lib/coroipcc.c.
+
+
+------------------------------------------------------------------------
+r2456 | sdake | 2009-09-19 23:31:27 -0700 (Sat, 19 Sep 2009) | 15 lines
+
+Merge trunk revision 2409:
+r2409 | asalkeld | 2009-09-09 11:55:17 -0700 (Wed, 09 Sep 2009) | 11 lines
+
+don't return the ip address when the mask is not found
+
+Currently totemip_copy (boundto,&ipaddr) is called even when the
+required mask is not found.
+
+This patch changes the behavior to only copy the ipaddr when the
+mask is found.
+
+The current behavior makes debugging an incorrect config really
+confusing.
+
+
+------------------------------------------------------------------------
+r2455 | sdake | 2009-09-19 23:30:47 -0700 (Sat, 19 Sep 2009) | 6 lines
+
+Merge trunk revision 2408:
+r2408 | asalkeld | 2009-09-08 17:25:36 -0700 (Tue, 08 Sep 2009) | 2 lines
+
+Only insert the filename into the log, not the path.
+
+
+------------------------------------------------------------------------
+r2454 | sdake | 2009-09-19 23:30:07 -0700 (Sat, 19 Sep 2009) | 6 lines
+
+Merge trunk revision 2405:
+r2405 | fabbione | 2009-09-07 03:41:42 -0700 (Mon, 07 Sep 2009) | 2 lines
+
+Fix missing symbol error when loading plugins without executive
+
+
+------------------------------------------------------------------------
+r2453 | sdake | 2009-09-19 23:29:01 -0700 (Sat, 19 Sep 2009) | 18 lines
+
+Merge trunk revision 2404:
+r2404 | asalkeld | 2009-09-07 01:33:23 -0700 (Mon, 07 Sep 2009) | 16 lines
+
+Remove a double unlock in logsys.
+
+In logsys there are a number of XYZ_unlocked() functions that are called
+like this:
+
+       pthread_mutex_lock (&logsys_config_mutex);
+
+       XYZ_unlocked();
+
+       pthread_mutex_unlock (&logsys_config_mutex);
+
+The XYZ_unlocked() functions should not do any (un)locking.
+But _logsys_config_subsys_get_unlocked() unlocks if it finds the subsys.
+This means that there is 1 lock and 2 unlocks.
+
+------------------------------------------------------------------------
+r2452 | sdake | 2009-09-19 23:28:24 -0700 (Sat, 19 Sep 2009) | 6 lines
+
+Merge trunk revision 2403:
+r2403 | chrissie | 2009-09-07 00:28:25 -0700 (Mon, 07 Sep 2009) | 2 lines
+
+Return CS_ERR_NOT_EXIST if a client tries to contact a plugin that isn't loaded.
+
+
+------------------------------------------------------------------------
+r2451 | sdake | 2009-09-19 23:27:43 -0700 (Sat, 19 Sep 2009) | 2 lines
+
+Fix theirs conflict merge conflict revision 2402
+
+------------------------------------------------------------------------
+r2450 | sdake | 2009-09-19 23:26:30 -0700 (Sat, 19 Sep 2009) | 6 lines
+
+Merge trunk revision 2402 (theirs conflict):
+r2402 | fabbione | 2009-09-07 00:24:15 -0700 (Mon, 07 Sep 2009) | 2 lines
+
+Fix corosync-tools linking
+
+
+------------------------------------------------------------------------
+r2449 | sdake | 2009-09-19 23:23:39 -0700 (Sat, 19 Sep 2009) | 6 lines
+
+Merge trunk revision 2398:
+r2398 | sdake | 2009-08-28 11:20:14 -0700 (Fri, 28 Aug 2009) | 2 lines
+
+Fix off by one calculation error resulting in assertion.
+
+
+------------------------------------------------------------------------
+r2448 | sdake | 2009-09-19 23:22:54 -0700 (Sat, 19 Sep 2009) | 6 lines
+
+Merge trunk revision 2397:
+r2397 | chrissie | 2009-08-28 02:36:33 -0700 (Fri, 28 Aug 2009) | 2 lines
+
+Send CURRENT callbacks to the dispatch FD rather than the callback one.
+
+
+------------------------------------------------------------------------
+r2447 | sdake | 2009-09-19 23:22:18 -0700 (Sat, 19 Sep 2009) | 8 lines
+
+Merge trunk revision 2396:
+r2396 | chrissie | 2009-08-28 02:35:18 -0700 (Fri, 28 Aug 2009) | 5 lines
+
+Fix nodelist passed to the quorum subsystem.
+
+When a node left, the old nodelist was sent, sigh
+
+
+------------------------------------------------------------------------
+r2446 | sdake | 2009-09-19 23:21:28 -0700 (Sat, 19 Sep 2009) | 6 lines
+
+Merge trunk revision 2395:
+r2395 | sdake | 2009-08-27 18:19:30 -0700 (Thu, 27 Aug 2009) | 2 lines
+
+Fix incorrect assertion with frame sizes of 9000.
+
+
+------------------------------------------------------------------------
+r2445 | sdake | 2009-09-19 23:20:38 -0700 (Sat, 19 Sep 2009) | 6 lines
+
+Merge trunk revision 2394:
+r2394 | sdake | 2009-08-24 10:50:12 -0700 (Mon, 24 Aug 2009) | 2 lines
+
+Allow finalize routines to occur inside dispatch routines.
+
+
+------------------------------------------------------------------------
+r2444 | sdake | 2009-09-19 23:20:03 -0700 (Sat, 19 Sep 2009) | 10 lines
+
+Merge trunk revision 2392:
+Handle NULL callbacks in cpg, evs and confdb lib
+
+Attached patches handle NULL callbacks in *_initialize
+and *_dispatch. Handling is same as in quorum service. Now, when
+callback is NULL -> no memcpy -> instance callbacks will have all
+items set to NULL and in *_dispatch function is not called.
+
+It changes cfg so now we are using continue instead of exit.
+
+------------------------------------------------------------------------
+r2443 | sdake | 2009-09-19 23:19:23 -0700 (Sat, 19 Sep 2009) | 10 lines
+
+Merge trunk revision 2391:
+r2391 | honzaf | 2009-08-19 02:57:28 -0700 (Wed, 19 Aug 2009) | 7 lines
+
+Fix found_service_ver handling
+
+Sometimes, when object_key_get doesn't return found_service_ver it
+doesn't change old value and this value is then used in atoi what
+will can cause fall of corosync. Patch fixes this case by setting
+found_service_ver to NULL before call of object_key_get.
+
+------------------------------------------------------------------------
+r2442 | sdake | 2009-09-19 23:18:44 -0700 (Sat, 19 Sep 2009) | 5 lines
+
+r2390 | honzaf | 2009-08-19 02:55:49 -0700 (Wed, 19 Aug 2009) | 2 lines
+
+Fix systems without _POSIX_THREAD_PROCESS_SHARED
+
+
+------------------------------------------------------------------------
+r2441 | sdake | 2009-09-19 23:18:08 -0700 (Sat, 19 Sep 2009) | 5 lines
+
+Merge trunk revision 2388:
+r2388 | sdake | 2009-08-17 11:22:11 -0700 (Mon, 17 Aug 2009) | 2 lines
+
+Proper limits checking for message sizes to allow ~1mb max message sizes for corosync.
+
+------------------------------------------------------------------------
+r2440 | sdake | 2009-09-19 23:17:29 -0700 (Sat, 19 Sep 2009) | 7 lines
+
+Merge trunk revision 2387:
+r2387 | sdake | 2009-08-17 10:18:26 -0700 (Mon, 17 Aug 2009) | 3 lines
+
+Request user enter characters into terminal if entropy pool is empty for keygen
+rather then exiting without creating an auth key.
+
+
+------------------------------------------------------------------------
+r2439 | sdake | 2009-09-19 23:16:53 -0700 (Sat, 19 Sep 2009) | 6 lines
+
+Merge trunk revision 2386:
+r2386 | jflesch | 2009-08-17 00:36:17 -0700 (Mon, 17 Aug 2009) | 1 line
+
+Fix value returned by lib/coroipcc_dispatch_get() in case recv() fails
+
+
+------------------------------------------------------------------------
+r2438 | sdake | 2009-09-19 23:16:17 -0700 (Sat, 19 Sep 2009) | 8 lines
+
+Merge trunk revision 2385:
+r2385 | fabbione | 2009-08-11 23:57:53 -0700 (Tue, 11 Aug 2009) | 5 lines
+
+Delay forking and closing of fds as much as possible
+to allow startup wrappers (such as cman_tool) to collect
+as much errors as possible in case of startup failure
+
+
+------------------------------------------------------------------------
+r2437 | sdake | 2009-09-19 23:15:43 -0700 (Sat, 19 Sep 2009) | 8 lines
+
+Merge trunk revision 2384:
+r2384 | honzaf | 2009-08-10 08:07:40 -0700 (Mon, 10 Aug 2009) | 5 lines
+
+Swap item in cpg_joinlist
+
+This patch add swab of header->size so big endian architectures
+works with LE list and vica versa.
+
+------------------------------------------------------------------------
+r2436 | sdake | 2009-09-19 23:14:53 -0700 (Sat, 19 Sep 2009) | 11 lines
+
+r2383 | fabbione | 2009-08-09 22:39:45 -0700 (Sun, 09 Aug 2009) | 10 lines
+
+corosync: move logsys thread config with all the others
+
+logsys thread priority was configured after forking the
+wthread process and spread the scheduler priority config
+across a large chunk of code in main.c
+
+Now that logsys scheduler priority can be invoked at any time,
+move the code together with corosync_setscheduler code.
+
+------------------------------------------------------------------------
+r2435 | sdake | 2009-09-19 23:14:11 -0700 (Sat, 19 Sep 2009) | 24 lines
+
+Merge trunk revision 2382:
+r2382 | fabbione | 2009-08-09 22:32:58 -0700 (Sun, 09 Aug 2009) | 21 lines
+
+logsys: fix segfault in logsys_thread_priority_set
+
+logsys_thread_priority_set expects that wthread is already running
+but doesn't perform any check if it is.
+
+if logsys_thread_priority_set is invoked before forking the thread,
+a segfault is guaranteed.
+
+this changes to logsys_thread_priority_set ensure that a request
+for a new scheduler priority is queued if the wthread is not
+created yet and the new scheduler parameters are applied as early
+as possible after the thread is created.
+
+At the same time:
+
+- add a few comments on clean up that needs to be done
+- remove a redundant check for policy != SCHED_OTHER as that's
+  corosync need specific. logsys should simply accept the request
+  and apply it.
+
+
+------------------------------------------------------------------------
+r2434 | sdake | 2009-09-19 23:13:26 -0700 (Sat, 19 Sep 2009) | 2 lines
+
+Fix merge conflict in trunk revision 2381 (mine conflict).
+
+------------------------------------------------------------------------
+r2433 | sdake | 2009-09-19 23:08:33 -0700 (Sat, 19 Sep 2009) | 10 lines
+
+Merge trunk revision 2381 (mine conflict):
+r2381 | honzaf | 2009-08-04 00:39:03 -0700 (Tue, 04 Aug 2009) | 6 lines
+
+Support for -v (version) feature
+
+This can be usefull for easier way to get informations
+of the corosync version from users. Version and SVN
+revision (get by svninfo -c) are displayed.
+
+
+------------------------------------------------------------------------
+r2432 | sdake | 2009-09-19 23:06:05 -0700 (Sat, 19 Sep 2009) | 9 lines
+
+Merge trunk revision 2380:
+r2380 | chrissie | 2009-08-04 00:14:55 -0700 (Tue, 04 Aug 2009) | 6 lines
+
+This patch makes a copy of the notifications list before calling the
+reload_notifications callbacks. This allows callback functions to
+manipulate the notifications list without causing corruption or strange
+loops.
+
+
+------------------------------------------------------------------------
+r2431 | sdake | 2009-09-19 23:05:31 -0700 (Sat, 19 Sep 2009) | 5 lines
+
+Merge trunk revision 2379:
+r2379 | sdake | 2009-08-03 17:22:41 -0700 (Mon, 03 Aug 2009) | 2 lines
+
+Use unnamed shared posix semaphores on platforms which support them.
+
+------------------------------------------------------------------------
+r2430 | sdake | 2009-09-19 23:04:40 -0700 (Sat, 19 Sep 2009) | 6 lines
+
+Merge trunk revision 2378:
+r2378 | sdake | 2009-08-03 17:08:11 -0700 (Mon, 03 Aug 2009) | 2 lines
+
+Man page cleanups from Steven Whitehouse for cpg service.
+
+
+------------------------------------------------------------------------
+r2429 | sdake | 2009-09-19 23:04:02 -0700 (Sat, 19 Sep 2009) | 7 lines
+
+Merge trunk revision 2377:
+r2377 | sdake | 2009-08-03 17:04:13 -0700 (Mon, 03 Aug 2009) | 3 lines
+
+Always keep autogenerated node ids in totem as LE even on BE arches.
+Have testcpg print out autogenerated nodeid properly on BE arch.
+
+
+------------------------------------------------------------------------
+r2428 | sdake | 2009-09-19 23:03:21 -0700 (Sat, 19 Sep 2009) | 11 lines
+
+Merge trunk revision 2376:
+r2376 | honzaf | 2009-08-03 01:11:53 -0700 (Mon, 03 Aug 2009) | 8 lines
+
+Support for systems where clock_gettime is not available
+
+On some systems clock_gettime is not available so we are
+testing availability and value of _POSIX_MONOTONIC_CLOCK.
+
+On system without support of clock_gettime, we are using
+old behaviour with function gettimeofday.
+
+------------------------------------------------------------------------
+r2427 | sdake | 2009-09-19 23:02:49 -0700 (Sat, 19 Sep 2009) | 6 lines
+
+Merge trunk revision 2374:
+r2374 | fabbione | 2009-07-28 10:11:29 -0700 (Tue, 28 Jul 2009) | 2 lines
+
+Fix spec file and update macro usage
+
+
+------------------------------------------------------------------------
+r2426 | sdake | 2009-09-19 23:02:06 -0700 (Sat, 19 Sep 2009) | 9 lines
+
+Merge trunk revision 2373:
+r2373 | honzaf | 2009-07-27 03:12:55 -0700 (Mon, 27 Jul 2009) | 5 lines
+
+Support for monotime timer
+
+This patch should solve problems with corosync and ntp, by using
+clock_gettime where it make sense.
+
+
+------------------------------------------------------------------------
+r2425 | sdake | 2009-09-19 23:01:05 -0700 (Sat, 19 Sep 2009) | 13 lines
+
+Merge trunk revision 2370:
+r2370 | honzaf | 2009-07-23 07:50:56 -0700 (Thu, 23 Jul 2009) | 9 lines
+
+Handle NULL ver string in service
+
+In case user not enter ver: in service section, whole
+corosync falled with segfaul, because atoi was called
+on NULL.
+
+Now, in case of NULL, we rather not use atoi, and
+return 0 directly.
+
+
+------------------------------------------------------------------------
+r2424 | sdake | 2009-09-19 23:00:13 -0700 (Sat, 19 Sep 2009) | 7 lines
+
+Merge trunk revision 2366:
+r2366 | sdake | 2009-07-20 18:31:39 -0700 (Mon, 20 Jul 2009) | 3 lines
+
+Darwin is missing the sched_setscheduler system call.
+Patch detects it and resolves the build failure.
+
+
+------------------------------------------------------------------------
+r2423 | sdake | 2009-09-19 22:59:24 -0700 (Sat, 19 Sep 2009) | 18 lines
+
+Merge trunk revision 2365:
+r2365 | honzaf | 2009-07-20 07:57:06 -0700 (Mon, 20 Jul 2009) | 15 lines
+
+Cpg synchronization patch for conf change messages
+
+The root of the theoretical problem is that cpg_join or cpg_leave
+messages are being sent via the C apis between synchronization.  With
+the current cpg, synchronization happens in confchg_fn, and then later
+in cpg_sync_process.  cpg_sync_process is called much later after
+confchg_fn and introduces a small probability of a window of time for
+queued in totem (but not yet ordered by totem) for those cpg_join and
+cpg_leave operations to interact with the synchronization process which
+should happen in one atomic operation but currently is two distinct
+operations.
+
+This patch deletes confchg_fn and make sends joinlist/downlist
+in cpg_sync_process.
+
+------------------------------------------------------------------------
+r2422 | sdake | 2009-09-19 22:58:41 -0700 (Sat, 19 Sep 2009) | 19 lines
+
+Merge trunk revision 2364:
+------------------------------------------------------------------------
+r2364 | honzaf | 2009-07-20 07:53:18 -0700 (Mon, 20 Jul 2009) | 14 lines
+
+Allow only one connection per (node, pid, grp)
+
+This patch allows only one connection per (node, pid, grp_name) tuple.
+This means, you cannot make more connection from one process to same
+group_name. This is (I hope) how cpg should behave. In case, you will
+try to do that, CPG_ERR_EXISTS error is returned.
+
+Of course, there is no problem with creating:
+- more connection with same (pid, grp) if nodeid is different
+- more connection with same (node, grp) if pid is different (for example
+  after fork, or two distinct processes)
+- more connection with same (node, pid) if grp is different (connect
+  one process to more cpgs).
+
+
+------------------------------------------------------------------------
+r2421 | sdake | 2009-09-19 22:53:20 -0700 (Sat, 19 Sep 2009) | 5 lines
+
+Merge trunk revision 2360:
+r2360 | sdake | 2009-07-13 09:46:13 -0700 (Mon, 13 Jul 2009) | 2 lines
+
+Add NAME entries to manpages.
+
+------------------------------------------------------------------------
+r2420 | sdake | 2009-09-19 22:52:12 -0700 (Sat, 19 Sep 2009) | 6 lines
+
+Merge trunk revision 2356:
+r2356 | sdake | 2009-07-10 04:49:51 -0700 (Fri, 10 Jul 2009) | 2 lines
+
+Fix segfault when using zcb api of coroipcc under certain loads.
+
+
+------------------------------------------------------------------------
+r2361 | beekhof | 2009-07-14 05:31:29 -0700 (Tue, 14 Jul 2009) | 1 line
+
+Use the preferred prefix for the Pacemaker service
+------------------------------------------------------------------------
+r2353 | sdake | 2009-07-07 23:31:44 -0700 (Tue, 07 Jul 2009) | 1 line
+
+Bumping version to 1.0.0
+------------------------------------------------------------------------
 r2352 | sdake | 2009-07-07 22:35:50 -0700 (Tue, 07 Jul 2009) | 6 lines
 
 Merging trunk revision 2348:

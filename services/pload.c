@@ -62,6 +62,8 @@
 #include <corosync/list.h>
 #include <corosync/engine/logsys.h>
 
+#include "../exec/tlist.h"
+
 LOGSYS_DECLARE_SUBSYS ("PLOAD");
 
 enum pload_exec_message_req_types {
@@ -344,9 +346,9 @@ static void message_handler_req_exec_pload_start (
   } while (0)
 #endif
 
-struct timeval tv1;
-struct timeval tv2;
-struct timeval tv_elapsed;
+unsigned long long int tv1;
+unsigned long long int tv2;
+unsigned long long int tv_elapsed;
 int last_msg_no = 0;
 
 static void message_handler_req_exec_pload_mcast (
@@ -354,22 +356,23 @@ static void message_handler_req_exec_pload_mcast (
 	unsigned int nodeid)
 {
 	const struct req_exec_pload_mcast *pload_mcast = msg;
+	char log_buffer[1024];
 
 	last_msg_no = pload_mcast->msg_code;
 	if (msgs_delivered == 0) {
-		gettimeofday (&tv1, NULL);
+		tv1 = timerlist_nano_current_get ();
 	}
 	msgs_delivered += 1;
 	if (msgs_delivered == msgs_wanted) {
-		gettimeofday (&tv2, NULL);
-		timersub (&tv2, &tv1, &tv_elapsed);
-	        printf ("%5d Writes ", msgs_delivered);
-		printf ("%5d bytes per write ", msg_size);
-		printf ("%7.3f Seconds runtime ",
-		(tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
-		printf ("%9.3f TP/s ",
-		((float)msgs_delivered) /  (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
-		printf ("%7.3f MB/s.\n",
-		((float)msgs_delivered) * ((float)msg_size) /  ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0));
+		tv2 = timerlist_nano_current_get ();
+		tv_elapsed = tv2 - tv1;
+		sprintf (log_buffer, "%5d Writes %d bytes per write %7.3f seconds runtime, %9.3f TP/S, %9.3f MB/S.\n",
+			msgs_delivered,
+			msg_size,
+			(tv_elapsed / 1000000000.0),
+			((float)msgs_delivered) /  (tv_elapsed / 1000000000.0),
+			(((float)msgs_delivered) * ((float)msg_size) /
+				(tv_elapsed / 1000000000.0)) / (1024.0 * 1024.0));
+		log_printf (LOGSYS_LEVEL_NOTICE, "%s", log_buffer);
 	}
 }

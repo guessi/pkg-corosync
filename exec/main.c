@@ -83,7 +83,6 @@
 #include "apidef.h"
 #include "service.h"
 #include "schedwrk.h"
-#include "version.h"
 #include "evil.h"
 
 LOGSYS_DECLARE_SYSTEM ("corosync",
@@ -574,6 +573,9 @@ static int corosync_sending_allowed (
 	pd->reserved_msgs = totempg_groups_joined_reserve (
 		corosync_group_handle,
 		&reserve_iovec, 1);
+	if (pd->reserved_msgs == -1) {
+		return (-1);
+	}
 
 	sending_allowed =
 		(corosync_quorum_is_quorate() == 1 ||
@@ -591,6 +593,9 @@ static void corosync_sending_allowed_release (void *sending_allowed_private_data
 	struct sending_allowed_private_data_struct *pd =
 		(struct sending_allowed_private_data_struct *)sending_allowed_private_data;
 
+	if (pd->reserved_msgs == -1) {
+		return;
+	}
 	totempg_groups_joined_release (pd->reserved_msgs);
 }
 
@@ -689,7 +694,7 @@ static struct coroipcs_init_state ipc_init_state = {
 
 static void corosync_setscheduler (void)
 {
-#if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX)
+#if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX) && defined(HAVE_SCHED_SETSCHEDULER)
 	int res;
 
 	sched_priority = sched_get_priority_max (SCHED_RR);
@@ -700,11 +705,24 @@ static void corosync_setscheduler (void)
 			global_sched_param.sched_priority = 0;
 			log_printf (LOGSYS_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n",
 				global_sched_param.sched_priority, strerror (errno));
+
+			logsys_thread_priority_set (SCHED_OTHER, NULL, 1);
 		} else {
 			/*
 			 * Turn on SCHED_RR in ipc system
 			 */
 			ipc_init_state.sched_policy = SCHED_RR;
+
+			/*
+			 * Turn on SCHED_RR in logsys system
+			 */
+			res = logsys_thread_priority_set (SCHED_RR, &global_sched_param, 10);
+			if (res == -1) {
+				log_printf (LOGSYS_LEVEL_ERROR,
+					    "Could not set logsys thread priority."
+					    " Can't continue because of priority inversions.");
+				corosync_exit_error (AIS_DONE_LOGSETUP);
+			}
 		}
 	} else {
 		log_printf (LOGSYS_LEVEL_WARNING, "Could not get maximum scheduler priority: %s\n", strerror (errno));
@@ -714,6 +732,20 @@ static void corosync_setscheduler (void)
 	log_printf(LOGSYS_LEVEL_WARNING,
 		"The Platform is missing process priority setting features.  Leaving at default.");
 #endif
+}
+
+static void main_service_ready (void)
+{
+	int res;
+	/*
+	 * This must occur after totempg is initialized because "this_ip" must be set
+	 */
+	res = corosync_service_defaults_link_and_init (api);
+	if (res == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Could not initialize default services\n");
+		corosync_exit_error (AIS_DONE_INIT_SERVICES);
+	}
+	evil_init (api);
 }
 
 int main (int argc, char **argv)
@@ -743,7 +775,7 @@ int main (int argc, char **argv)
 	background = 1;
 	setprio = 1;
 
- 	while ((ch = getopt (argc, argv, "fp")) != EOF) {
+	while ((ch = getopt (argc, argv, "fpv")) != EOF) {
 
 		switch (ch) {
 			case 'f':
@@ -753,17 +785,21 @@ int main (int argc, char **argv)
 			case 'p':
 				setprio = 0;
 				break;
+			case 'v':
+				printf ("Corosync Cluster Engine, version '%s' SVN revision '%s'\n", VERSION, SVN_REVISION);
+				printf ("Copyright (c) 2006-2009 Red Hat, Inc.\n");
+				return EXIT_SUCCESS;
+
+				break;
 			default:
 				fprintf(stderr, \
 					"usage:\n"\
 					"        -f     : Start application in foreground.\n"\
-					"        -p     : Do not set process priority.    \n");
+					"        -p     : Do not set process priority.    \n"\
+					"        -v     : Display version and SVN revision of Corosync and exit.\n");
 				return EXIT_FAILURE;
 		}
 	}
-
-	if (background)
-		corosync_tty_detach ();
 
 	/*
 	 * Set round robin realtime scheduling with priority 99
@@ -776,14 +812,15 @@ int main (int argc, char **argv)
 
 	corosync_mlockall ();
 
-	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.\n", RELEASE_VERSION);
+	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.\n", VERSION);
+	log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "\n");
 
 	(void)signal (SIGINT, sigintr_handler);
 	(void)signal (SIGUSR2, sigusr2_handler);
 	(void)signal (SIGSEGV, sigsegv_handler);
 	(void)signal (SIGABRT, sigabrt_handler);
 	(void)signal (SIGQUIT, sigquit_handler);
-#if MSG_NOSIGNAL == 0
+#if MSG_NOSIGNAL != 0
 	(void)signal (SIGPIPE, SIG_IGN);
 #endif
 
@@ -878,17 +915,6 @@ int main (int argc, char **argv)
 		syslog (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
-	logsys_fork_completed();
-	if (setprio) {
-		res = logsys_thread_priority_set (SCHED_RR, &global_sched_param, 10);
-		if (res == -1) {
-			log_printf (LOGSYS_LEVEL_ERROR,
-				"Could not set logsys thread priority.  Can't continue because of priority inversions.");
-			corosync_exit_error (AIS_DONE_LOGSETUP);
-		}
-	} else {
-		res = logsys_thread_priority_set (SCHED_OTHER, NULL, 1);
-	}
 
 	/*
 	 * Make sure required directory is present
@@ -952,6 +978,14 @@ int main (int argc, char **argv)
 	}
 
 	/*
+	 * Now we are fully initialized.
+	 */
+	if (background) {
+		corosync_tty_detach ();
+	}
+	logsys_fork_completed();
+
+	/*
 	 * Sleep for a while to let other nodes in the cluster
 	 * understand that this node has been away (if it was
 	 * an corosync restart).
@@ -973,6 +1007,9 @@ int main (int argc, char **argv)
 		corosync_poll_handle,
 		&totem_config);
 
+	totempg_service_ready_register (
+		main_service_ready);
+
 	totempg_groups_initialize (
 		&corosync_group_handle,
 		deliver_fn,
@@ -982,16 +1019,6 @@ int main (int argc, char **argv)
 		corosync_group_handle,
 		&corosync_group,
 		1);
-
-	/*
-	 * This must occur after totempg is initialized because "this_ip" must be set
-	 */
-	res = corosync_service_defaults_link_and_init (api);
-	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Could not initialize default services\n");
-		corosync_exit_error (AIS_DONE_INIT_SERVICES);
-	}
-	evil_init (api);
 
 	if (minimum_sync_mode == CS_SYNC_V2) {
 		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to none.  Using V2 of the synchronization engine.\n");

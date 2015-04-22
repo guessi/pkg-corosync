@@ -31,41 +31,81 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef TOTEMIBA_H_DEFINED
+#define TOTEMIBA_H_DEFINED
 
-#ifndef CORODEFS_H_DEFINED
-#define CORODEFS_H_DEFINED
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <corosync/hdb.h>
 
-#include <netinet/in.h>
+#include <corosync/totem/totem.h>
 
-#define COROSYNC_SOCKET_NAME	"corosync.ipc"
+/*
+ * Create an instance
+ */
+extern int totemiba_initialize (
+	hdb_handle_t poll_handle,
+	void **iba_handle,
+	struct totem_config *totem_config,
+	int interface_no,
+	void *context,
 
-enum corosync_service_types {
-	EVS_SERVICE = 0,
-	CLM_SERVICE = 1,
-	AMF_SERVICE = 2,
-	CKPT_SERVICE = 3,
-	EVT_SERVICE = 4,
-	LCK_SERVICE = 5,
-	MSG_SERVICE = 6,
-	CFG_SERVICE = 7,
-	CPG_SERVICE = 8,
-	CMAN_SERVICE = 9,
-	PCMK_SERVICE = 10,
-	CONFDB_SERVICE = 11,
-	QUORUM_SERVICE = 12,
-	PLOAD_SERVICE = 13,
-	TMR_SERVICE = 14,
-	VOTEQUORUM_SERVICE = 15,
-	NTF_SERVICE = 16,
-	AMF_V2_SERVICE = 17
-};
+	void (*deliver_fn) (
+		void *context,
+		const void *msg,
+		unsigned int msg_len),
 
-#ifdef HAVE_SMALL_MEMORY_FOOTPRINT
-#define PROCESSOR_COUNT_MAX 16
-#else
-#define PROCESSOR_COUNT_MAX 384
-#endif /* HAVE_SMALL_MEMORY_FOOTPRINT */
+	void (*iface_change_fn) (
+		void *context,
+		const struct totem_ip_address *iface_address),
 
-#define TOTEMIP_ADDRLEN (sizeof(struct in6_addr))
+	void (*target_set_completed) (
+		void *context));
 
-#endif /* CORODEFS_H_DEFINED */
+extern int totemiba_processor_count_set (
+	void *iba_context,
+	int processor_count);
+
+extern int totemiba_token_send (
+	void *iba_context,
+	const void *msg,
+	unsigned int msg_len);
+
+extern int totemiba_mcast_flush_send (
+	void *iba_context,
+	const void *msg,
+	unsigned int msg_len);
+
+extern int totemiba_mcast_noflush_send (
+	void *iba_context,
+	const void *msg,
+	unsigned int msg_len);
+
+extern int totemiba_recv_flush (void *iba_context);
+
+extern int totemiba_send_flush (void *iba_context);
+
+extern int totemiba_iface_check (void *iba_context);
+
+extern int totemiba_finalize (void *iba_context);
+
+extern void totemiba_net_mtu_adjust (void *iba_context, struct totem_config *totem_config);
+
+extern const char *totemiba_iface_print (void *iba_context);
+
+extern int totemiba_iface_get (
+	void *iba_context,
+	struct totem_ip_address *addr);
+
+extern int totemiba_token_target_set (
+	void *iba_context,
+	const struct totem_ip_address *token_target);
+
+extern int totemiba_crypto_set (
+	void *iba_context,
+	unsigned int type);
+
+extern int totemiba_recv_mcast_empty (
+	void *iba_context);
+
+#endif /* TOTEMIBA_H_DEFINED */

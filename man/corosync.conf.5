@@ -37,7 +37,7 @@
 corosync.conf - corosync executive configuration file
 
 .SH SYNOPSIS
-/etc/corosync.conf
+/etc/corosync/corosync.conf
 
 .SH DESCRIPTION
 The corosync.conf instructs the corosync executive about various parameters
@@ -385,7 +385,7 @@ The default is 2500 failures to receive a message.
 .TP
 seqno_unchanged_const
 This constant specifies how many rotations of the token without any multicast
-traffic should occur before the merge detection timeout is started.
+traffic should occur before the hold timer is started.
 
 The default is 30 rotations.
 
@@ -601,7 +601,8 @@ The default is: info.
 
 .TP
 debug
-This specifies whether debug output is logged for this particular logger.
+This specifies whether debug output is logged for this particular logger. Also can contain
+value trace, what is highest level of debug informations.
 
 The default is off.
 
@@ -637,7 +638,7 @@ required.
 
 .SH "FILES"
 .TP
-/etc/corosync.conf
+/etc/corosync/corosync.conf
 The corosync executive configuration file.
 
 .SH "SEE ALSO"

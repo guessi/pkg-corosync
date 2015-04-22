@@ -210,12 +210,17 @@ corosync_cfg_dispatch (
 			callbacks.corosync_cfg_shutdown_callback(cfg_handle, res_lib_cfg_testshutdown->flags);
 			break;
 		default:
-			coroipcc_dispatch_put (cfg_instance->handle);
-			error = CS_ERR_LIBRARY;
-			goto error_nounlock;
+			error = coroipcc_dispatch_put (cfg_instance->handle);
+			if (error == CS_OK) {
+				error = CS_ERR_LIBRARY;
+			}
+			goto error_put;
 			break;
 		}
-		coroipcc_dispatch_put (cfg_instance->handle);
+		error = coroipcc_dispatch_put (cfg_instance->handle);
+		if (error != CS_OK) {
+			goto error_put;
+		}
 
 		/*
 		 * Determine if more messages should be processed
@@ -227,7 +232,6 @@ corosync_cfg_dispatch (
 
 error_put:
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
-error_nounlock:
 	return (error);
 }
 

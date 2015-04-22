@@ -87,12 +87,12 @@ static int aisparser_readconfig (struct objdb_iface_ver0 *objdb,
 }
 
 
-static char *remove_whitespace(char *string)
+static char *remove_whitespace(char *string, int remove_colon_and_brace)
 {
 	char *start = string+strspn(string, " \t");
 	char *end = start+(strlen(start))-1;
 
-	while ((*end == ' ' || *end == '\t' || *end == ':' || *end == '{') && end > start)
+	while ((*end == ' ' || *end == '\t' || (remove_colon_and_brace && (*end == ':' || *end == '{'))) && end > start)
 		end--;
 	if (end != start)
 		*(end+1) = '\0';
@@ -113,6 +113,7 @@ static int parse_section(FILE *fp,
 			 struct objdb_iface_ver0 *objdb,
 			 hdb_handle_t parent_handle,
 			 const char **error_string,
+			 int depth,
 			 parser_check_item_f parser_check_item_call)
 {
 	char line[512];
@@ -157,7 +158,7 @@ static int parse_section(FILE *fp,
 		/* New section ? */
 		if ((loc = strchr_rs (line, '{'))) {
 			hdb_handle_t new_parent;
-			char *section = remove_whitespace(line);
+			char *section = remove_whitespace(line, 1);
 
 			loc--;
 			*loc = '\0';
@@ -169,8 +170,10 @@ static int parse_section(FILE *fp,
 
 			objdb->object_create (parent_handle, &new_parent,
 					      section, strlen (section));
-			if (parse_section(fp, objdb, new_parent, error_string, parser_check_item_call))
+			if (parse_section(fp, objdb, new_parent, error_string, depth + 1, parser_check_item_call))
 				return -1;
+
+			continue ;
 		}
 
 		/* New key/value */
@@ -179,8 +182,8 @@ static int parse_section(FILE *fp,
 			char *value;
 
 			*(loc-1) = '\0';
-			key = remove_whitespace(line);
-			value = remove_whitespace(loc);
+			key = remove_whitespace(line, 1);
+			value = remove_whitespace(loc, 0);
 			if (parser_check_item_call) {
 				if (!parser_check_item_call(objdb, parent_handle, PCHECK_ADD_ITEM,
 				    key, error_string))
@@ -188,15 +191,23 @@ static int parse_section(FILE *fp,
 			}
 			objdb->object_key_create_typed (parent_handle, key,
 				value, strlen (value) + 1, OBJDB_VALUETYPE_STRING);
+
+			continue ;
 		}
 
 		if (strchr_rs (line, '}')) {
+			if (depth == 0) {
+				*error_string = "parser error: Unexpected closing brace";
+
+				return -1;
+			}
+
 			return 0;
 		}
 	}
 
 	if (parent_handle != OBJECT_PARENT_HANDLE) {
-		*error_string = "Missing closing brace";
+		*error_string = "parser error: Missing closing brace";
 		return -1;
 	}
 
@@ -271,7 +282,7 @@ static int read_uidgid_files_into_objdb(
 			fp = fopen (filename, "r");
 			if (fp == NULL) continue;
 
-			res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, parser_check_item_uidgid);
+			res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, 0, parser_check_item_uidgid);
 
 			fclose (fp);
 
@@ -328,7 +339,7 @@ static int read_service_files_into_objdb(
 			fp = fopen (filename, "r");
 			if (fp == NULL) continue;
 
-			res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, NULL);
+			res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, 0, NULL);
 
 			fclose (fp);
 
@@ -371,7 +382,7 @@ static int read_config_file_into_objdb(
 		return -1;
 	}
 
-	res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, NULL);
+	res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, 0, NULL);
 
 	fclose(fp);
 

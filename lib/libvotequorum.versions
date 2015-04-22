@@ -1,0 +1,32 @@
+# Version and symbol export for libvotequorum.so
+
+COROSYNC_VOTEQUORUM_1.0 {
+	global:
+		votequorum_initialize;
+		votequorum_finalize;
+		votequorum_getinfo;
+		votequorum_setexpected;
+		votequorum_setvotes;
+		votequorum_qdisk_register;
+		votequorum_qdisk_unregister;
+		votequorum_qdisk_poll;
+		votequorum_qdisk_getinfo;
+		votequorum_setstate;
+		votequorum_leaving;
+		votequorum_trackstart;
+		votequorum_trackstop;
+		votequorum_context_get;
+		votequorum_context_set;
+
+	local:
+		coroipcc_service_connect;
+		coroipcc_service_disconnect;
+		coroipcc_dispatch_flow_control_get;
+		coroipcc_fd_get;
+		coroipcc_dispatch_recv;
+		coroipcc_msg_send_reply_receive;
+		coroipcc_msg_send_reply_receive_in_buf;
+		coroipcc_zcb_alloc;
+		coroipcc_zcb_free;
+		coroipcc_zcb_msg_send_reply_receive;
+};

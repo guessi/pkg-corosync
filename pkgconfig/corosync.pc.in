@@ -1,0 +1,12 @@
+prefix=@PREFIX@
+exec_prefix=${prefix}
+libdir=@LIBDIR@
+includedir=${prefix}/include
+lcrsodir=@COROLCRSODIR@
+socketdir=@COROSOCKETDIR@
+
+Name: corosync
+Version: @LIBVERSION@
+Description: corosync
+Requires:
+Cflags: -I${includedir}

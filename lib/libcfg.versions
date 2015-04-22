@@ -1,0 +1,30 @@
+# Version and symbol export for libcfg.so
+
+COROSYNC_CFG_0.82 {
+	global:
+		corosync_cfg_initialize;
+		corosync_cfg_fd_get;
+		corosync_cfg_dispatch;
+		corosync_cfg_finalize;
+		corosync_cfg_administrative_state_get;
+		corosync_cfg_administrative_state_set;
+		corosync_cfg_track;
+		corosync_cfg_track_stop;
+		corosync_cfg_ring_status_get;
+		corosync_cfg_ring_reenable;
+		corosync_cfg_service_load;
+		corosync_cfg_service_unload;
+
+
+	local:
+		coroipcc_service_connect;
+		coroipcc_service_disconnect;
+		coroipcc_dispatch_flow_control_get;
+		coroipcc_fd_get;
+		coroipcc_dispatch_recv;
+		coroipcc_msg_send_reply_receive;
+		coroipcc_msg_send_reply_receive_in_buf;
+		coroipcc_zcb_alloc;
+		coroipcc_zcb_free;
+		coroipcc_zcb_msg_send_reply_receive;
+};

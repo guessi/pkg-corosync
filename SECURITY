@@ -1,0 +1,187 @@
+***
+All cryptographic software in this package is subject to the following legal
+notice:
+This package includes publicly available encryption source code which,
+together with object code resulting from the compiling of publicly
+available source code, may be exported from the United States under License
+Exception TSU prsuant to 15 C.F.R Section 740.13(e).
+***
+Security Design of corosync
+
+The corosync project intends to mitigate the following threats:
+
+1. forged group messaging messages which are intended to fault the corosync
+   executive
+2. forged group messaging messages which are intended to fault applications
+   using corosync apis
+3. monitoring of network data to capture sensitive information
+
+The corosync project does not intend to mitigate the following threats:
+
+1. physical access to the hardware which could expose the private key
+2. privledged access to the operating system which could expose the private key
+   or be used to inject errors into the ais executive.
+3. library user creates requests which are intended to fault the corosync
+   executive
+
+The corosync project mitigates the threats using two mechanisms:
+
+1. Authentication
+2. Secrecy
+
+Library Interface
+-----------------
+The corosync executive authenticates every library user.  The library is only
+allowed to access services if it's GID is ais or 0.  Unauthorized library
+users are rejected.
+
+The ais group is a trusted group.  If the administrator doesn't trust the
+application, it should not be added to the group!  Any member of the ais group
+could potentially send a malformed request to the executive and cause it to
+fault.
+
+Group Messaging Interface
+-------------------------
+Group messaging uses UDP/IP to communicate with other corosync executives using
+messages.  It is possible without authentication of every packet that an
+attacker could forge messages.  These forged messages could fault the corosync
+executive distributed state machines.  It would also be possible to corrupt
+end applications by forging changes.
+
+Since messages are sent using UDP/IP it would be possible to snoop those
+messages and rebuild sensitive data.
+
+To solve these problems, the group messaging interface uses two new interfaces
+interal to it's implementation:
+1. encrypt_and_sign - encrypts and signs a message securely
+2. authenticate_and_decrypt - authenticates and decrypts a message securely
+
+When the executive wants to send a message over the network, it uses
+encrypt_and_sign to prepare the message to be sent.  When the executive
+wants to receive a message from the network, it uses
+authenticate_and_decrypt to verify the message is valid and decrypt it.
+
+There are currently two encryption methods available in corosync.
+sha1/hmac/sober which are coded internally, and AES/SHA256 which
+are in the Mozilla Network Security Services (libnss) library.
+
+The internal functions utilize the following algorithms:
+sha1 - hash algorithm secure for using with hmac
+hmac - produces a 16 byte digest from any length input
+sober - pseudo random number generator and stream cipher
+
+Every message starts with a
+struct security {
+	unsigned char digest[20]; A one way hash digest
+	unsigned char salt[16]; A securely generated random number
+}
+
+INTERNAL SECURITY CODE:
+-----------------------
+The hmac algorithm requires a 16 byte key.
+The sober algorithm requires a 16 byte private key.
+The sober algorithm requires a 16 byte public initial vector.
+
+The private key is read from disk and stored in memory for use with the
+sober algorithm to generate the three required keys.
+
+When a message is sent (encrypt_and_sign):
+------------------------------------------
+1. sober is used to create a 16 byte random number (salt) using the md4
+   algorithm
+2. sober is keyed with the private key and the initial vector is set to the
+   salt.  Then a 48 byte key is read from the sober algorithm.  This 48 byte
+   key is split into 3 16 byte keys.  The keys are the hmac key, the sober key
+   and the sober initial vector.
+3. A sober instance is keyed with the sober key and sober initial vector
+   from step #2.
+4. The data of the packet, except for the security header, is encrypted using
+   the sober cipher that was initialized in step #3.
+5. The salt is stored in the security header of the outgoing message.
+6. The hmac is initialized with the hmac key generated in step #2.
+7. The message, except for the security header, is hmaced to produce a digest
+   using the sha1 algorithm.
+8. The digest is stored in the outgoing message.
+9. The message is transmitted.
+
+
+When a message is received (decrypt_and_authenticate):
+------------------------------------------------------
+1. sober is keyed with the private key and the initial vector is set to the
+   salt in the received message.  Then a 48 byte key is read from the sober
+   algorithm.  This 48 byte key is split into 3 16 byte keys.  The keys are the
+   hmac key, the sober key and the sober initial vector.
+2. The sober key and sober initial vector from step #1 are used to key a
+   new sober instance.
+3. The hmac is setup using the hmac key generated in step #1 using sha1.
+5. The message is authenticated, except for the security header.
+6. If the message was not authenticated, the caller is told of the result.
+   The caller ignores the message.
+7. The message is decrypted, except for the security header, using the sober
+   algorithm in step #2.
+8. The message is processed.
+
+This does consume some resources.  It ensures the private key is never shared
+openly, that messages are authenticated, that messages are encrypted, and that
+any key exposure of the sober encryption key, sober initial vector, or hmac
+key can only be used to attack one of the algorithms.  Finally every key used
+is randomly unique (within the 2^128 search space of the input to sober) to
+ensure that keys are never reused, nonce's are never reused, and hmac's are
+never reused.
+
+
+USING LIBNSS
+------------
+
+The process is similar in concept to the above, but most of the details are
+hidden inside the NSS library. When corosync is started up libnss is initialised,
+the private key is read into memory and stored for later use by the code.
+
+When a message is sent (encrypt_and_sign):
+------------------------------------------
+- The message is encrypted using AES.
+- A digest of that message is then created using SHA256 and based on the
+  private key.
+- the message is then transmitted.
+
+When a message is received (decrypt_and_authenticate):
+- A Digest of the encrypted message is created using the private key
+- That digest is compared to the one in the message security_header
+- If they do not match the packet is rejected
+- If they do match then the message is decrypted using the private key.
+- The message is processed.
+
+
+Compatibility
+-------------
+
+The default mode of operation is to allow for wire-compatibility with existing
+openais systems. That means that the internal encryption system is used
+and all received packets are expected to use that system. This allows a rolling
+upgrade from openais to corosync.
+
+Once all nodes in the cluster are running corosync they can be changed to allow
+the newer libnss-based encryption by setting the
+totem {
+    crypto_accept: new
+}
+option in corosync.conf.
+
+This enables the new encryption system but does not switch it on. It simply
+adds a byte to the end of the packets to indicate the encryption type.
+
+Once all nodes have been upgraded and 'crypto_accept: new' has been set,
+the encryption type can be set using a single command:
+
+# corosync-cfgtool -c1
+
+This will tell all cluster nodes to start using libnss encryption. Note that
+it is possible to upgrade node individially by seetting the encryption type in
+corosync.conf. The last byte of the packet indicates the decryption algorithm
+that the receiver should use.
+
+Once all nodes are using libnss encryption, the option should be set in
+in corosync.conf so that it takes effect at the next system reboot.
+
+
+Comments welcome mailto:corosync@lists.osdl.org

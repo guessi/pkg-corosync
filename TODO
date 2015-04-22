@@ -1,0 +1,25 @@
+The Corosync Cluster Engine Work Items Requiring Attention
+Last Updated: Mar 19, 2009
+
+Generic Items
+-------------
+* doxygen-ize the include and lib directories.
+
+Totem
+-----
+* Disallow binding to localhost interface in redundant ring configuration.
+* Implement the totem multiring protocol.
+
+Closed Process Groups
+---------------------
+* async cpg multicast.
+
+IPC
+---
+* none.
+
+SYNC
+----
+* Forward compatible sync engine.
+* Advanced Synchronization Engine needed to synchronize data without
+  long blocking delays during configuration changes.

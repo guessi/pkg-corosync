@@ -75,7 +75,8 @@ enum cpg_message_req_types {
 	MESSAGE_REQ_EXEC_CPG_PROCLEAVE = 1,
 	MESSAGE_REQ_EXEC_CPG_JOINLIST = 2,
 	MESSAGE_REQ_EXEC_CPG_MCAST = 3,
-	MESSAGE_REQ_EXEC_CPG_DOWNLIST = 4
+	MESSAGE_REQ_EXEC_CPG_DOWNLIST_OLD = 4,
+	MESSAGE_REQ_EXEC_CPG_DOWNLIST = 5
 };
 
 /*
@@ -127,12 +128,21 @@ enum cpg_sync_state {
 	CPGSYNC_JOINLIST
 };
 
+enum cpg_downlist_state_e {
+       CPG_DOWNLIST_NONE,
+       CPG_DOWNLIST_WAITING_FOR_MESSAGES,
+       CPG_DOWNLIST_APPLYING,
+};
+static enum cpg_downlist_state_e downlist_state;
+static struct list_head downlist_messages_head;
 
 struct cpg_pd {
 	void *conn;
  	mar_cpg_name_t group_name;
 	uint32_t pid;
 	enum cpd_state cpd_state;
+	unsigned int flags;
+	int initial_totem_conf_sent;
 	struct list_head list;
 	struct list_head iteration_instance_list_head;
 };
@@ -159,6 +169,8 @@ static unsigned int my_old_member_list_entries = 0;
 static struct corosync_api_v1 *api = NULL;
 
 static enum cpg_sync_state my_sync_state = CPGSYNC_DOWNLIST;
+
+static mar_cpg_ring_id_t last_sync_ring_id;
 
 struct process_info {
 	unsigned int nodeid;
@@ -198,6 +210,10 @@ static void message_handler_req_exec_cpg_mcast (
 	const void *message,
 	unsigned int nodeid);
 
+static void message_handler_req_exec_cpg_downlist_old (
+	const void *message,
+	unsigned int nodeid);
+
 static void message_handler_req_exec_cpg_downlist (
 	const void *message,
 	unsigned int nodeid);
@@ -207,6 +223,8 @@ static void exec_cpg_procjoin_endian_convert (void *msg);
 static void exec_cpg_joinlist_endian_convert (void *msg);
 
 static void exec_cpg_mcast_endian_convert (void *msg);
+
+static void exec_cpg_downlist_endian_convert_old (void *msg);
 
 static void exec_cpg_downlist_endian_convert (void *msg);
 
@@ -242,6 +260,10 @@ static int cpg_exec_send_downlist(void);
 
 static int cpg_exec_send_joinlist(void);
 
+static void downlist_messages_delete (void);
+
+static void downlist_master_choose_and_send (void);
+
 static void cpg_sync_init_v2 (
 	const unsigned int *trans_list,
 	size_t trans_list_entries,
@@ -254,6 +276,11 @@ static int  cpg_sync_process (void);
 static void cpg_sync_activate (void);
 
 static void cpg_sync_abort (void);
+
+static int notify_lib_totem_membership (
+	void *conn,
+	int member_list_entries,
+	const unsigned int *member_list);
 
 /*
  * Library Handler Definition
@@ -317,6 +344,10 @@ static struct corosync_exec_handler cpg_exec_engine[] =
 		.exec_endian_convert_fn	= exec_cpg_mcast_endian_convert
 	},
 	{ /* 4 */
+		.exec_handler_fn	= message_handler_req_exec_cpg_downlist_old,
+		.exec_endian_convert_fn	= exec_cpg_downlist_endian_convert_old
+	},
+	{ /* 5 */
 		.exec_handler_fn	= message_handler_req_exec_cpg_downlist,
 		.exec_endian_convert_fn	= exec_cpg_downlist_endian_convert
 	},
@@ -406,10 +437,27 @@ struct req_exec_cpg_mcast {
 	mar_uint8_t message[] __attribute__((aligned(8)));
 };
 
-struct req_exec_cpg_downlist {
+struct req_exec_cpg_downlist_old {
 	coroipc_request_header_t header __attribute__((aligned(8)));
 	mar_uint32_t left_nodes __attribute__((aligned(8)));
 	mar_uint32_t nodeids[PROCESSOR_COUNT_MAX]  __attribute__((aligned(8)));
+};
+
+struct req_exec_cpg_downlist {
+	coroipc_request_header_t header __attribute__((aligned(8)));
+	/* merge decisions */
+	mar_uint32_t old_members __attribute__((aligned(8)));
+	/* downlist below */
+	mar_uint32_t left_nodes __attribute__((aligned(8)));
+	mar_uint32_t nodeids[PROCESSOR_COUNT_MAX]  __attribute__((aligned(8)));
+};
+
+struct downlist_msg {
+	mar_uint32_t sender_nodeid;
+	mar_uint32_t old_members __attribute__((aligned(8)));
+	mar_uint32_t left_nodes __attribute__((aligned(8)));
+	mar_uint32_t nodeids[PROCESSOR_COUNT_MAX]  __attribute__((aligned(8)));
+	struct list_head list;
 };
 
 static struct req_exec_cpg_downlist g_req_exec_cpg_downlist;
@@ -421,7 +469,6 @@ static void cpg_sync_init_v2 (
 	size_t member_list_entries,
 	const struct memb_ring_id *ring_id)
 {
-	unsigned int lowest_nodeid = 0xffffffff;
 	int entries;
 	int i, j;
 	int found;
@@ -432,29 +479,26 @@ static void cpg_sync_init_v2 (
 		sizeof (unsigned int));
 	my_member_list_entries = member_list_entries;
 
-	for (i = 0; i < my_member_list_entries; i++) {
-		if (my_member_list[i] < lowest_nodeid) {
-			lowest_nodeid = my_member_list[i];
-		}
-	}
+	last_sync_ring_id.nodeid = ring_id->rep.nodeid;
+	last_sync_ring_id.seq = ring_id->seq;
+
+	downlist_state = CPG_DOWNLIST_WAITING_FOR_MESSAGES;
 
 	entries = 0;
-	if (lowest_nodeid == api->totem_nodeid_get()) {
-		/*
-		 * Determine list of nodeids for downlist message
-		 */
-		for (i = 0; i < my_old_member_list_entries; i++) {
-			found = 0;
-			for (j = 0; j < trans_list_entries; j++) {
-				if (my_old_member_list[i] == trans_list[j]) {
-					found = 1;
-					break;
-				}
+	/*
+	 * Determine list of nodeids for downlist message
+	 */
+	for (i = 0; i < my_old_member_list_entries; i++) {
+		found = 0;
+		for (j = 0; j < trans_list_entries; j++) {
+			if (my_old_member_list[i] == trans_list[j]) {
+				found = 1;
+				break;
 			}
-			if (found == 0) {
-				g_req_exec_cpg_downlist.nodeids[entries++] =
-					my_old_member_list[i];
-			}
+		}
+		if (found == 0) {
+			g_req_exec_cpg_downlist.nodeids[entries++] =
+				my_old_member_list[i];
 		}
 	}
 	g_req_exec_cpg_downlist.left_nodes = entries;
@@ -482,13 +526,59 @@ static void cpg_sync_activate (void)
 	memcpy (my_old_member_list, my_member_list,
 		my_member_list_entries * sizeof (unsigned int));
 	my_old_member_list_entries = my_member_list_entries;
+
+	if (downlist_state == CPG_DOWNLIST_WAITING_FOR_MESSAGES) {
+		downlist_master_choose_and_send ();
+	}
+
+	downlist_messages_delete ();
+	downlist_state = CPG_DOWNLIST_NONE;
+
+	notify_lib_totem_membership (NULL, my_member_list_entries, my_member_list);
 }
 
 static void cpg_sync_abort (void)
 {
+	downlist_state = CPG_DOWNLIST_NONE;
+	downlist_messages_delete ();
 }
 
+static int notify_lib_totem_membership (
+	void *conn,
+	int member_list_entries,
+	const unsigned int *member_list)
+{
+	struct list_head *iter;
+	char *buf;
+	int size;
+	struct res_lib_cpg_totem_confchg_callback *res;
 
+	size = sizeof(struct res_lib_cpg_totem_confchg_callback) +
+		sizeof(mar_uint32_t) * (member_list_entries);
+	buf = alloca(size);
+	if (!buf)
+		return CPG_ERR_LIBRARY;
+
+	res = (struct res_lib_cpg_totem_confchg_callback *)buf;
+	res->member_list_entries = member_list_entries;
+	res->header.size = size;
+	res->header.id = MESSAGE_RES_CPG_TOTEM_CONFCHG_CALLBACK;
+	res->header.error = CS_OK;
+
+	memcpy (&res->ring_id, &last_sync_ring_id, sizeof (mar_cpg_ring_id_t));
+	memcpy (res->member_list, member_list, res->member_list_entries * sizeof (mar_uint32_t));
+
+	if (conn == NULL) {
+		for (iter = cpg_pd_list_head.next; iter != &cpg_pd_list_head; iter = iter->next) {
+			struct cpg_pd *cpg_pd = list_entry (iter, struct cpg_pd, list);
+			api->ipc_dispatch_send (cpg_pd->conn, buf, size);
+		}
+	} else {
+		api->ipc_dispatch_send (conn, buf, size);
+	}
+
+	return CPG_OK;
+}
 
 static int notify_lib_joinlist(
 	const mar_cpg_name_t *group_name,
@@ -604,14 +694,118 @@ static int notify_lib_joinlist(
 		}
 	}
 
+
+	/*
+	 * Traverse thru cpds and send totem membership for cpd, where it is not send yet
+	 */
+	for (iter = cpg_pd_list_head.next; iter != &cpg_pd_list_head; iter = iter->next) {
+		struct cpg_pd *cpd = list_entry (iter, struct cpg_pd, list);
+
+		if ((cpd->flags & CPG_MODEL_V1_DELIVER_INITIAL_TOTEM_CONF) && (cpd->initial_totem_conf_sent == 0)) {
+			cpd->initial_totem_conf_sent = 1;
+
+			notify_lib_totem_membership (cpd->conn, my_old_member_list_entries, my_old_member_list);
+		}
+	}
+
 	return CPG_OK;
 }
+
+static struct downlist_msg* downlist_master_choose (void)
+{
+	struct downlist_msg *cmp;
+	struct downlist_msg *best = NULL;
+	struct list_head *iter;
+
+	for (iter = downlist_messages_head.next;
+		iter != &downlist_messages_head;
+		iter = iter->next) {
+
+		cmp = list_entry(iter, struct downlist_msg, list);
+		if (best == NULL) {
+			best = cmp;
+			continue;
+		}
+
+		if (cmp->old_members < best->old_members) {
+			continue;
+		}
+		else if (cmp->old_members > best->old_members) {
+			best = cmp;
+		}
+		else if (cmp->sender_nodeid < best->sender_nodeid) {
+			best = cmp;
+		}
+
+	}
+	return best;
+}
+
+static void downlist_master_choose_and_send (void)
+{
+	struct downlist_msg *stored_msg;
+	struct list_head *iter;
+	mar_cpg_address_t left_list;
+	int i;
+
+	downlist_state = CPG_DOWNLIST_APPLYING;
+
+	stored_msg = downlist_master_choose ();
+	if (!stored_msg) {
+		log_printf (LOGSYS_LEVEL_INFO, "NO chosen downlist");
+		return;
+	}
+
+	log_printf (LOGSYS_LEVEL_INFO, "chosen downlist from node %s",
+		api->totem_ifaces_print(stored_msg->sender_nodeid));
+
+	/* send events */
+	for (iter = process_info_list_head.next; iter != &process_info_list_head; ) {
+		struct process_info *pi = list_entry(iter, struct process_info, list);
+		iter = iter->next;
+
+		for (i = 0; i < stored_msg->left_nodes; i++) {
+			if (pi->nodeid == stored_msg->nodeids[i]) {
+				left_list.nodeid = pi->nodeid;
+				left_list.pid = pi->pid;
+				left_list.reason = CONFCHG_CPG_REASON_NODEDOWN;
+
+				notify_lib_joinlist(&pi->group, NULL,
+					0, NULL,
+					1, &left_list,
+					MESSAGE_RES_CPG_CONFCHG_CALLBACK);
+				list_del (&pi->list);
+				free (pi);
+				break;
+			}
+		}
+	}
+}
+
+static void downlist_messages_delete (void)
+{
+	struct downlist_msg *stored_msg;
+	struct list_head *iter, *iter_next;
+
+	for (iter = downlist_messages_head.next;
+		iter != &downlist_messages_head;
+		iter = iter_next) {
+
+		iter_next = iter->next;
+
+		stored_msg = list_entry(iter, struct downlist_msg, list);
+		list_del (&stored_msg->list);
+		free (stored_msg);
+	}
+}
+
 
 static int cpg_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
 #ifdef COROSYNC_SOLARIS
 	logsys_subsys_init();
 #endif
+	list_init (&downlist_messages_head);
 	api = corosync_api;
 	return (0);
 }
@@ -718,12 +912,17 @@ static void exec_cpg_joinlist_endian_convert (void *msg_v)
 	}
 }
 
+static void exec_cpg_downlist_endian_convert_old (void *msg)
+{
+}
+
 static void exec_cpg_downlist_endian_convert (void *msg)
 {
 	struct req_exec_cpg_downlist *req_exec_cpg_downlist = msg;
 	unsigned int i;
 
 	req_exec_cpg_downlist->left_nodes = swab32(req_exec_cpg_downlist->left_nodes);
+	req_exec_cpg_downlist->old_members = swab32(req_exec_cpg_downlist->old_members);
 
 	for (i = 0; i < req_exec_cpg_downlist->left_nodes; i++) {
 		req_exec_cpg_downlist->nodeids[i] = swab32(req_exec_cpg_downlist->nodeids[i]);
@@ -809,42 +1008,58 @@ static void do_proc_join(
 			    MESSAGE_RES_CPG_CONFCHG_CALLBACK);
 }
 
-static void message_handler_req_exec_cpg_downlist (
+static void message_handler_req_exec_cpg_downlist_old (
+	const void *message,
+	unsigned int nodeid)
+{
+	log_printf (LOGSYS_LEVEL_WARNING, "downlist OLD from node %d",
+		nodeid);
+}
+
+static void message_handler_req_exec_cpg_downlist(
 	const void *message,
 	unsigned int nodeid)
 {
 	const struct req_exec_cpg_downlist *req_exec_cpg_downlist = message;
 	int i;
-	mar_cpg_address_t left_list[1];
 	struct list_head *iter;
+	struct downlist_msg *stored_msg;
+	int found;
 
-	/*
-		FOR OPTIMALIZATION - Make list of lists
-	*/
+	if (downlist_state != CPG_DOWNLIST_WAITING_FOR_MESSAGES) {
+		log_printf (LOGSYS_LEVEL_WARNING, "downlist left_list: %d received in state %d",
+			req_exec_cpg_downlist->left_nodes, downlist_state);
+		return;
+	}
 
-	log_printf (LOGSYS_LEVEL_DEBUG, "downlist left_list: %d\n", req_exec_cpg_downlist->left_nodes);
+	stored_msg = malloc (sizeof (struct downlist_msg));
+	stored_msg->sender_nodeid = nodeid;
+	stored_msg->old_members = req_exec_cpg_downlist->old_members;
+	stored_msg->left_nodes = req_exec_cpg_downlist->left_nodes;
+	memcpy (stored_msg->nodeids, req_exec_cpg_downlist->nodeids,
+		req_exec_cpg_downlist->left_nodes * sizeof (mar_uint32_t));
+	list_init (&stored_msg->list);
+	list_add (&stored_msg->list, &downlist_messages_head);
 
-	for (iter = process_info_list_head.next; iter != &process_info_list_head; ) {
-		struct process_info *pi = list_entry(iter, struct process_info, list);
-		iter = iter->next;
+	for (i = 0; i < my_member_list_entries; i++) {
+		found = 0;
+		for (iter = downlist_messages_head.next;
+			iter != &downlist_messages_head;
+			iter = iter->next) {
 
-		for (i = 0; i < req_exec_cpg_downlist->left_nodes; i++) {
-			if (pi->nodeid == req_exec_cpg_downlist->nodeids[i]) {
-				left_list[0].nodeid = pi->nodeid;
-				left_list[0].pid = pi->pid;
-				left_list[0].reason = CONFCHG_CPG_REASON_NODEDOWN;
-
-				notify_lib_joinlist(&pi->group, NULL,
-                                	            0, NULL,
-                                        	    1, left_list,
-	                                            MESSAGE_RES_CPG_CONFCHG_CALLBACK);
-				list_del (&pi->list);
-				free (pi);
-				break;
+			stored_msg = list_entry(iter, struct downlist_msg, list);
+			if (my_member_list[i] == stored_msg->sender_nodeid) {
+				found = 1;
 			}
 		}
+		if (!found) {
+			return;
+		}
 	}
+
+	downlist_master_choose_and_send ();
 }
+
 
 static void message_handler_req_exec_cpg_procjoin (
 	const void *message,
@@ -982,6 +1197,8 @@ static int cpg_exec_send_downlist(void)
 	g_req_exec_cpg_downlist.header.id = SERVICE_ID_MAKE(CPG_SERVICE, MESSAGE_REQ_EXEC_CPG_DOWNLIST);
 	g_req_exec_cpg_downlist.header.size = sizeof(struct req_exec_cpg_downlist);
 
+	g_req_exec_cpg_downlist.old_members = my_old_member_list_entries;
+
 	iov.iov_base = (void *)&g_req_exec_cpg_downlist;
 	iov.iov_len = g_req_exec_cpg_downlist.header.size;
 
@@ -1093,6 +1310,7 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 		error = CPG_OK;
 		cpd->cpd_state = CPD_STATE_JOIN_STARTED;
 		cpd->pid = req_lib_cpg_join->pid;
+		cpd->flags = req_lib_cpg_join->flags;
 		memcpy (&cpd->group_name, &req_lib_cpg_join->group_name,
 			sizeof (cpd->group_name));
 

@@ -138,6 +138,7 @@ PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
 PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
+PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PKGCONFIG = @PKGCONFIG@
@@ -407,10 +408,10 @@ uninstall-am: uninstall-local
 
 
 @BUILD_DARWIN_TRUE@quorum_%.lcrso: %.o
-@BUILD_DARWIN_TRUE@	$(CC) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bundle_loader $(top_builddir)/exec/corosync $^ -o $@
+@BUILD_DARWIN_TRUE@	$(CC) $(LDFLAGS) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bundle_loader $(top_builddir)/exec/corosync $^ -o $@
 
 @BUILD_DARWIN_TRUE@service_%.lcrso: %.o
-@BUILD_DARWIN_TRUE@	$(CC) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bundle_loader $(top_builddir)/exec/corosync $^ -o $@
+@BUILD_DARWIN_TRUE@	$(CC) $(LDFLAGS) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bundle_loader $(top_builddir)/exec/corosync $^ -o $@
 
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@quorum_%.lcrso: %.o
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	$(LD) $(LDFLAGS) -G $^ -o $@
@@ -419,10 +420,10 @@ uninstall-am: uninstall-local
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	$(LD) $(LDFLAGS) -G $^ -o $@
 
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@quorum_%.lcrso: %.o
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	$(CC) $(CFLAGS) -shared -Wl,-soname=$@ $^ -o $@
+@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	$(CC) $(LDFLAGS) $(CFLAGS) $(COVERAGE_LCRSO_EXTRA_LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@service_%.lcrso: %.o
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	$(CC) $(CFLAGS) -shared -Wl,-soname=$@ $^ -o $@
+@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	$(CC) $(LDFLAGS) $(CFLAGS) $(COVERAGE_LCRSO_EXTRA_LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 
 %.o: %.c
 	$(CC) $(AM_CFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -c -o $@ $<

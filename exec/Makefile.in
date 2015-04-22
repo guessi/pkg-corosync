@@ -126,13 +126,14 @@ liblogsys_a_OBJECTS = $(am_liblogsys_a_OBJECTS)
 libtotem_pg_a_AR = $(AR) $(ARFLAGS)
 libtotem_pg_a_LIBADD =
 am__libtotem_pg_a_SOURCES_DIST = coropoll.c totemip.c totemnet.c \
-	totemudp.c totemrrp.c totemsrp.c totemmrp.c totempg.c crypto.c \
-	wthread.c totemiba.c
+	totemudp.c totemudpu.c totemrrp.c totemsrp.c totemmrp.c \
+	totempg.c crypto.c wthread.c totemiba.c
 @BUILD_RDMA_TRUE@am__objects_3 = totemiba.$(OBJEXT)
 am__objects_4 = coropoll.$(OBJEXT) totemip.$(OBJEXT) \
-	totemnet.$(OBJEXT) totemudp.$(OBJEXT) totemrrp.$(OBJEXT) \
-	totemsrp.$(OBJEXT) totemmrp.$(OBJEXT) totempg.$(OBJEXT) \
-	crypto.$(OBJEXT) wthread.$(OBJEXT) $(am__objects_3)
+	totemnet.$(OBJEXT) totemudp.$(OBJEXT) totemudpu.$(OBJEXT) \
+	totemrrp.$(OBJEXT) totemsrp.$(OBJEXT) totemmrp.$(OBJEXT) \
+	totempg.$(OBJEXT) crypto.$(OBJEXT) wthread.$(OBJEXT) \
+	$(am__objects_3)
 am_libtotem_pg_a_OBJECTS = $(am__objects_4)
 libtotem_pg_a_OBJECTS = $(am_libtotem_pg_a_OBJECTS)
 PROGRAMS = $(sbin_PROGRAMS)
@@ -214,6 +215,7 @@ PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
 PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
+PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PKGCONFIG = @PKGCONFIG@
@@ -292,8 +294,8 @@ top_srcdir = @top_srcdir@
 MAINTAINERCLEANFILES = Makefile.in
 AM_CFLAGS = -fPIC
 INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include $(nss_CFLAGS) $(rdmacm_CFLAGS) $(ibverbs_CFLAGS)
-TOTEM_SRC = coropoll.c totemip.c totemnet.c totemudp.c totemrrp.c \
-	totemsrp.c totemmrp.c totempg.c crypto.c wthread.c \
+TOTEM_SRC = coropoll.c totemip.c totemnet.c totemudp.c totemudpu.c \
+	totemrrp.c totemsrp.c totemmrp.c totempg.c crypto.c wthread.c \
 	$(am__append_1)
 LOGSYS_SRC = wthread.c logsys.c
 COROIPCS_SRC = coroipcs.c
@@ -318,10 +320,10 @@ SHARED_LIBS = $(lib_LIBRARIES:%.a=%.so.$(SONAME))
 SHARED_LIBS_SO = $(SHARED_LIBS:%.so.$(SONAME)=%.so)
 SHARED_LIBS_SO_TWO = $(SHARED_LIBS:%.so.$(SONAME)=%.so.$(SOMAJOR))
 noinst_HEADERS = apidef.h crypto.h mainconfig.h main.h \
-			  quorum.h service.h sync.h timer.h tlist.h totemconfig.h \
-			  totemmrp.h totemnet.h totemudp.h totemiba.h totemrrp.h \
-			  totemsrp.h util.h vsf.h wthread.h schedwrk.h \
-			  evil.h syncv2.h
+			  quorum.h service.h sync.h timer.h tlist.h \
+			  totemconfig.h totemmrp.h totemnet.h totemudp.h \
+			  totemudpu.h totemiba.h totemrrp.h totemsrp.h util.h \
+			  vsf.h wthread.h schedwrk.h evil.h syncv2.h
 
 EXTRA_DIST = $(LCRSO_SRC)
 all: all-am
@@ -473,6 +475,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/totemrrp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/totemsrp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/totemudp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/totemudpu.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/util.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wthread.Po@am__quote@
 
@@ -711,7 +714,7 @@ uninstall-am: uninstall-libLIBRARIES uninstall-local \
 
 
 @BUILD_DARWIN_TRUE@%.lcrso: %.o
-@BUILD_DARWIN_TRUE@	$(CC) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
+@BUILD_DARWIN_TRUE@	$(CC) $(LDFLAGS) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
 
 @BUILD_DARWIN_TRUE@libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 @BUILD_DARWIN_TRUE@	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(TOTEM_OBJS) -o $@ -lpthread
@@ -729,44 +732,44 @@ uninstall-am: uninstall-libLIBRARIES uninstall-local \
 @BUILD_DARWIN_TRUE@	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so.$(SOMAJOR)
 
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@%.lcrso: %.o
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	$(LD) -G $^ -o $@
+@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	$(LD) $(LDFLAGS) -G $^ -o $@
 
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	$(LD) -G $(TOTEM_OBJS) -o $@ -lpthread
+@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	$(LD) $(LDFLAGS) -G $(TOTEM_OBJS) -o $@ -lpthread
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
 
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	$(LD) -G $(LOGSYS_OBJS) -o $@ -lpthread
+@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	$(LD) $(LDFLAGS) -G $(LOGSYS_OBJS) -o $@ -lpthread
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	ln -sf liblogsys.so.$(SONAME) liblogsys.so
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
 
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@libcoroipcs.so.$(SONAME): $(COROIPCS_OBJS)
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	$(LD) -G $(COROIPCS_OBJS) -o $@ -lpthread
+@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	$(LD) $(LDFLAGS) -G $(COROIPCS_OBJS) -o $@ -lpthread
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so.$(SOMAJOR)
 
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@%.lcrso: %.o
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	$(CC) $(CFLAGS) -shared -Wl,-soname=$@ $^ -o $@
+@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	$(CC) $(LDFLAGS) $(CFLAGS) $(COVERAGE_LCRSO_EXTRA_LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	$(CC) -shared -o $@ \
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		-Wl,-soname=libtotem_pg.so.$(SOMAJOR) \
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		$^ $(LDFLAGS) $(nss_LIBS) $(rdmacm_LIBS) $(ibverbs_LIBS) -lpthread
+@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		$(LDFLAGS) $^ $(nss_LIBS) $(rdmacm_LIBS) $(ibverbs_LIBS) -lpthread
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
 
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	$(CC) -shared -o $@ \
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		-Wl,-soname=liblogsys.so.$(SOMAJOR) \
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		$^ $(LDFLAGS) -lpthread
+@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		$(LDFLAGS) $^ -lpthread
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	ln -sf liblogsys.so.$(SONAME) liblogsys.so
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
 
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@libcoroipcs.so.$(SONAME): $(COROIPCS_OBJS)
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	$(CC) -shared -o $@ \
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		-Wl,-soname=libcoroipcs.so.$(SOMAJOR) \
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		$^ $(LDFLAGS) -lpthread
+@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		$(LDFLAGS) $^ -lpthread
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so.$(SOMAJOR)
 

@@ -1,4 +1,91 @@
 ------------------------------------------------------------------------
+r2539 | sdake | 2009-10-22 15:34:49 -0700 (Thu, 22 Oct 2009) | 6 lines
+
+Merge trunk revision 2537:
+r2537 | sdake | 2009-10-22 15:30:59 -0700 (Thu, 22 Oct 2009) | 2 lines
+
+Bump version to 1.1.2.
+
+
+------------------------------------------------------------------------
+r2538 | sdake | 2009-10-22 15:31:47 -0700 (Thu, 22 Oct 2009) | 6 lines
+
+Merge trunk revision 2536:
+r2536 | sdake | 2009-10-22 15:29:02 -0700 (Thu, 22 Oct 2009) | 2 lines
+
+Revert commit 2523 which results in segfaults under some workloads.
+
+
+------------------------------------------------------------------------
+r2534 | sdake | 2009-10-20 15:42:55 -0700 (Tue, 20 Oct 2009) | 7 lines
+
+Merge trunk revision 2533:
+------------------------------------------------------------------------
+r2533 | sdake | 2009-10-20 15:40:29 -0700 (Tue, 20 Oct 2009) | 2 lines
+
+Bump revision to 1.1.1.
+
+
+------------------------------------------------------------------------
+r2532 | sdake | 2009-10-20 15:38:50 -0700 (Tue, 20 Oct 2009) | 7 lines
+
+Merge trunk revision 2531 (their's conflict) :
+------------------------------------------------------------------------
+r2531 | sdake | 2009-10-20 14:07:50 -0700 (Tue, 20 Oct 2009) | 2 lines
+
+Resolve shutdown problems for pacemaker use case.
+
+
+------------------------------------------------------------------------
+r2528 | sdake | 2009-10-14 15:14:32 -0700 (Wed, 14 Oct 2009) | 7 lines
+
+Merge trunk revision 2524:
+r2524 | sdake | 2009-10-14 12:06:37 -0700 (Wed, 14 Oct 2009) | 3 lines
+
+Patch from jflesch to fix segfault when using sysv semaphores that the thread
+state is checked prior to the semaphore operation, not after it has completed.
+
+
+------------------------------------------------------------------------
+r2527 | sdake | 2009-10-14 15:13:17 -0700 (Wed, 14 Oct 2009) | 8 lines
+
+Merge trunk revision 2523:
+r2523 | sdake | 2009-10-14 11:56:54 -0700 (Wed, 14 Oct 2009) | 4 lines
+
+totem process group optimization to not copy data into staging buffer if
+it is to be immediately ordered by totemsrp.  Instead pass that data as an
+iovector element.
+
+
+------------------------------------------------------------------------
+r2526 | sdake | 2009-10-14 15:11:38 -0700 (Wed, 14 Oct 2009) | 6 lines
+
+Merge trunk revision 2520:
+r2520 | beekhof | 2009-10-12 23:16:14 -0700 (Mon, 12 Oct 2009) | 1 line
+
+Add SIGTERM support and have the init script wait for corosync to actually terminate. Bud rh#525552
+
+
+------------------------------------------------------------------------
+r2525 | sdake | 2009-10-14 15:05:45 -0700 (Wed, 14 Oct 2009) | 16 lines
+
+Merge trunk revision 2510:
+r2510 | chrissie | 2009-10-06 05:57:35 -0700 (Tue, 06 Oct 2009) | 13 lines
+
+This patche fixes a couple of small problems with votequorum:
+
+- if a single node is booted with votequorum loaded then
+   corosync-quorumtool shows zero nodes and no votes.
+- votequorum doesn't always tell the main quorum module when a new node
+has joined the cluster (principally itself. this bug is actually tied
+into the above)
+
+I've also added quorum to the default list of services. As quorum has
+been decoupled from sync it will not interfere with normal operations as
+it used to do and it makes more sense to have it there than not.
+
+
+------------------------------------------------------------------------
 r2508 | sdake | 2009-09-25 02:22:25 -0700 (Fri, 25 Sep 2009) | 6 lines
 
 Merge trunk revision 2507:

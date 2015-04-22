@@ -499,7 +499,8 @@ static int encrypt_and_sign_nss (
 		log_printf(instance->totemudp_log_level_security,
 			"Failure to set up PKCS11 param (err %d)\n",
 			PR_GetError());
-		goto out;
+		free (inbuf);
+		return (-1);
 	}
 
 	/*
@@ -518,6 +519,7 @@ static int encrypt_and_sign_nss (
 			"PK11_CreateContext failed (encrypt) crypt_type=%d (err %d): %s\n",
 			instance->totem_config->crypto_crypt_type,
 			PR_GetError(), err);
+		free(inbuf);
 		return -1;
 	}
 	rv1 = PK11_CipherOp(enc_context, outdata,
@@ -619,6 +621,7 @@ static int authenticate_and_decrypt_nss (
 		err[PR_GetErrorTextLength()] = 0;
 		log_printf(instance->totemudp_log_level_security, "PK11_CreateContext failed (check digest) err %d: %s\n",
 			PR_GetError(), err);
+		free (inbuf);
 		return -1;
 	}
 
@@ -952,11 +955,17 @@ static inline void ucast_sendmsg (
 
 
 	/*
-	 * Transmit multicast message
+	 * Transmit unicast message
 	 * An error here is recovered by totemsrp
 	 */
 	res = sendmsg (instance->totemudp_sockets.mcast_send, &msg_ucast,
 		MSG_NOSIGNAL);
+	if (res < 0) {
+		char error_str[100];
+		strerror_r (errno, error_str, sizeof(error_str));
+		log_printf (instance->totemudp_log_level_debug,
+				"sendmsg(ucast) failed (non-critical): %s\n", error_str);
+	}
 }
 
 static inline void mcast_sendmsg (
@@ -1036,6 +1045,12 @@ static inline void mcast_sendmsg (
 	 */
 	res = sendmsg (instance->totemudp_sockets.mcast_send, &msg_mcast,
 		MSG_NOSIGNAL);
+	if (res < 0) {
+		char error_str[100];
+		strerror_r (errno, error_str, sizeof(error_str));
+		log_printf (instance->totemudp_log_level_debug,
+				"sendmsg(mcast) failed (non-critical): %s\n", error_str);
+	}
 }
 
 static void totemudp_mcast_thread_state_constructor (
@@ -1110,6 +1125,12 @@ static void totemudp_mcast_worker_fn (void *thread_state, void *work_item_in)
 	 */
 	res = sendmsg (instance->totemudp_sockets.mcast_send, &msg_mcast,
 		MSG_NOSIGNAL);
+	if (res < 0) {
+		char error_str[100];
+		strerror_r (errno, error_str, sizeof(error_str));
+		log_printf (instance->totemudp_log_level_debug,
+				"sendmsg(mcast) failed (non-critical): %s\n", error_str);
+	}
 }
 
 int totemudp_finalize (

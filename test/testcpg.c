@@ -137,7 +137,7 @@ static cpg_callbacks_t callbacks = {
 	.cpg_confchg_fn =            ConfchgCallback,
 };
 
-static void sigintr_handler (int signum) __attribute__((__noreturn__));
+static void sigintr_handler (int signum) __attribute__((noreturn));
 static void sigintr_handler (int signum) {
 	exit (0);
 }
@@ -152,6 +152,9 @@ int main (int argc, char *argv[]) {
 	int opt;
 	unsigned int nodeid;
 	char *fgets_res;
+	struct cpg_address member_list[64];
+	int member_list_entries;
+	int i;
 
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
 		switch (opt) {
@@ -187,6 +190,21 @@ int main (int argc, char *argv[]) {
 		printf ("Could not join process group, error %d\n", result);
 		exit (1);
 	}
+
+	sleep (1);
+	result = cpg_membership_get (handle, &group_name,
+		(struct cpg_address *)&member_list, &member_list_entries);
+	if (result != CS_OK) {
+		printf ("Could not get current membership list %d\n", result);
+		exit (1);
+	}
+
+	printf ("membership list\n");
+	for (i = 0; i < member_list_entries; i++) {
+		printf ("node id %d pid %d\n", member_list[i].nodeid,
+			member_list[i].pid);
+	}
+
 
 	FD_ZERO (&read_fds);
 	cpg_fd_get(handle, &select_fd);

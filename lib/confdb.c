@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2009 Red Hat, Inc.
+ * Copyright (c) 2008-2010 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -284,6 +284,7 @@ cs_error_t confdb_dispatch (
 	struct res_lib_confdb_key_change_callback *res_key_changed_pt;
 	struct res_lib_confdb_object_create_callback *res_object_created_pt;
 	struct res_lib_confdb_object_destroy_callback *res_object_destroyed_pt;
+	struct res_lib_confdb_reload_callback *res_reload_pt;
 	coroipc_response_header_t *dispatch_data;
 
 	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
@@ -298,7 +299,7 @@ cs_error_t confdb_dispatch (
 
 	/*
 	 * Timeout instantly for CS_DISPATCH_ONE or CS_DISPATCH_ALL and
-	 * wait indefinately for CS_DISPATCH_BLOCKING
+	 * wait indefinitely for CS_DISPATCH_BLOCKING
 	 */
 	if (dispatch_types == CONFDB_DISPATCH_ALL) {
 		timeout = 0;
@@ -340,7 +341,7 @@ cs_error_t confdb_dispatch (
 		switch (dispatch_data->id) {
 			case MESSAGE_RES_CONFDB_KEY_CHANGE_CALLBACK:
 				if (callbacks.confdb_key_change_notify_fn == NULL) {
-					continue;
+					break;
 				}
 
 				res_key_changed_pt = (struct res_lib_confdb_key_change_callback *)dispatch_data;
@@ -359,7 +360,7 @@ cs_error_t confdb_dispatch (
 
 			case MESSAGE_RES_CONFDB_OBJECT_CREATE_CALLBACK:
 				if (callbacks.confdb_object_create_change_notify_fn == NULL) {
-					continue;
+					break;
 				}
 
 				res_object_created_pt = (struct res_lib_confdb_object_create_callback *)dispatch_data;
@@ -373,7 +374,7 @@ cs_error_t confdb_dispatch (
 
 			case MESSAGE_RES_CONFDB_OBJECT_DESTROY_CALLBACK:
 				if (callbacks.confdb_object_delete_change_notify_fn == NULL) {
-					continue;
+					break;
 				}
 
 				res_object_destroyed_pt = (struct res_lib_confdb_object_destroy_callback *)dispatch_data;
@@ -382,6 +383,17 @@ cs_error_t confdb_dispatch (
 					res_object_destroyed_pt->parent_object_handle,
 					res_object_destroyed_pt->name.value,
 					res_object_destroyed_pt->name.length);
+				break;
+
+		        case MESSAGE_RES_CONFDB_RELOAD_CALLBACK:
+				if (callbacks.confdb_reload_notify_fn == NULL) {
+					continue;
+				}
+
+				res_reload_pt = (struct res_lib_confdb_reload_callback *)dispatch_data;
+
+				callbacks.confdb_reload_notify_fn(handle,
+					res_reload_pt->type);
 				break;
 
 			default:

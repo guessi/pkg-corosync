@@ -81,6 +81,7 @@ cs_time_t clust_time_now(void)
 	return time_now;
 }
 
+void _corosync_out_of_memory_error (void) __attribute__((noreturn));
 void _corosync_out_of_memory_error (void)
 {
 	assert (0==1);
@@ -88,12 +89,14 @@ void _corosync_out_of_memory_error (void)
 }
 
 void _corosync_exit_error (
+	enum e_ais_done err, const char *file, unsigned int line)  __attribute__((noreturn));
+
+void _corosync_exit_error (
 	enum e_ais_done err, const char *file, unsigned int line)
 {
 	log_printf (LOGSYS_LEVEL_ERROR, "Corosync Cluster Engine exiting "
 		"with status %d at %s:%u.\n", err, file, line);
-	logsys_fork_completed ();
-	logsys_flush ();
+
 	logsys_atexit ();
 	exit (err);
 }

@@ -88,9 +88,11 @@ ring. The ringnumber must start at 0.
 
 .TP
 bindnetaddr
-This specifies the address which the corosync executive should bind.
-This address should always end in zero.  If the totem traffic should
-be routed over 192.168.5.92, set bindnetaddr to 192.168.5.0.
+This specifies the network address the corosync executive should bind
+to.  For example, if the local interface is 192.168.5.92 with netmask
+255.255.255.0, set bindnetaddr to 192.168.5.0.  If the local interface
+is 192.168.5.92 with netmask 255.255.255.192, set bindnetaddr to
+192.168.5.64, and so forth.
 
 This may also be an IPV6 address, in which case IPV6 networking will be used.
 In this case, the full address must be specified and there is no automatic
@@ -119,6 +121,10 @@ mcastport
 This specifies the UDP port number.  It is possible to use the same multicast
 address on a network with the corosync services configured for different
 UDP ports.
+Please note corosync uses two UDP ports mcastport (for mcast receives) and 
+mcastport - 1 (for mcast sends).
+If you have multiple clusters on the same network using the same mcastaddr 
+please configure the mcastports with a gap.
 
 .PP
 .PP
@@ -327,6 +333,12 @@ achieved before starting a new round of membership configuration.  The minimum
 value for consensus must be 1.2 * token.  This value will be automatically
 calculated at 1.2 * token if the user doesn't specify a consensus value.
 
+For two node clusters, a consensus larger then the join timeout but less then
+token is safe.  For three node or larger clusters, consensus should be larger
+then token.  There is an increasing risk of odd membership changes, which stil
+guarantee virtual synchrony,  as node count grows if consensus is less than
+token.
+
 The default is 1200 milliseconds.
 
 .TP
@@ -346,7 +358,7 @@ that a network interface is back up after it has been downed.
 The default is 1000 millseconds.
 
 .TP
-fail_to_recv_const
+fail_recv_const
 This constant specifies how many rotations of the token without receiving any
 of the messages when messages should be received may occur before a new
 configuration is formed.

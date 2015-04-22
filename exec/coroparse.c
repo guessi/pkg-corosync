@@ -188,7 +188,7 @@ static int parse_section(FILE *fp,
 				value, strlen (value) + 1, OBJDB_VALUETYPE_STRING);
 		}
 
-		if ((loc = strchr_rs (line, '}'))) {
+		if (strchr_rs (line, '}')) {
 			return 0;
 		}
 	}
@@ -278,9 +278,12 @@ static int read_uidgid_files_into_objdb(
 	if (dp == NULL)
 		return 0;
 
-	len = offsetof(struct dirent, d_name) +
-                     pathconf(dirname, _PC_NAME_MAX) + 1;
+	len = offsetof(struct dirent, d_name) + NAME_MAX + 1;
+
 	entry = malloc(len);
+	if (entry == NULL) {
+		return 0;
+	}
 
 	for (return_code = readdir_r(dp, entry, &dirent);
 		dirent != NULL && return_code == 0;
@@ -331,9 +334,12 @@ static int read_service_files_into_objdb(
 	if (dp == NULL)
 		return 0;
 
-	len = offsetof(struct dirent, d_name) +
-                     pathconf(dirname, _PC_NAME_MAX) + 1;
+	len = offsetof(struct dirent, d_name) + NAME_MAX + 1;
+
 	entry = malloc(len);
+	if (entry == NULL) {
+		return 0;
+	}
 
 	for (return_code = readdir_r(dp, entry, &dirent);
 		dirent != NULL && return_code == 0;

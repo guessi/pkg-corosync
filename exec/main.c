@@ -129,6 +129,10 @@ static hdb_handle_t corosync_poll_handle;
 
 struct sched_param global_sched_param;
 
+static hdb_handle_t object_connection_handle;
+
+static corosync_timer_handle_t corosync_stats_timer_handle;
+
 hdb_handle_t corosync_poll_handle_get (void)
 {
 	return (corosync_poll_handle);
@@ -400,7 +404,7 @@ static void corosync_tty_detach (void)
 
 static void corosync_mlockall (void)
 {
-#if !defined(COROSYNC_BSD)
+#if !defined(COROSYNC_BSD) || defined(COROSYNC_FREEBSD_GE_8)
 	int res;
 #endif
 	struct rlimit rlimit;
@@ -413,8 +417,8 @@ static void corosync_mlockall (void)
 	setrlimit (RLIMIT_VMEM, &rlimit);
 #endif
 
-#if defined(COROSYNC_BSD)
-	/* under FreeBSD a process with locked page cannot call dlopen
+#if defined(COROSYNC_BSD) && !defined(COROSYNC_FREEBSD_GE_8)
+	/* under FreeBSD < 8 a process with locked page cannot call dlopen
 	 * code disabled until FreeBSD bug i386/93396 was solved
 	 */
 	log_printf (LOGSYS_LEVEL_WARNING, "Could not lock memory of service to avoid page faults\n");
@@ -425,6 +429,254 @@ static void corosync_mlockall (void)
 	};
 #endif
 }
+
+
+static void corosync_totem_stats_updater (void *data)
+{
+	totempg_stats_t * stats;
+	uint32_t mtt_rx_token;
+	uint32_t total_mtt_rx_token;
+	uint32_t avg_backlog_calc;
+	uint32_t total_backlog_calc;
+	uint32_t avg_token_holdtime;
+	uint32_t total_token_holdtime;
+	int t, prev;
+	int32_t token_count;
+
+	stats = api->totem_get_stats();
+
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"orf_token_tx", strlen("orf_token_tx"),
+		&stats->mrp->srp->orf_token_tx, sizeof (stats->mrp->srp->orf_token_tx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"orf_token_rx", strlen("orf_token_rx"),
+		&stats->mrp->srp->orf_token_rx, sizeof (stats->mrp->srp->orf_token_rx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"memb_merge_detect_tx", strlen("memb_merge_detect_tx"),
+		&stats->mrp->srp->memb_merge_detect_tx, sizeof (stats->mrp->srp->memb_merge_detect_tx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"memb_merge_detect_rx", strlen("memb_merge_detect_rx"),
+		&stats->mrp->srp->memb_merge_detect_rx, sizeof (stats->mrp->srp->memb_merge_detect_rx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"memb_join_tx", strlen("memb_join_tx"),
+		&stats->mrp->srp->memb_join_tx, sizeof (stats->mrp->srp->memb_join_tx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"memb_join_rx", strlen("memb_join_rx"),
+		&stats->mrp->srp->memb_join_rx, sizeof (stats->mrp->srp->memb_join_rx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"mcast_tx", strlen("mcast_tx"),
+		&stats->mrp->srp->mcast_tx,	sizeof (stats->mrp->srp->mcast_tx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"mcast_retx", strlen("mcast_retx"),
+		&stats->mrp->srp->mcast_retx, sizeof (stats->mrp->srp->mcast_retx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"mcast_rx", strlen("mcast_rx"),
+		&stats->mrp->srp->mcast_rx, sizeof (stats->mrp->srp->mcast_rx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"memb_commit_token_tx", strlen("memb_commit_token_tx"),
+		&stats->mrp->srp->memb_commit_token_tx, sizeof (stats->mrp->srp->memb_commit_token_tx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"memb_commit_token_rx", strlen("memb_commit_token_rx"),
+		&stats->mrp->srp->memb_commit_token_rx, sizeof (stats->mrp->srp->memb_commit_token_rx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"token_hold_cancel_tx", strlen("token_hold_cancel_tx"),
+		&stats->mrp->srp->token_hold_cancel_tx, sizeof (stats->mrp->srp->token_hold_cancel_tx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"token_hold_cancel_rx", strlen("token_hold_cancel_rx"),
+		&stats->mrp->srp->token_hold_cancel_rx, sizeof (stats->mrp->srp->token_hold_cancel_rx));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"operational_entered", strlen("operational_entered"),
+		&stats->mrp->srp->operational_entered, sizeof (stats->mrp->srp->operational_entered));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"operational_token_lost", strlen("operational_token_lost"),
+		&stats->mrp->srp->operational_token_lost, sizeof (stats->mrp->srp->operational_token_lost));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"gather_entered", strlen("gather_entered"),
+		&stats->mrp->srp->gather_entered, sizeof (stats->mrp->srp->gather_entered));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"gather_token_lost", strlen("gather_token_lost"),
+		&stats->mrp->srp->gather_token_lost, sizeof (stats->mrp->srp->gather_token_lost));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"commit_entered", strlen("commit_entered"),
+		&stats->mrp->srp->commit_entered, sizeof (stats->mrp->srp->commit_entered));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"commit_token_lost", strlen("commit_token_lost"),
+		&stats->mrp->srp->commit_token_lost, sizeof (stats->mrp->srp->commit_token_lost));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"recovery_entered", strlen("recovery_entered"),
+		&stats->mrp->srp->recovery_entered, sizeof (stats->mrp->srp->recovery_entered));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"recovery_token_lost", strlen("recovery_token_lost"),
+		&stats->mrp->srp->recovery_token_lost, sizeof (stats->mrp->srp->recovery_token_lost));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"consensus_timeouts", strlen("consensus_timeouts"),
+		&stats->mrp->srp->consensus_timeouts, sizeof (stats->mrp->srp->consensus_timeouts));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"rx_msg_dropped", strlen("rx_msg_dropped"),
+		&stats->mrp->srp->rx_msg_dropped, sizeof (stats->mrp->srp->rx_msg_dropped));
+
+	total_mtt_rx_token = 0;
+	total_token_holdtime = 0;
+	total_backlog_calc = 0;
+	token_count = 0;
+	t = stats->mrp->srp->latest_token;
+	while (1) {
+		if (t == 0)
+			prev = TOTEM_TOKEN_STATS_MAX - 1;
+		else
+			prev = t - 1;
+		if (prev == stats->mrp->srp->earliest_token)
+			break;
+		/* if tx == 0, then dropped token (not ours) */
+		if (stats->mrp->srp->token[t].tx != 0 ||
+			(stats->mrp->srp->token[t].rx - stats->mrp->srp->token[prev].rx) > 0 ) {
+			total_mtt_rx_token += (stats->mrp->srp->token[t].rx - stats->mrp->srp->token[prev].rx);
+			total_token_holdtime += (stats->mrp->srp->token[t].tx - stats->mrp->srp->token[t].rx);
+			total_backlog_calc += stats->mrp->srp->token[t].backlog_calc;
+			token_count++;
+		}
+		t = prev;
+	}
+	if (token_count) {
+		mtt_rx_token = (total_mtt_rx_token / token_count);
+		avg_backlog_calc = (total_backlog_calc / token_count);
+		avg_token_holdtime = (total_token_holdtime / token_count);
+
+		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+			"mtt_rx_token", strlen("mtt_rx_token"),
+			&mtt_rx_token, sizeof (mtt_rx_token));
+		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+			"avg_token_workload", strlen("avg_token_workload"),
+			&avg_token_holdtime, sizeof (avg_backlog_calc));
+		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+			"avg_backlog_calc", strlen("avg_backlog_calc"),
+			&avg_backlog_calc, sizeof (avg_backlog_calc));
+	}
+	api->timer_add_duration (1500 * MILLI_2_NANO_SECONDS, NULL,
+		corosync_totem_stats_updater,
+		&corosync_stats_timer_handle);
+}
+
+static void corosync_totem_stats_init (void)
+{
+	totempg_stats_t * stats;
+	hdb_handle_t object_find_handle;
+	hdb_handle_t object_runtime_handle;
+	hdb_handle_t object_totem_handle;
+	uint32_t zero_32 = 0;
+	uint64_t zero_64 = 0;
+
+	stats = api->totem_get_stats();
+
+	objdb->object_find_create (
+		OBJECT_PARENT_HANDLE,
+		"runtime",
+		strlen ("runtime"),
+		&object_find_handle);
+
+	if (objdb->object_find_next (object_find_handle,
+			&object_runtime_handle) == 0) {
+
+		objdb->object_create (object_runtime_handle,
+			&object_totem_handle,
+			"totem", strlen ("totem"));
+		objdb->object_create (object_totem_handle,
+			&stats->hdr.handle,
+			"pg", strlen ("pg"));
+		objdb->object_create (stats->hdr.handle,
+			&stats->mrp->hdr.handle,
+			"mrp", strlen ("mrp"));
+		objdb->object_create (stats->mrp->hdr.handle,
+			&stats->mrp->srp->hdr.handle,
+			"srp", strlen ("srp"));
+
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"orf_token_tx",	&stats->mrp->srp->orf_token_tx,
+			sizeof (stats->mrp->srp->orf_token_tx),	OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"orf_token_rx", &stats->mrp->srp->orf_token_rx,
+			sizeof (stats->mrp->srp->orf_token_rx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"memb_merge_detect_tx", &stats->mrp->srp->memb_merge_detect_tx,
+			sizeof (stats->mrp->srp->memb_merge_detect_tx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"memb_merge_detect_rx", &stats->mrp->srp->memb_merge_detect_rx,
+			sizeof (stats->mrp->srp->memb_merge_detect_rx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"memb_join_tx", &stats->mrp->srp->memb_join_tx,
+			sizeof (stats->mrp->srp->memb_join_tx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"memb_join_rx", &stats->mrp->srp->memb_join_rx,
+			sizeof (stats->mrp->srp->memb_join_rx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"mcast_tx", &stats->mrp->srp->mcast_tx,
+			sizeof (stats->mrp->srp->mcast_tx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"mcast_retx", &stats->mrp->srp->mcast_retx,
+			sizeof (stats->mrp->srp->mcast_retx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"mcast_rx", &stats->mrp->srp->mcast_rx,
+			sizeof (stats->mrp->srp->mcast_rx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"memb_commit_token_tx", &stats->mrp->srp->memb_commit_token_tx,
+			sizeof (stats->mrp->srp->memb_commit_token_tx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"memb_commit_token_rx", &stats->mrp->srp->memb_commit_token_rx,
+			sizeof (stats->mrp->srp->memb_commit_token_rx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"token_hold_cancel_tx", &stats->mrp->srp->token_hold_cancel_tx,
+			sizeof (stats->mrp->srp->token_hold_cancel_tx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"token_hold_cancel_rx", &stats->mrp->srp->token_hold_cancel_rx,
+			sizeof (stats->mrp->srp->token_hold_cancel_rx), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"operational_entered", &stats->mrp->srp->operational_entered,
+			sizeof (stats->mrp->srp->operational_entered), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"operational_token_lost", &stats->mrp->srp->operational_token_lost,
+			sizeof (stats->mrp->srp->operational_token_lost), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"gather_entered", &stats->mrp->srp->gather_entered,
+			sizeof (stats->mrp->srp->gather_entered), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"gather_token_lost", &stats->mrp->srp->gather_token_lost,
+			sizeof (stats->mrp->srp->gather_token_lost), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"commit_entered", &stats->mrp->srp->commit_entered,
+			sizeof (stats->mrp->srp->commit_entered), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"commit_token_lost", &stats->mrp->srp->commit_token_lost,
+			sizeof (stats->mrp->srp->commit_token_lost), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"recovery_entered", &stats->mrp->srp->recovery_entered,
+			sizeof (stats->mrp->srp->recovery_entered), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"recovery_token_lost", &stats->mrp->srp->recovery_token_lost,
+			sizeof (stats->mrp->srp->recovery_token_lost), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"consensus_timeouts", &stats->mrp->srp->consensus_timeouts,
+			sizeof (stats->mrp->srp->consensus_timeouts), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"mtt_rx_token", &zero_32,
+			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"avg_token_workload", &zero_32,
+			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"avg_backlog_calc", &zero_64,
+			sizeof (zero_64), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"rx_msg_dropped", &zero_64,
+			sizeof (zero_64), OBJDB_VALUETYPE_UINT64);
+
+	}
+	/* start stats timer */
+	api->timer_add_duration (1500 * MILLI_2_NANO_SECONDS, NULL,
+		corosync_totem_stats_updater,
+		&corosync_stats_timer_handle);
+
+}
+
 
 static void deliver_fn (
 	unsigned int nodeid,
@@ -437,6 +689,7 @@ static void deliver_fn (
 	int fn_id;
 	unsigned int id;
 	unsigned int size;
+	unsigned int key_incr_dummy;
 
 	header = msg;
 	if (endian_conversion_required) {
@@ -465,6 +718,10 @@ static void deliver_fn (
 		return;
 	}
 
+	objdb->object_key_increment (service_stats_handle[service][fn_id],
+		"rx", strlen("rx"),
+		&key_incr_dummy);
+
 	if (endian_conversion_required) {
 		assert(ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn != NULL);
 		ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn
@@ -488,6 +745,19 @@ int main_mcast (
         unsigned int iov_len,
         unsigned int guarantee)
 {
+	const coroipc_request_header_t *req = iovec->iov_base;
+	int service;
+	int fn_id;
+	unsigned int key_incr_dummy;
+
+	service = req->id >> 16;
+	fn_id = req->id & 0xffff;
+
+	if (ais_service[service]) {
+		objdb->object_key_increment (service_stats_handle[service][fn_id],
+			"tx", strlen("tx"), &key_incr_dummy);
+	}
+
 	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
 }
 
@@ -611,21 +881,6 @@ static void corosync_sending_allowed_release (void *sending_allowed_private_data
 
 static int ipc_subsys_id = -1;
 
-static void ipc_log_printf (const char *format, ...) __attribute__((format(printf, 1, 2)));
-static void ipc_log_printf (const char *format, ...) {
-	va_list ap;
-
-	va_start (ap, format);
-
-	_logsys_log_vprintf (
-		LOGSYS_ENCODE_RECID(LOGSYS_LEVEL_ERROR,
-				    ipc_subsys_id,
-				    LOGSYS_RECID_LOG),
-		__FUNCTION__, __FILE__, __LINE__,
-		format, ap);
-
-	va_end (ap);
-}
 
 static void ipc_fatal_error(const char *error_msg) {
        _logsys_log_printf (
@@ -679,13 +934,132 @@ static void corosync_poll_dispatch_modify (
 		corosync_poll_handler_dispatch);
 }
 
-static struct coroipcs_init_state ipc_init_state = {
+
+static hdb_handle_t corosync_stats_create_connection (const char* name,
+                       const pid_t pid, const int fd)
+{
+	uint32_t zero_32 = 0;
+	uint64_t zero_64 = 0;
+	unsigned int key_incr_dummy;
+	hdb_handle_t object_handle;
+
+	objdb->object_key_increment (object_connection_handle,
+		"active", strlen("active"),
+		&key_incr_dummy);
+
+
+	objdb->object_create (object_connection_handle,
+		&object_handle,
+		name,
+		strlen (name));
+
+	objdb->object_key_create_typed (object_handle,
+		"service_id",
+		&zero_32, sizeof (zero_32),
+		OBJDB_VALUETYPE_UINT32);
+
+	objdb->object_key_create_typed (object_handle,
+		"client_pid",
+		&pid, sizeof (pid),
+		OBJDB_VALUETYPE_INT32);
+
+	objdb->object_key_create_typed (object_handle,
+		"responses",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
+
+	objdb->object_key_create_typed (object_handle,
+		"dispatched",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
+
+	objdb->object_key_create_typed (object_handle,
+		"requests",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_INT64);
+
+	objdb->object_key_create_typed (object_handle,
+		"sem_retry_count",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
+
+	objdb->object_key_create_typed (object_handle,
+		"send_retry_count",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
+
+	objdb->object_key_create_typed (object_handle,
+		"recv_retry_count",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
+
+	objdb->object_key_create_typed (object_handle,
+		"flow_control",
+		&zero_32, sizeof (zero_32),
+		OBJDB_VALUETYPE_UINT32);
+
+	objdb->object_key_create_typed (object_handle,
+		"flow_control_count",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
+
+	objdb->object_key_create_typed (object_handle,
+		"queue_size",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
+
+	return object_handle;
+}
+
+static void corosync_stats_destroy_connection (hdb_handle_t handle)
+{
+	unsigned int key_incr_dummy;
+
+	objdb->object_destroy (handle);
+
+	objdb->object_key_increment (object_connection_handle,
+		"closed", strlen("closed"),
+		&key_incr_dummy);
+	objdb->object_key_decrement (object_connection_handle,
+		"active", strlen("active"),
+		&key_incr_dummy);
+}
+
+static void corosync_stats_update_value (hdb_handle_t handle,
+	const char *name, const void *value,
+	size_t value_len)
+{
+	objdb->object_key_replace (handle,
+		name, strlen(name),
+		value, value_len);
+}
+
+static void corosync_stats_increment_value (hdb_handle_t handle,
+	const char* name)
+{
+	unsigned int key_incr_dummy;
+
+	objdb->object_key_increment (handle,
+		name, strlen(name),
+		&key_incr_dummy);
+}
+static void corosync_stats_decrement_value (hdb_handle_t handle,
+	const char* name)
+{
+	unsigned int key_incr_dummy;
+
+	objdb->object_key_decrement (handle,
+		name, strlen(name),
+		&key_incr_dummy);
+}
+
+static struct coroipcs_init_state_v2 ipc_init_state_v2 = {
 	.socket_name			= COROSYNC_SOCKET_NAME,
 	.sched_policy			= SCHED_OTHER,
 	.sched_param			= &global_sched_param,
 	.malloc				= malloc,
 	.free				= free,
-	.log_printf			= ipc_log_printf,
+	.log_printf			= _logsys_log_printf,
 	.fatal_error			= ipc_fatal_error,
 	.security_valid			= corosync_security_valid,
 	.service_available		= corosync_service_available,
@@ -699,7 +1073,12 @@ static struct coroipcs_init_state ipc_init_state = {
 	.poll_dispatch_modify		= corosync_poll_dispatch_modify,
 	.init_fn_get			= corosync_init_fn_get,
 	.exit_fn_get			= corosync_exit_fn_get,
-	.handler_fn_get			= corosync_handler_fn_get
+	.handler_fn_get			= corosync_handler_fn_get,
+	.stats_create_connection	= corosync_stats_create_connection,
+	.stats_destroy_connection	= corosync_stats_destroy_connection,
+	.stats_update_value		= corosync_stats_update_value,
+	.stats_increment_value		= corosync_stats_increment_value,
+	.stats_decrement_value		= corosync_stats_decrement_value,
 };
 
 static void corosync_setscheduler (void)
@@ -721,7 +1100,7 @@ static void corosync_setscheduler (void)
 			/*
 			 * Turn on SCHED_RR in ipc system
 			 */
-			ipc_init_state.sched_policy = SCHED_RR;
+			ipc_init_state_v2.sched_policy = SCHED_RR;
 
 			/*
 			 * Turn on SCHED_RR in logsys system
@@ -744,6 +1123,35 @@ static void corosync_setscheduler (void)
 #endif
 }
 
+static void corosync_stats_init (void)
+{
+	hdb_handle_t object_find_handle;
+	hdb_handle_t object_runtime_handle;
+	uint64_t zero_64 = 0;
+
+	objdb->object_find_create (OBJECT_PARENT_HANDLE,
+		"runtime", strlen ("runtime"),
+		&object_find_handle);
+
+	if (objdb->object_find_next (object_find_handle,
+			&object_runtime_handle) != 0) {
+		return;
+	}
+
+	/* Connection objects */
+	objdb->object_create (object_runtime_handle,
+		&object_connection_handle,
+		"connections", strlen ("connections"));
+
+	objdb->object_key_create_typed (object_connection_handle,
+		"active", &zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
+	objdb->object_key_create_typed (object_connection_handle,
+		"closed", &zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
+}
+
+
 static void main_service_ready (void)
 {
 	int res;
@@ -756,6 +1164,8 @@ static void main_service_ready (void)
 		corosync_exit_error (AIS_DONE_INIT_SERVICES);
 	}
 	evil_init (api);
+	corosync_stats_init ();
+	corosync_totem_stats_init ();
 }
 
 int main (int argc, char **argv)
@@ -775,6 +1185,7 @@ int main (int argc, char **argv)
 	int background, setprio;
 	struct stat stat_out;
 	char corosync_lib_dir[PATH_MAX];
+	hdb_handle_t object_runtime_handle;
 
 #if defined(HAVE_PTHREAD_SPIN_LOCK)
 	pthread_spin_init (&serialize_spin, 0);
@@ -834,13 +1245,6 @@ int main (int argc, char **argv)
 #if MSG_NOSIGNAL != 0
 	(void)signal (SIGPIPE, SIG_IGN);
 #endif
-
-	corosync_timer_init (
-		serialize_lock,
-		serialize_unlock,
-		sched_priority);
-
-	corosync_poll_handle = poll_create ();
 
 	/*
 	 * Load the object database interface
@@ -965,7 +1369,7 @@ int main (int argc, char **argv)
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
-  	totem_config.totem_logging_configuration.log_level_security = LOGSYS_LEVEL_WARNING;
+	totem_config.totem_logging_configuration.log_level_security = LOGSYS_LEVEL_WARNING;
 	totem_config.totem_logging_configuration.log_level_error = LOGSYS_LEVEL_ERROR;
 	totem_config.totem_logging_configuration.log_level_warning = LOGSYS_LEVEL_WARNING;
 	totem_config.totem_logging_configuration.log_level_notice = LOGSYS_LEVEL_NOTICE;
@@ -988,6 +1392,11 @@ int main (int argc, char **argv)
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
+	/* create the main runtime object */
+	objdb->object_create (OBJECT_PARENT_HANDLE,
+		&object_runtime_handle,
+		"runtime", strlen ("runtime"));
+
 	/*
 	 * Now we are fully initialized.
 	 */
@@ -995,6 +1404,13 @@ int main (int argc, char **argv)
 		corosync_tty_detach ();
 	}
 	logsys_fork_completed();
+
+	corosync_timer_init (
+		serialize_lock,
+		serialize_unlock,
+		sched_priority);
+
+	corosync_poll_handle = poll_create ();
 
 	/*
 	 * Sleep for a while to let other nodes in the cluster
@@ -1061,9 +1477,9 @@ int main (int argc, char **argv)
 	 */
 	priv_drop ();
 
- 	schedwrk_init (
- 		serialize_lock,
- 		serialize_unlock);
+	schedwrk_init (
+		serialize_lock,
+		serialize_unlock);
 
 	ipc_subsys_id = _logsys_subsys_create ("IPC");
 	if (ipc_subsys_id < 0) {
@@ -1072,7 +1488,8 @@ int main (int argc, char **argv)
 		corosync_exit_error (AIS_DONE_INIT_SERVICES);
 	}
 
-	coroipcs_ipc_init (&ipc_init_state);
+	ipc_init_state_v2.log_subsys_id = ipc_subsys_id;
+	coroipcs_ipc_init_v2 (&ipc_init_state_v2);
 
 	/*
 	 * Start main processing loop
@@ -1081,3 +1498,4 @@ int main (int argc, char **argv)
 
 	return EXIT_SUCCESS;
 }
+

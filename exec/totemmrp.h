@@ -58,6 +58,7 @@ extern void totemmrp_log_printf_init (
 extern int totemmrp_initialize (
 	hdb_handle_t poll_handle,
 	struct totem_config *totem_config,
+	totempg_stats_t *stats,
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
@@ -96,7 +97,7 @@ extern int totemmrp_callback_token_create (
 extern void totemmrp_callback_token_destroy (
 	void *handle_out);
 
-extern void totemmrp_new_msg_signal (void);
+extern void totemmrp_event_signal (enum totem_event_type type, int value);
 
 extern int totemmrp_ifaces_get (
 	unsigned int nodeid,

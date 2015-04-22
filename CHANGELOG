@@ -1,4 +1,520 @@
 ------------------------------------------------------------------------
+r2637 | sdake | 2009-12-07 18:09:51 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2581:
+r2581 | sdake | 2009-12-07 17:02:00 -0700 (Mon, 07 Dec 2009) | 2 lines
+
+Bump verion to 1.2.0.
+
+
+------------------------------------------------------------------------
+r2636 | sdake | 2009-12-07 18:04:57 -0700 (Mon, 07 Dec 2009) | 2 lines
+
+Fix merge conflicts.
+
+------------------------------------------------------------------------
+r2635 | sdake | 2009-12-07 17:42:25 -0700 (Mon, 07 Dec 2009) | 5 lines
+
+Merge trunk revision 2580:
+r2580 | sdake | 2009-12-07 17:01:39 -0700 (Mon, 07 Dec 2009) | 2 lines
+
+Remove string overwrite if many recovery messages are originated.
+
+------------------------------------------------------------------------
+r2634 | sdake | 2009-12-07 17:41:46 -0700 (Mon, 07 Dec 2009) | 5 lines
+
+Merge trunk revision 2579:
+r2579 | sdake | 2009-12-07 16:23:42 -0700 (Mon, 07 Dec 2009) | 2 lines
+
+Remove compiler warning in vsf_quorum.c.
+
+------------------------------------------------------------------------
+r2633 | sdake | 2009-12-07 17:41:18 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2578:
+r2578 | sdake | 2009-12-07 16:21:01 -0700 (Mon, 07 Dec 2009) | 2 lines
+
+Remove compiler warning in totemsrp.
+
+
+------------------------------------------------------------------------
+r2632 | sdake | 2009-12-07 17:40:53 -0700 (Mon, 07 Dec 2009) | 5 lines
+
+Merge trunk revision 2577:
+r2577 | sdake | 2009-12-07 16:18:44 -0700 (Mon, 07 Dec 2009) | 2 lines
+
+Update to AUTHORS file.
+
+------------------------------------------------------------------------
+r2631 | sdake | 2009-12-07 17:40:23 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2576:
+r2576 | fabbione | 2009-12-07 16:13:34 -0700 (Mon, 07 Dec 2009) | 2 lines
+
+Update spec file to deal with new libsam
+
+
+------------------------------------------------------------------------
+r2630 | sdake | 2009-12-07 17:39:52 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2575:
+r2575 | fabbione | 2009-12-07 16:13:14 -0700 (Mon, 07 Dec 2009) | 2 lines
+
+Generate .pc file for new libsam
+
+
+------------------------------------------------------------------------
+r2629 | sdake | 2009-12-07 17:39:25 -0700 (Mon, 07 Dec 2009) | 5 lines
+
+Merge trunk revision 2574:
+r2574 | sdake | 2009-12-07 15:40:49 -0700 (Mon, 07 Dec 2009) | 2 lines
+
+SAM man pages.
+
+------------------------------------------------------------------------
+r2628 | sdake | 2009-12-07 17:38:51 -0700 (Mon, 07 Dec 2009) | 7 lines
+
+Merge trunk revision 2573:
+r2573 | sdake | 2009-12-07 11:41:49 -0700 (Mon, 07 Dec 2009) | 3 lines
+
+Set boolean indicating the retrans flag was set to 1 to 0 when setting retrans
+flag in token to zero.
+
+
+------------------------------------------------------------------------
+r2627 | sdake | 2009-12-07 17:38:18 -0700 (Mon, 07 Dec 2009) | 7 lines
+
+Merge trunk revision 2572:
+r2572 | sdake | 2009-12-07 11:22:48 -0700 (Mon, 07 Dec 2009) | 3 lines
+
+Make assertions for range checking of message delivery check with the define
+instead of magic numbers that are not valid if the define changes.
+
+
+------------------------------------------------------------------------
+r2626 | sdake | 2009-12-07 17:37:43 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2571:
+r2571 | honzaf | 2009-12-07 10:14:44 -0700 (Mon, 07 Dec 2009) | 2 lines
+
+Remove potentially thread unsafe call of strftime
+
+
+------------------------------------------------------------------------
+r2625 | sdake | 2009-12-07 17:37:12 -0700 (Mon, 07 Dec 2009) | 11 lines
+
+Merge trunk revision 2570:
+r2570 | honzaf | 2009-12-07 10:06:53 -0700 (Mon, 07 Dec 2009) | 8 lines
+
+SAM implementation merge
+
+The SAM library provide a tool to check the health
+of an application. The main purpose of SAM is to restart
+a local process when it fails to respond to a healthcheck
+request in a configured time interval.
+
+
+------------------------------------------------------------------------
+r2624 | sdake | 2009-12-07 17:36:27 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2569:
+r2569 | sdake | 2009-12-06 22:03:25 -0700 (Sun, 06 Dec 2009) | 2 lines
+
+Prevent lockup in recovery state in totem after 206 messages are originated.
+
+
+------------------------------------------------------------------------
+r2623 | sdake | 2009-12-07 17:35:56 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+r2568 | sdake | 2009-12-06 22:02:28 -0700 (Sun, 06 Dec 2009) | 3 lines
+
+Fix recovery messages to be proper length to remove segfault that occurs during
+recovery.
+
+
+------------------------------------------------------------------------
+r2622 | sdake | 2009-12-07 17:35:35 -0700 (Mon, 07 Dec 2009) | 9 lines
+
+Merge trunk revision 2567:
+r2567 | sdake | 2009-12-05 18:35:05 -0700 (Sat, 05 Dec 2009) | 5 lines
+
+Force consensus timer to be at minimum 1.2 * token to prevent one group of
+nodes from executing a token timeout in the COMMIT state while another node
+executes a consensus timeout, showing to applications as a temporary network
+partition.
+
+
+------------------------------------------------------------------------
+r2621 | sdake | 2009-12-07 17:35:04 -0700 (Mon, 07 Dec 2009) | 5 lines
+
+Merge trunk revision 2566:
+r2566 | chrissie | 2009-12-04 09:11:49 -0700 (Fri, 04 Dec 2009) | 2 lines
+
+Make man page match reality of totem configuration values.
+
+------------------------------------------------------------------------
+r2620 | sdake | 2009-12-07 17:34:39 -0700 (Mon, 07 Dec 2009) | 11 lines
+
+Merge trunk revision 2565:
+r2565 | chrissie | 2009-12-04 09:10:59 -0700 (Fri, 04 Dec 2009) | 8 lines
+
+This puts multiple nodeids on each [QUORUM] Members line instead of
+putting each nodeid on a separate line.  With more than a few nodes the
+excessive lines become a real nuisance, and anyone up around 32 nodes
+may literally be scrolling through hundreds of those lines.
+
+from David teigland
+
+
+------------------------------------------------------------------------
+r2619 | sdake | 2009-12-07 17:34:07 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2564:
+r2564 | asalkeld | 2009-12-03 11:18:29 -0700 (Thu, 03 Dec 2009) | 2 lines
+
+stats: don't calloc the totemsrp stats struct.
+
+
+------------------------------------------------------------------------
+r2618 | sdake | 2009-12-07 17:33:10 -0700 (Mon, 07 Dec 2009) | 5 lines
+
+r2563 | asalkeld | 2009-12-03 11:13:52 -0700 (Thu, 03 Dec 2009) | 2 lines
+
+Correct some ugly indentation.
+
+
+------------------------------------------------------------------------
+r2617 | sdake | 2009-12-07 17:32:47 -0700 (Mon, 07 Dec 2009) | 5 lines
+
+Merge trunk revision 2562:
+r2562 | asalkeld | 2009-12-03 01:36:31 -0700 (Thu, 03 Dec 2009) | 2 lines
+
+objdb: fix memory leaks when objects are destroyed.
+
+------------------------------------------------------------------------
+r2616 | sdake | 2009-12-07 17:32:21 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2561:
+r2561 | asalkeld | 2009-12-02 15:14:00 -0700 (Wed, 02 Dec 2009) | 2 lines
+
+make sure key_names past from confdb are null terminated.
+
+
+------------------------------------------------------------------------
+r2615 | sdake | 2009-12-07 17:31:43 -0700 (Mon, 07 Dec 2009) | 11 lines
+
+r2560 | honzaf | 2009-12-02 08:09:18 -0700 (Wed, 02 Dec 2009) | 8 lines
+
+bsd: Fix mlockall on FreeBSD version >= 8.0
+
+FreeBSD version 8.0 and greater supports mlockall
+syscall correctly. So configure.ac is changed to detect
+FreeBSD version and main.c is changed to support it.
+
+Resolves: rhbz#513687
+
+
+------------------------------------------------------------------------
+r2614 | sdake | 2009-12-07 17:31:05 -0700 (Mon, 07 Dec 2009) | 5 lines
+
+r2559 | fabbione | 2009-12-01 23:30:27 -0700 (Tue, 01 Dec 2009) | 2 lines
+
+spec file cleanup
+
+
+------------------------------------------------------------------------
+r2613 | sdake | 2009-12-07 17:30:30 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2558:
+r2558 | fabbione | 2009-11-30 16:01:51 -0700 (Mon, 30 Nov 2009) | 3 lines
+
+Fix threads vs fork init order
+
+
+------------------------------------------------------------------------
+r2612 | sdake | 2009-12-07 17:29:57 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2557:
+r2557 | fabbione | 2009-11-30 14:28:30 -0700 (Mon, 30 Nov 2009) | 3 lines
+
+Fix stop regression
+
+
+------------------------------------------------------------------------
+r2611 | sdake | 2009-12-07 17:28:31 -0700 (Mon, 07 Dec 2009) | 5 lines
+
+r2556 | fabbione | 2009-11-30 13:18:48 -0700 (Mon, 30 Nov 2009) | 3 lines
+
+Expose service.d config directory
+
+
+------------------------------------------------------------------------
+r2610 | sdake | 2009-12-07 17:28:12 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+r2555 | sdake | 2009-11-30 12:11:20 -0700 (Mon, 30 Nov 2009) | 3 lines
+
+Start pause timer at initialization so first gather doesn't result in pause
+timeout operations.
+
+
+------------------------------------------------------------------------
+r2609 | sdake | 2009-12-07 17:27:38 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+merge trunk revision 2554:
+r2554 | fabbione | 2009-11-30 11:56:28 -0700 (Mon, 30 Nov 2009) | 3 lines
+
+Clean up init scripts and make a single generic one
+
+
+------------------------------------------------------------------------
+r2608 | sdake | 2009-12-07 17:27:08 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2553:
+r2553 | asalkeld | 2009-11-29 11:42:00 -0700 (Sun, 29 Nov 2009) | 3 lines
+
+Rename totem_new_msg_signal() to something more generic.
+
+
+------------------------------------------------------------------------
+r2607 | sdake | 2009-12-07 17:26:40 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2552:
+r2552 | asalkeld | 2009-11-29 11:28:39 -0700 (Sun, 29 Nov 2009) | 3 lines
+
+coroipcs: Add a queue_size stats counter to each ipc connection.
+
+
+------------------------------------------------------------------------
+r2606 | sdake | 2009-12-07 17:26:13 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2551:
+r2551 | asalkeld | 2009-11-29 11:25:51 -0700 (Sun, 29 Nov 2009) | 3 lines
+
+coroipcs: add logging for flow control state changes.
+
+
+------------------------------------------------------------------------
+r2605 | sdake | 2009-12-07 17:25:45 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+r2550 | sdake | 2009-11-27 15:59:48 -0700 (Fri, 27 Nov 2009) | 3 lines
+
+Patch to use proper IFA on Linux platforms to match interface addresses when
+netmask is not 255.255.255.0.
+
+
+------------------------------------------------------------------------
+r2604 | sdake | 2009-12-07 17:25:21 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2549:
+r2549 | asalkeld | 2009-11-22 17:32:31 -0700 (Sun, 22 Nov 2009) | 2 lines
+
+COVERITY 4: remove dead code in XYZ_dispatch().
+
+
+------------------------------------------------------------------------
+r2603 | sdake | 2009-12-07 17:24:38 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2548:
+r2548 | asalkeld | 2009-11-22 16:59:51 -0700 (Sun, 22 Nov 2009) | 2 lines
+
+COVERITY 17: fix exit handling in show_votes().
+
+
+------------------------------------------------------------------------
+r2602 | sdake | 2009-12-07 17:23:55 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2547:
+r2547 | asalkeld | 2009-11-22 16:19:41 -0700 (Sun, 22 Nov 2009) | 1 line
+
+COVERITY 12: prevent overrun of logsys output buffers.
+
+
+------------------------------------------------------------------------
+r2601 | sdake | 2009-12-07 17:23:26 -0700 (Mon, 07 Dec 2009) | 5 lines
+
+Merge trunk revision 2546:
+r2546 | asalkeld | 2009-11-21 23:34:11 -0700 (Sat, 21 Nov 2009) | 2 lines
+
+COVERITY 13: prevent buffer overrun in quorum-tool.
+
+------------------------------------------------------------------------
+r2600 | sdake | 2009-12-07 17:22:53 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2545:
+r2545 | asalkeld | 2009-11-21 23:29:46 -0700 (Sat, 21 Nov 2009) | 3 lines
+
+COVERITY 11: remove dead code from cpg_iteration_next().
+
+
+------------------------------------------------------------------------
+r2599 | sdake | 2009-12-07 17:22:19 -0700 (Mon, 07 Dec 2009) | 7 lines
+
+Merge trunk revision 2544:
+r2544 | asalkeld | 2009-11-21 23:27:09 -0700 (Sat, 21 Nov 2009) | 3 lines
+
+COVERITY 14: free zcb_mapped if memory_map() fails.
+
+
+
+------------------------------------------------------------------------
+r2598 | sdake | 2009-12-07 17:19:00 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2530:
+r2530 | asalkeld | 2009-10-18 11:15:24 -0700 (Sun, 18 Oct 2009) | 3 lines
+
+Add a log_printf function to coroipcs so we can pass the log level
+
+
+------------------------------------------------------------------------
+r2597 | sdake | 2009-12-07 17:18:04 -0700 (Mon, 07 Dec 2009) | 5 lines
+
+r2529 | asalkeld | 2009-10-14 16:05:18 -0700 (Wed, 14 Oct 2009) | 3 lines
+
+Avoid array out of bound error.
+
+
+------------------------------------------------------------------------
+r2596 | sdake | 2009-12-07 17:17:08 -0700 (Mon, 07 Dec 2009) | 8 lines
+
+Merge trunk revision 2522:
+r2522 | asalkeld | 2009-10-13 21:06:42 -0700 (Tue, 13 Oct 2009) | 5 lines
+
+stats: prevent a div by zero if totem_count is zero.
+
+patch by Chrissie
+
+
+------------------------------------------------------------------------
+r2595 | sdake | 2009-12-07 17:16:18 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2521:
+r2521 | asalkeld | 2009-10-13 01:13:53 -0700 (Tue, 13 Oct 2009) | 2 lines
+
+Fix the OSX build (broken by stats patches)
+
+
+------------------------------------------------------------------------
+r2594 | sdake | 2009-12-07 17:15:32 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2519:
+r2519 | asalkeld | 2009-10-12 14:56:23 -0700 (Mon, 12 Oct 2009) | 2 lines
+
+Add some missing calls to increment the relevant stats.
+
+
+------------------------------------------------------------------------
+r2593 | sdake | 2009-12-07 17:14:47 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2518:
+r2518 | asalkeld | 2009-10-12 14:50:10 -0700 (Mon, 12 Oct 2009) | 2 lines
+
+allow coroipcs to work without calling stats initialization.
+
+
+------------------------------------------------------------------------
+r2592 | sdake | 2009-12-07 17:14:10 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2517:
+r2517 | asalkeld | 2009-10-12 10:30:20 -0700 (Mon, 12 Oct 2009) | 3 lines
+
+Add totem stats to objdb.
+
+
+------------------------------------------------------------------------
+r2591 | sdake | 2009-12-07 17:12:32 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2516:
+r2516 | asalkeld | 2009-10-12 10:29:19 -0700 (Mon, 12 Oct 2009) | 3 lines
+
+Remove silly warning in corosync-objdb
+
+
+------------------------------------------------------------------------
+r2590 | sdake | 2009-12-07 17:11:42 -0700 (Mon, 07 Dec 2009) | 2 lines
+
+Fixup merge problem in trunk revision 2515.
+
+------------------------------------------------------------------------
+r2589 | sdake | 2009-12-07 17:11:03 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2515 (their's conflict):
+r2515 | asalkeld | 2009-10-11 17:39:39 -0700 (Sun, 11 Oct 2009) | 2 lines
+
+Add per service-function statistics.
+
+
+------------------------------------------------------------------------
+r2588 | sdake | 2009-12-07 17:09:15 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2514:
+r2514 | asalkeld | 2009-10-11 17:36:55 -0700 (Sun, 11 Oct 2009) | 2 lines
+
+Add connection related statistics to the object db.
+
+
+------------------------------------------------------------------------
+r2587 | sdake | 2009-12-07 17:08:38 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2513:
+r2513 | asalkeld | 2009-10-11 16:46:07 -0700 (Sun, 11 Oct 2009) | 2 lines
+
+Test the key value size for typed keys.
+
+
+------------------------------------------------------------------------
+r2586 | sdake | 2009-12-07 17:07:56 -0700 (Mon, 07 Dec 2009) | 9 lines
+
+Merge trunk revision 2512:
+r2512 | asalkeld | 2009-10-11 15:53:13 -0700 (Sun, 11 Oct 2009) | 4 lines
+
+teach object_key_increment() key types.
+
+This is so we can increment all integer types correctly.
+
+
+
+------------------------------------------------------------------------
+r2585 | sdake | 2009-12-07 17:07:23 -0700 (Mon, 07 Dec 2009) | 9 lines
+
+Merge trunk revision 2511:
+r2511 | asalkeld | 2009-10-09 20:20:38 -0700 (Fri, 09 Oct 2009) | 6 lines
+
+Add value types to objdb keys.
+
+This allows you to create a key with a know type.
+And then get the type with the key value.
+
+
+------------------------------------------------------------------------
+r2584 | sdake | 2009-12-07 17:04:24 -0700 (Mon, 07 Dec 2009) | 8 lines
+
+Merge trunk revision 2543:
+r2543 | asalkeld | 2009-11-21 23:22:49 -0700 (Sat, 21 Nov 2009) | 5 lines
+
+COVERITY 18: prevent deref after free.
+
+Event deref_after_free: Dereferencing freed pointer "pi".
+
+
+------------------------------------------------------------------------
+r2583 | sdake | 2009-12-07 17:03:48 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2542:
+r2542 | beekhof | 2009-11-05 06:01:25 -0700 (Thu, 05 Nov 2009) | 1 line
+
+Fix compilation on RHEL-4: If _GNU_SOURCE isn't defined, then neither is pthread_spinlock_t and compilation fails
+
+
+------------------------------------------------------------------------
+r2582 | sdake | 2009-12-07 17:03:18 -0700 (Mon, 07 Dec 2009) | 6 lines
+
+Merge trunk revision 2541:
+r2541 | beekhof | 2009-10-28 12:09:59 -0700 (Wed, 28 Oct 2009) | 1 line
+
+Prevent daemon from suppressing corefile generation
+
+
+------------------------------------------------------------------------
 r2539 | sdake | 2009-10-22 15:34:49 -0700 (Thu, 22 Oct 2009) | 6 lines
 
 Merge trunk revision 2537:

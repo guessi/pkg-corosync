@@ -410,6 +410,11 @@ static inline int strcpy_cutoff (char *dest, const char *src, size_t cutoff,
 	return (cutoff);
 }
 
+static const char log_month_name[][4] = {
+	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+};
+
 /*
  * %s SUBSYSTEM
  * %n FUNCTION NAME
@@ -441,6 +446,7 @@ static void log_printf_to_logs (
 	int subsysid;
 	unsigned int level;
 	int c;
+	struct tm tm_res;
 
 	if (LOGSYS_DECODE_RECID(rec_ident) != LOGSYS_RECID_LOG) {
 		return;
@@ -490,7 +496,10 @@ static void log_printf_to_logs (
 
 				case 't':
 					gettimeofday (&tv, NULL);
-					(void)strftime (char_time, sizeof (char_time), "%b %d %T", localtime ((time_t *)&tv.tv_sec));
+					(void)localtime_r ((time_t *)&tv.tv_sec, &tm_res);
+					snprintf (char_time, sizeof (char_time), "%s %02d %02d:%02d:%02d",
+					    log_month_name[tm_res.tm_mon], tm_res.tm_mday, tm_res.tm_hour,
+					    tm_res.tm_min, tm_res.tm_sec);
 					normal_p = char_time;
 
 					/*
@@ -527,8 +536,12 @@ static void log_printf_to_logs (
 			syslog_output_buffer_idx += syslog_len;
 			format_buffer_idx += 1;
 		}
-		if ((normal_output_buffer_idx == sizeof (normal_output_buffer)) ||
-		    (syslog_output_buffer_idx == sizeof (syslog_output_buffer))) {
+		if ((normal_output_buffer_idx >= sizeof (normal_output_buffer) - 2) ||
+		    (syslog_output_buffer_idx >= sizeof (syslog_output_buffer) - 1)) {
+			/* Note: we make allowance for '\0' at the end of
+			 * both of these arrays and normal_output_buffer also
+			 * needs a '\n'.
+			 */
 			break;
 		}
 	}

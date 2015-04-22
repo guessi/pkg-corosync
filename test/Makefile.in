@@ -74,7 +74,7 @@ noinst_PROGRAMS = testevs$(EXEEXT) evsbench$(EXEEXT) \
 	logsys_s$(EXEEXT) logsys_t1$(EXEEXT) logsys_t2$(EXEEXT) \
 	testcpgzc$(EXEEXT) cpgbenchzc$(EXEEXT) testzcgc$(EXEEXT) \
 	stress_cpgzc$(EXEEXT) stress_cpgfdget$(EXEEXT) \
-	stress_cpgcontext$(EXEEXT) cpgbound$(EXEEXT)
+	stress_cpgcontext$(EXEEXT) cpgbound$(EXEEXT) testsam$(EXEEXT)
 subdir = test
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -188,6 +188,11 @@ testquorum_OBJECTS = testquorum.$(OBJEXT)
 testquorum_DEPENDENCIES =
 testquorum_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(testquorum_LDFLAGS) \
 	$(LDFLAGS) -o $@
+testsam_SOURCES = testsam.c
+testsam_OBJECTS = testsam.$(OBJEXT)
+testsam_DEPENDENCIES =
+testsam_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(testsam_LDFLAGS) \
+	$(LDFLAGS) -o $@
 testvotequorum1_SOURCES = testvotequorum1.c
 testvotequorum1_OBJECTS = testvotequorum1.$(OBJEXT)
 testvotequorum1_DEPENDENCIES =
@@ -215,13 +220,13 @@ SOURCES = cpgbench.c cpgbenchzc.c cpgbound.c cpgverify.c evsbench.c \
 	evsverify.c $(logsys_s_SOURCES) logsys_t1.c logsys_t2.c \
 	logsysbench.c logsysrec.c stress_cpgcontext.c \
 	stress_cpgfdget.c stress_cpgzc.c testconfdb.c testcpg.c \
-	testcpg2.c testcpgzc.c testevs.c testquorum.c \
+	testcpg2.c testcpgzc.c testevs.c testquorum.c testsam.c \
 	testvotequorum1.c testvotequorum2.c testzcgc.c
 DIST_SOURCES = cpgbench.c cpgbenchzc.c cpgbound.c cpgverify.c \
 	evsbench.c evsverify.c $(logsys_s_SOURCES) logsys_t1.c \
 	logsys_t2.c logsysbench.c logsysrec.c stress_cpgcontext.c \
 	stress_cpgfdget.c stress_cpgzc.c testconfdb.c testcpg.c \
-	testcpg2.c testcpgzc.c testevs.c testquorum.c \
+	testcpg2.c testcpgzc.c testevs.c testquorum.c testsam.c \
 	testvotequorum1.c testvotequorum2.c testzcgc.c
 ETAGS = etags
 CTAGS = ctags
@@ -252,6 +257,7 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 GREP = @GREP@
 GROFF = @GROFF@
+INITDDIR = @INITDDIR@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -395,6 +401,8 @@ logsys_t1_LDADD = -llogsys
 logsys_t1_LDFLAGS = -L../exec
 logsys_t2_LDADD = -llogsys
 logsys_t2_LDFLAGS = -L../exec
+testsam_LDADD = -lsam
+testsam_LDFLAGS = -L../lib
 all: all-am
 
 .SUFFIXES:
@@ -492,6 +500,9 @@ testevs$(EXEEXT): $(testevs_OBJECTS) $(testevs_DEPENDENCIES)
 testquorum$(EXEEXT): $(testquorum_OBJECTS) $(testquorum_DEPENDENCIES) 
 	@rm -f testquorum$(EXEEXT)
 	$(testquorum_LINK) $(testquorum_OBJECTS) $(testquorum_LDADD) $(LIBS)
+testsam$(EXEEXT): $(testsam_OBJECTS) $(testsam_DEPENDENCIES) 
+	@rm -f testsam$(EXEEXT)
+	$(testsam_LINK) $(testsam_OBJECTS) $(testsam_LDADD) $(LIBS)
 testvotequorum1$(EXEEXT): $(testvotequorum1_OBJECTS) $(testvotequorum1_DEPENDENCIES) 
 	@rm -f testvotequorum1$(EXEEXT)
 	$(testvotequorum1_LINK) $(testvotequorum1_OBJECTS) $(testvotequorum1_LDADD) $(LIBS)
@@ -530,6 +541,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testcpgzc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testevs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testquorum.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testsam.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testvotequorum1.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testvotequorum2.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testzcgc.Po@am__quote@

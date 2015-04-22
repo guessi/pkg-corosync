@@ -4,7 +4,7 @@
 # bootstrap / init
 AC_PREREQ([2.61])
 
-AC_INIT([corosync], [1.1.2], [openais@lists.osdl.org])
+AC_INIT([corosync], [1.2.0], [openais@lists.osdl.org])
 AM_INIT_AUTOMAKE([-Wno-portability])
 
 AC_CONFIG_SRCDIR([lib/coroipcc.c])
@@ -110,7 +110,6 @@ AC_FUNC_MEMCMP
 AC_FUNC_REALLOC
 AC_FUNC_SELECT_ARGTYPES
 AC_TYPE_SIGNAL
-AC_FUNC_STRFTIME
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([alarm alphasort atexit bzero dup2 endgrent endpwent fcntl \
 		getcwd getpeerucred getpeereid gettimeofday inet_ntoa memmove \
@@ -205,6 +204,11 @@ AC_ARG_ENABLE([rdma],
 	[ enable_rdma="no" ])
 AM_CONDITIONAL(BUILD_RDMA, test x$enable_rdma = xyes)
 
+AC_ARG_WITH([initddir],
+	[  --with-initddir=DIR     : path to init script directory. ],
+	[ INITDDIR="$withval" ],
+	[ INITDDIR="$sysconfdir/init.d" ])
+
 AC_ARG_WITH([lcrso-dir],
 	[  --with-lcrso-dir=DIR    : corosync lcrso files. ],
 	[ LCRSODIR="$withval" ],
@@ -258,6 +262,14 @@ case "$host_os" in
 		OS_DYFLAGS="-export-dynamic"
 		DARWIN_OPTS=""
 		OS_LDL=""
+		case "$host_os" in
+			*freebsd[[234567]]*)
+			;;
+			*freebsd*)
+				AC_DEFINE_UNQUOTED([COROSYNC_FREEBSD_GE_8], [1],
+					   [Compiling for FreeBSD >= 8 platform])
+			;;
+		esac
 	;;
 	*solaris*)
 		AC_DEFINE_UNQUOTED([COROSYNC_SOLARIS], [1],
@@ -390,6 +402,7 @@ CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $OS_CPPFLAGS"
 LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS $OS_LDFLAGS"
 
 # substitute what we need:
+AC_SUBST([INITDDIR])
 AC_SUBST([LCRSODIR])
 AC_SUBST([SOCKETDIR])
 
@@ -438,6 +451,7 @@ AC_MSG_RESULT([  Header files             = ${includedir}])
 AC_MSG_RESULT([  Arch-independent files   = ${datadir}])
 AC_MSG_RESULT([  State information        = ${localstatedir}])
 AC_MSG_RESULT([  System configuration     = ${sysconfdir}])
+AC_MSG_RESULT([  System init.d directory  = ${INITDDIR}])
 AC_MSG_RESULT([  corosync config dir      = ${COROSYSCONFDIR}])
 AC_MSG_RESULT([  LCRSO                    = ${LCRSODIR}])
 AC_MSG_RESULT([  SOCKETDIR                = ${SOCKETDIR}])

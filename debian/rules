@@ -32,7 +32,6 @@ configure-stamp:
                     --enable-augeas 
 		    --enable-snmp \ 
 		    --enable-xmlconf \
-		    --enable-systemd \
 		    --enable-upstart \
 		    --enable-qdevices
 	touch configure-stamp

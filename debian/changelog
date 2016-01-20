@@ -1,3 +1,10 @@
+corosync (2.3.4-0ubuntu1ppa1) trusty; urgency=medium
+
+  * rebuild for trusty
+  * d/rules: remove --enable-systemd
+
+ -- guessi mei <guessi@gmail.com>  Fri, 13 Nov 2015 15:27:52 +0000
+
 corosync (2.3.4-0ubuntu1) trusty; urgency=medium
 
   * New upstream point release.

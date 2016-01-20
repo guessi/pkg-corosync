@@ -1,4 +1,4 @@
-corosync (2.3.4-0ubuntu1) vivid; urgency=medium
+corosync (2.3.4-0ubuntu1) trusty; urgency=medium
 
   * New upstream point release.
   * d/watch: Switch to clusterlabs build server for upstream releases.

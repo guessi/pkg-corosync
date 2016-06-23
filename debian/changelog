@@ -1,3 +1,10 @@
+corosync (2.3.4-0ubuntu2ppa1) trusty; urgency=medium
+
+  * rebuild for trusty
+  * d/rules: remove --enable-systemd
+
+ -- guessi mei <guessi@gmail.com>  Thu, 23 Jun 2016 23:18:20 +0800
+
 corosync (2.3.4-0ubuntu2) wily; urgency=medium
 
   * debian/patches/Totempg-Fix-memory-leak.patch: Fixes memory leak on

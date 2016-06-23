@@ -1,0 +1,113 @@
+From 600fb4084adcbfe7678b44a83fa8f3d3550f48b9 Mon Sep 17 00:00:00 2001
+From: Jan Friesse <jfriesse@redhat.com>
+Date: Wed, 10 Feb 2016 12:36:52 +0100
+Subject: [PATCH] totempg: Fix memory leak
+
+Previously there were two free lists. One for operational and one for
+transitional state. Because every node starts in transitional state and
+always ends in the operational state, assembly was always put to normal
+state free list and never in transitional free list, so new assembly
+structure was always allocated after new node connected.
+
+Solution is to have only one free list.
+
+Signed-off-by: Jan Friesse <jfriesse@redhat.com>
+Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+Reviewed-by: Steven Dake <stdake@cisco.com>
+---
+ exec/totempg.c | 26 +++++++-------------------
+ 1 file changed, 7 insertions(+), 19 deletions(-)
+
+diff --git a/exec/totempg.c b/exec/totempg.c
+index fe111b1..0b46782 100644
+--- a/exec/totempg.c
++++ b/exec/totempg.c
+@@ -212,12 +212,13 @@ static int callback_token_received_fn (enum totem_callback_token_type type,
+ 
+ DECLARE_LIST_INIT(assembly_list_inuse);
+ 
++/*
++ * Free list is used both for transitional and operational assemblies
++ */
+ DECLARE_LIST_INIT(assembly_list_free);
+ 
+ DECLARE_LIST_INIT(assembly_list_inuse_trans);
+ 
+-DECLARE_LIST_INIT(assembly_list_free_trans);
+-
+ DECLARE_LIST_INIT(totempg_groups_list);
+ 
+ /*
+@@ -291,14 +292,11 @@ static struct assembly *assembly_ref (unsigned int nodeid)
+ 	struct assembly *assembly;
+ 	struct list_head *list;
+ 	struct list_head *active_assembly_list_inuse;
+-	struct list_head *active_assembly_list_free;
+ 
+ 	if (totempg_waiting_transack) {
+ 		active_assembly_list_inuse = &assembly_list_inuse_trans;
+-		active_assembly_list_free = &assembly_list_free_trans;
+ 	} else {
+ 		active_assembly_list_inuse = &assembly_list_inuse;
+-		active_assembly_list_free = &assembly_list_free;
+ 	}
+ 
+ 	/*
+@@ -318,8 +316,8 @@ static struct assembly *assembly_ref (unsigned int nodeid)
+ 	/*
+ 	 * Nothing found in inuse list get one from free list if available
+ 	 */
+-	if (list_empty (active_assembly_list_free) == 0) {
+-		assembly = list_entry (active_assembly_list_free->next, struct assembly, list);
++	if (list_empty (&assembly_list_free) == 0) {
++		assembly = list_entry (assembly_list_free.next, struct assembly, list);
+ 		list_del (&assembly->list);
+ 		list_add (&assembly->list, active_assembly_list_inuse);
+ 		assembly->nodeid = nodeid;
+@@ -350,16 +348,9 @@ static struct assembly *assembly_ref (unsigned int nodeid)
+ 
+ static void assembly_deref (struct assembly *assembly)
+ {
+-	struct list_head *active_assembly_list_free;
+-
+-	if (totempg_waiting_transack) {
+-		active_assembly_list_free = &assembly_list_free_trans;
+-	} else {
+-		active_assembly_list_free = &assembly_list_free;
+-	}
+ 
+ 	list_del (&assembly->list);
+-	list_add (&assembly->list, active_assembly_list_free);
++	list_add (&assembly->list, &assembly_list_free);
+ }
+ 
+ static void assembly_deref_from_normal_and_trans (int nodeid)
+@@ -367,16 +358,13 @@ static void assembly_deref_from_normal_and_trans (int nodeid)
+ 	int j;
+ 	struct list_head *list, *list_next;
+ 	struct list_head *active_assembly_list_inuse;
+-	struct list_head *active_assembly_list_free;
+ 	struct assembly *assembly;
+ 
+ 	for (j = 0; j < 2; j++) {
+ 		if (j == 0) {
+ 			active_assembly_list_inuse = &assembly_list_inuse;
+-			active_assembly_list_free = &assembly_list_free;
+ 		} else {
+ 			active_assembly_list_inuse = &assembly_list_inuse_trans;
+-			active_assembly_list_free = &assembly_list_free_trans;
+ 		}
+ 
+ 		for (list = active_assembly_list_inuse->next;
+@@ -388,7 +376,7 @@ static void assembly_deref_from_normal_and_trans (int nodeid)
+ 
+ 			if (nodeid == assembly->nodeid) {
+ 				list_del (&assembly->list);
+-				list_add (&assembly->list, active_assembly_list_free);
++				list_add (&assembly->list, &assembly_list_free);
+ 			}
+ 		}
+ 	}
+-- 
+2.5.0
+

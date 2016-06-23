@@ -1,11 +1,11 @@
-corosync (2.3.4-0ubuntu1ppa1) trusty; urgency=medium
+corosync (2.3.4-0ubuntu2) wily; urgency=medium
 
-  * rebuild for trusty
-  * d/rules: remove --enable-systemd
+  * debian/patches/Totempg-Fix-memory-leak.patch: Fixes memory leak on
+    Totempg. (LP: #1563089).
 
- -- guessi mei <guessi@gmail.com>  Fri, 13 Nov 2015 15:27:52 +0000
+ -- Jorge Niedbalski <jorge.niedbalski@canonical.com>  Tue, 05 Apr 2016 10:07:47 +0200
 
-corosync (2.3.4-0ubuntu1) trusty; urgency=medium
+corosync (2.3.4-0ubuntu1) vivid; urgency=medium
 
   * New upstream point release.
   * d/watch: Switch to clusterlabs build server for upstream releases.

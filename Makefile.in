@@ -261,6 +261,7 @@ SOMINOR = @SOMINOR@
 SONAME = @SONAME@
 STRIP = @STRIP@
 SYSTEMDDIR = @SYSTEMDDIR@
+TMPFILESDIR = @TMPFILESDIR@
 UPSTARTDIR = @UPSTARTDIR@
 VERSCRIPT_LDFLAGS = @VERSCRIPT_LDFLAGS@
 VERSION = @VERSION@
@@ -1010,12 +1011,22 @@ install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/uidgid.d
 	$(INSTALL) -d $(DESTDIR)/${localstatedir}/lib/corosync
 	$(INSTALL) -d $(DESTDIR)/${localstatedir}/log/cluster
+@BUILD_QNETD_TRUE@	$(INSTALL) -m 770 -d $(DESTDIR)/${localstatedir}/run/corosync-qnetd
+@BUILD_QNETD_TRUE@	$(INSTALL) -m 770 -d $(DESTDIR)/${COROSYSCONFDIR}/qnetd
+@BUILD_QDEVICES_TRUE@	$(INSTALL) -m 770 -d $(DESTDIR)/${localstatedir}/run/corosync-qdevice
+@BUILD_QDEVICES_TRUE@	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/qdevice/
+@BUILD_QDEVICES_TRUE@	$(INSTALL) -m 770 -d $(DESTDIR)/${COROSYSCONFDIR}/qdevice/net
 
 uninstall-local:
 	rmdir $(DESTDIR)/${COROSYSCONFDIR}/service.d || :;
 	rmdir $(DESTDIR)/${COROSYSCONFDIR}/uidgid.d || :;
 	rmdir $(DESTDIR)/${localstatedir}/lib/corosync || :;
 	rmdir $(DESTDIR)/${localstatedir}/log/cluster || :;
+@BUILD_QNETD_TRUE@	rmdir $(DESTDIR)/${localstatedir}/run/corosync-qnetd || :;
+@BUILD_QNETD_TRUE@	rmdir $(DESTDIR)/${COROSYSCONFDIR}/qnetd || :;
+@BUILD_QDEVICES_TRUE@	rmdir $(DESTDIR)/${localstatedir}/run/corosync-qdevice || :;
+@BUILD_QDEVICES_TRUE@	rmdir $(DESTDIR)/${COROSYSCONFDIR}/qdevice/net || :;
+@BUILD_QDEVICES_TRUE@	rmdir $(DESTDIR)/${COROSYSCONFDIR}/qdevice/ || :;
 
 @AUGTOOL_TRUE@test_lense.sh:
 @AUGTOOL_TRUE@	echo "augparse -I $(srcdir)/conf/lenses/ $(srcdir)/conf/lenses/tests/test_corosync.aug" > $@

@@ -153,6 +153,13 @@ static void totem_volatile_config_set_value (struct totem_config *totem_config,
 	/*
 	 * Store totem_config value to cmap runtime section
 	 */
+	if (strlen("runtime.config.") + strlen(key_name) >= ICMAP_KEYNAME_MAXLEN) {
+		/*
+		 * This shouldn't happen
+		 */
+		return ;
+	}
+
 	strcpy(runtime_key_name, "runtime.config.");
 	strcat(runtime_key_name, key_name);
 
@@ -1101,16 +1108,14 @@ extern int totem_config_read (
 		} else {
 			/*
 			 * User not specified address -> autogenerate one from cluster_name key
-			 * (if available)
+			 * (if available). Return code is intentionally ignored, because
+			 * udpu doesn't need mcastaddr and validity of mcastaddr for udp is
+			 * checked later anyway.
 			 */
-			res = get_cluster_mcast_addr (cluster_name,
+			(void)get_cluster_mcast_addr (cluster_name,
 					ringnumber,
 					totem_config->ip_version,
 					&totem_config->interfaces[ringnumber].mcast_addr);
-			if (res != 0) {
-				*error_string = "Can't autogenerate multicast address";
-				return -1;
-			}
 		}
 
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.broadcast", ringnumber);

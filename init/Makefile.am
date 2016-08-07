@@ -36,7 +36,11 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 EXTRA_DIST		= corosync.in corosync-notifyd.in corosync.service.in \
                           corosync-notifyd.service.in corosync.conf.in corosync-notifyd.conf.in \
-                          corosync.sysconfig.example
+                          corosync.sysconfig.example \
+                          corosync-qdevice.sysconfig.example corosync-qdevice.in \
+                          corosync-qdevice.service.in \
+                          corosync-qnetd.sysconfig.example corosync-qnetd.in \
+                          corosync-qnetd.service.in
 
 if INSTALL_SYSTEMD
 systemdconfdir	   = $(SYSTEMDDIR)
@@ -47,6 +51,20 @@ initscriptdir	   = $(INITDDIR)
 endif
 initscript_SCRIPTS  = corosync corosync-notifyd
 
+if BUILD_QDEVICES
+initscript_SCRIPTS  += corosync-qdevice
+if INSTALL_SYSTEMD
+systemdconf_DATA   += corosync-qdevice.service
+endif
+endif
+
+if BUILD_QNETD
+initscript_SCRIPTS  += corosync-qnetd
+if INSTALL_SYSTEMD
+systemdconf_DATA   += corosync-qnetd.service
+endif
+endif
+
 if INSTALL_UPSTART
 upstartconfdir     = $(UPSTARTDIR)
 upstartconf_DATA   = corosync.conf corosync-notifyd.conf
@@ -56,6 +74,7 @@ endif
 	rm -f $@-t $@
 	cat $< | sed \
 		-e 's#@''SBINDIR@#$(sbindir)#g' \
+		-e 's#@''BINDIR@#$(bindir)#g' \
 		-e 's#@''SYSCONFDIR@#$(sysconfdir)#g' \
 		-e 's#@''INITDDIR@#$(INITDDIR)#g' \
 		-e 's#@''INITWRAPPERSDIR@#$(INITWRAPPERSDIR)#g' \

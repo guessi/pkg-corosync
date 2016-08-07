@@ -7,10 +7,10 @@ Subject: configure.ac
  1 file changed, 8 insertions(+)
 
 diff --git a/configure.ac b/configure.ac
-index c324c1a..3fe8b67 100644
+index e2f7023..bfa92fd 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -452,6 +452,14 @@ if test "x${enable_rdma}" = xyes; then
+@@ -462,6 +462,14 @@ if test "x${enable_rdma}" = xyes; then
  	PACKAGE_FEATURES="$PACKAGE_FEATURES rdma"
  	WITH_LIST="$WITH_LIST --with rdma"
  fi

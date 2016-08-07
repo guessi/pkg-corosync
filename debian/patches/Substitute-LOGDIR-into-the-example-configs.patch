@@ -318,7 +318,7 @@ index 0000000..84bf353
 +	#provider: corosync_votequorum
 +}
 diff --git a/configure.ac b/configure.ac
-index 6a47abb..131f12d 100644
+index 81fc91b..73597ca 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -204,6 +204,8 @@ AC_CONFIG_FILES([Makefile
@@ -327,6 +327,6 @@ index 6a47abb..131f12d 100644
  		 Doxyfile
 +		 conf/corosync.conf.example
 +		 conf/corosync.conf.example.udpu
- 		 conf/logrotate/Makefile])
+ 		 conf/logrotate/Makefile
+ 		 conf/tmpfiles.d/Makefile])
  
- ### Local business

@@ -9,10 +9,10 @@ the Multi-Arch: same development packages.
  1 file changed, 1 insertion(+), 2 deletions(-)
 
 diff --git a/man/Makefile.am b/man/Makefile.am
-index 41284cb..c77a403 100644
+index c18cf5c..fe14e74 100644
 --- a/man/Makefile.am
 +++ b/man/Makefile.am
-@@ -148,12 +148,11 @@ HTML_DOCS 		= $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)
+@@ -166,12 +166,11 @@ HTML_DOCS 		= $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)
  %.3: %.3.in $(autogen_common)
  	@echo Generating $@ man page && \
  	rm -f $@-t-t $@-t $@ && \

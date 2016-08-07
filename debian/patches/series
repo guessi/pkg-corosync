@@ -6,15 +6,6 @@ Send-corosync-startup-notification-to-systemd.patch
 Make-systemd-stop-and-restart-corosync-notifyd-if-co.patch
 Send-corosync-notifyd-startup-notification-to-system.patch
 Use-debian-changelog-timestamp-for-the-build-time-of.patch
-cmap_track_add.3.in-fix-typo-bellow-below.patch
 totemip.h-uses-list.h.patch
 configure.ac.patch
-Fix-typo-funtion-function.patch
-Fix-typo-interger-integer.patch
 Add-Documentation-URIs-to-the-systemd-service-files.patch
-Fix-typo-Uknown-Unknown.patch
-Fix-typo-aquire-acquire.patch
-Fix-typo-retrive-retrieve.patch
-Fix-typo-alocated-allocated.patch
-Fix-typo-Diabled-disabled.patch
-config-get_cluster_mcast_addr-error-is-not-fatal.patch

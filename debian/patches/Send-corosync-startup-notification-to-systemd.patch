@@ -17,10 +17,10 @@ Signed-off-by: Ferenc Wágner <wferi@niif.hu>
  4 files changed, 16 insertions(+), 5 deletions(-)
 
 diff --git a/configure.ac b/configure.ac
-index 131f12d..c324c1a 100644
+index 73597ca..e2f7023 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -475,6 +475,8 @@ if test "x${enable_augeas}" = xyes; then
+@@ -485,6 +485,8 @@ if test "x${enable_augeas}" = xyes; then
  	PACKAGE_FEATURES="$PACKAGE_FEATURES augeas"
  fi
  if test "x${enable_systemd}" = xyes; then
@@ -47,7 +47,7 @@ index 9ca7720..bc3a190 100644
  corosync_DEPENDENCIES	= libtotem_pg.la ../common_lib/libcorosync_common.la
  
 diff --git a/exec/main.c b/exec/main.c
-index 7d2dcf7..457ed09 100644
+index 82fb808..133be9c 100644
 --- a/exec/main.c
 +++ b/exec/main.c
 @@ -96,6 +96,10 @@

@@ -61,7 +61,6 @@ static void votequorum_notification_fn(
 	votequorum_handle_t handle,
 	uint64_t context,
 	uint32_t quorate,
-	votequorum_ring_id_t ring_id,
 	uint32_t node_list_entries,
 	votequorum_node_t node_list[])
 {
@@ -121,7 +120,7 @@ static int q_lib_init(void)
 
 	if (vq_handle == 0) {
 		qb_log (LOG_INFO, "votequorum_initialize");
-		vq_callbacks.votequorum_notify_fn = votequorum_notification_fn;
+		vq_callbacks.votequorum_quorum_notify_fn = votequorum_notification_fn;
 		vq_callbacks.votequorum_expectedvotes_notify_fn = NULL;
 		ret = CS_ERR_NOT_EXIST;
 		while (ret == CS_ERR_NOT_EXIST && retry > 0) {

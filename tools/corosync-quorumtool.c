@@ -114,16 +114,25 @@ typedef struct {
 static view_list_entry_t *g_view_list;
 static uint32_t g_quorate;
 static uint64_t g_ring_id;
+static uint32_t g_ring_id_rep_node;
 static uint32_t g_view_list_entries;
 static uint32_t g_called;
+static uint32_t g_vq_called;
 
 /*
  * votequorum bits
  */
+static void votequorum_notification_fn(
+	votequorum_handle_t handle,
+	uint64_t context,
+	votequorum_ring_id_t ring_id,
+	uint32_t node_list_entries,
+	uint32_t node_list[]);
 static votequorum_handle_t v_handle;
 static votequorum_callbacks_t v_callbacks = {
-	.votequorum_notify_fn = NULL,
-	.votequorum_expectedvotes_notify_fn = NULL
+	.votequorum_quorum_notify_fn = NULL,
+	.votequorum_expectedvotes_notify_fn = NULL,
+	.votequorum_nodelist_notify_fn = votequorum_notification_fn,
 };
 static uint32_t our_nodeid = 0;
 
@@ -343,6 +352,18 @@ static const char *node_name(uint32_t nodeid, name_format_t name_format)
 	return "";
 }
 
+
+static void votequorum_notification_fn(
+	votequorum_handle_t handle,
+	uint64_t context,
+	votequorum_ring_id_t ring_id,
+	uint32_t node_list_entries,
+	uint32_t node_list[])
+{
+	g_ring_id_rep_node = ring_id.nodeid;
+	g_vq_called = 1;
+}
+
 static void quorum_notification_fn(
 	quorum_handle_t handle,
 	uint32_t quorate,
@@ -416,6 +437,7 @@ static int compare_nodenames(const void *one, const void *two)
 static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type)
 {
 	int i, display_qdevice = 0;
+	unsigned int our_flags = 0;
 	struct votequorum_info info[g_view_list_entries];
 	/*
 	 * cache node info because we need to parse them twice
@@ -432,7 +454,7 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 		}
 	}
 
-	/* 
+	/*
 	 * Get node names
 	 */
 	for (i=0; i < g_view_list_entries; i++) {
@@ -488,6 +510,7 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 		printf("%s", g_view_list[i].name);
 		if (g_view_list[i].node_id == our_nodeid) {
 			printf(" (local)");
+			our_flags = info[i].flags;
 		}
 		printf("\n");
 	}
@@ -506,8 +529,21 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 		} else {
 			printf("0x%08x ", VOTEQUORUM_QDEVICE_NODEID);
 		}
-		print_uint32_padded(info[0].qdevice_votes);
-		printf("           %s\n", info[0].qdevice_name);
+		/* If the quorum device is inactive on this node then show votes as 0
+		   so that the display is not confusing */
+		if (our_flags & VOTEQUORUM_INFO_QDEVICE_CAST_VOTE) {
+			print_uint32_padded(info[0].qdevice_votes);
+		}
+		else {
+			print_uint32_padded(0);
+		}
+		printf("           %s", info[0].qdevice_name);
+		if (our_flags & VOTEQUORUM_INFO_QDEVICE_CAST_VOTE) {
+			printf("\n");
+		}
+		else {
+			printf(" (votes %d)\n", info[0].qdevice_votes);
+		}
 	}
 
 }
@@ -538,7 +574,13 @@ static int display_quorum_data(int is_quorate,
 	} else {
 		printf("Node ID:          0x%08x\n", our_nodeid);
 	}
-	printf("Ring ID:          %" PRIu64 "\n", g_ring_id);
+
+	if (v_handle) {
+		printf("Ring ID:          %d/%" PRIu64 "\n", g_ring_id_rep_node, g_ring_id);
+	}
+	else {
+		printf("Ring ID:          %" PRIu64 "\n", g_ring_id);
+	}
 	printf("Quorate:          %s\n", is_quorate?"Yes":"No");
 
 	if (!v_handle) {
@@ -605,6 +647,22 @@ static int show_status(nodeid_format_t nodeid_format, name_format_t name_format,
 		fprintf(stderr, "Unable to stop quorum status tracking: %s\n", cs_strerror(err));
 	}
 
+	if (using_votequorum()) {
+
+		if ( (err=votequorum_trackstart(v_handle, 0LL, CS_TRACK_CURRENT)) != CS_OK) {
+			fprintf(stderr, "Unable to start votequorum status tracking: %s\n", cs_strerror(err));
+			goto quorum_err;
+		}
+
+		g_vq_called = 0;
+		while (g_vq_called == 0 && err == CS_OK) {
+			err = votequorum_dispatch(v_handle, CS_DISPATCH_ONE);
+			if (err != CS_OK) {
+				fprintf(stderr, "Unable to dispatch votequorum status: %s\n", cs_strerror(err));
+			}
+		}
+	}
+
 quorum_err:
 	if (err != CS_OK) {
 		return -1;
@@ -633,12 +691,31 @@ static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_form
 		goto quorum_err;
 	}
 
+	if (using_votequorum()) {
+		if ( (err=votequorum_trackstart(v_handle, 0LL, CS_TRACK_CHANGES)) != CS_OK) {
+			fprintf(stderr, "Unable to start votequorum status tracking: %s\n", cs_strerror(err));
+			goto quorum_err;
+		}
+	}
+
+
 	while (1) {
 		err = quorum_dispatch(q_handle, CS_DISPATCH_ONE);
 		if (err != CS_OK) {
 			fprintf(stderr, "Unable to dispatch quorum status: %s\n", cs_strerror(err));
 			goto quorum_err;
 		}
+		if (using_votequorum()) {
+			g_vq_called = 0;
+			while (!g_vq_called) {
+				err = votequorum_dispatch(v_handle, CS_DISPATCH_ONE);
+				if (err != CS_OK) {
+					fprintf(stderr, "Unable to dispatch votequorum status: %s\n", cs_strerror(err));
+					goto quorum_err;
+				}
+			}
+		}
+
 		err = display_quorum_data(g_quorate, nodeid_format, name_format, sort_type, loop);
 		printf("\n");
 		loop = 1;
@@ -742,7 +819,7 @@ static int init_all(void) {
 	}
 
 	if (cmap_get_uint32(cmap_handle, "runtime.votequorum.this_node_id", &our_nodeid) != CS_OK) {
-		fprintf(stderr, "Unable to retrive this node nodeid\n");
+		fprintf(stderr, "Unable to retrieve this_node_id\n");
 		goto out;
 	}
 

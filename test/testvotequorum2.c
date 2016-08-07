@@ -76,16 +76,15 @@ static int print_info(int ok_to_fail)
 	return 0;
 }
 
-static void votequorum_notification_fn(
+static void votequorum_nodelist_notification_fn(
 	votequorum_handle_t vq_handle,
 	uint64_t context,
-	uint32_t quorate,
 	votequorum_ring_id_t ring_id,
 	uint32_t node_list_entries,
-	votequorum_node_t node_list[])
+	uint32_t node_list[])
 {
 
-	printf("votequorum notification called \n");
+	printf("votequorum nodelist notification called \n");
 	printf("  current ringid  = (%u.%"PRIu64")\n", ring_id.nodeid, ring_id.seq);
 	printf("\n");
 
@@ -100,7 +99,7 @@ static void usage(const char *command)
         printf("      -p <num>  Number of times to poll qdevice (default 0=infinte)\n");
         printf("      -t <secs> Time (in seconds) to wait between polls (default=1)\n");
         printf("      -n <name> Name of quorum device (default QDEVICE)\n");
-        printf("      -c        Cast vote (default yes)\n");
+        printf("      -c        Don't cast vote (default is to cast vote)\n");
         printf("      -q        Don't print device status every poll time (default=will print)\n");
         printf("      -m        Master wins (default no)\n");
         printf("      -1        Print status once and exit\n");
@@ -119,7 +118,7 @@ int main(int argc, char *argv[])
 	const char *options = "F:n:p:t:cmq1h";
 
 	memset(&callbacks, 0, sizeof(callbacks));
-	callbacks.votequorum_notify_fn = votequorum_notification_fn;
+	callbacks.votequorum_nodelist_notify_fn = votequorum_nodelist_notification_fn;
 
 	while ((opt = getopt(argc, argv, options)) != -1) {
 		switch (opt) {
@@ -127,7 +126,7 @@ int main(int argc, char *argv[])
 		        master_wins = 1;
 			break;
 		case 'c':
-		        cast_vote = 1;
+		        cast_vote = 0;
 			break;
 		case '1':
 		        once = 1;

@@ -1,3 +1,628 @@
+2016-08-04  Jan Friesse  <jfriesse@redhat.com>
+
+	Spec: Qdevice require same version of corosync
+
+	Config: Flag config uidgid entries
+	Uidgid entries parsed from configuration files now has prefix
+	(uidgid.config.) so they are distinguishable from dynamically added
+	entries. Entries added from config file are pruned on reload if no
+	longer exists in config file (dynamic one stays unaffected). Also whole
+	uidgid.config. prefix is made read only.
+
+	This make PCMK work again after configuration reload is called.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2016-08-04  Bin Liu  <bliu@suse.com>
+
+	cts: Make it run with pacemaker-1.13+
+	There are changes in pacemaker-cts which corosync-testagents denpends
+	on. With these changes, corosync-testagents can not run. This patch
+	fixes the issues, and makes corosync-testagents run.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2016-08-01  HideoYamauchi  <renayama19661014@ybb.ne.jp>
+
+	Low: totemsrp: Addition of the log.
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2016-07-12  Christine Caulfield  <ccaulfie@redhat.com>
+
+	qdevice: some more small man page fixes
+	including mentioning corosync-qdevice(5) on the
+	votequorum(5) and corosync.conf(5) pages.
+
+	Thanks to Jan Pokorný for reporting these.
+
+2016-07-07  Christine Caulfield  <ccaulfie@redhat.com>
+
+	qdevice: Fix 'tie_breaker' in man page
+	the tie_breaker option was incorrectly listed as
+	tie-breaker on the man page.
+
+2016-06-30  Jan Friesse  <jfriesse@redhat.com>
+
+	Qdevices: Include required files in tarball
+
+	Qdevice: Include man pages in tarball
+
+	tmpfiles.d: Install only when required
+
+2016-06-30  Christine Caulfield  <ccaulfie@redhat.com>
+
+	Qdevice: Englishify man pages
+
+2016-06-29  Jan Friesse  <jfriesse@redhat.com>
+
+	Qdevice: Add corosync-qdevice man page
+
+	Qdevice: Add more man pages
+
+2016-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	Qdevice: Fallback mkdir of /var/run sundirectory
+
+	Qdevice: Enhance delay before reconnect
+
+	Qdevice: Handle /var/run on tmpfs
+
+	Qdevice: Reconnect on algo or tb differs error
+
+	qdevice: Add qdevice-tool and qnetd-tool man pages
+
+	Qdevice: Make ffsplit algorithm default
+
+	Qdevice: Add sysconfig example
+
+	Fix few bugs found by coverity
+
+	Qdevice: Fix errors found by coverity
+
+	Qnetd: Execute qnetd as non root user
+
+	Qdevice: Adjust path to final location
+
+	Qdevice: Add qnetd configure option
+	Qnetd is no longer build as a part of --qneable-qdevices. Instead
+	--enable-qnetd is used.
+
+2016-06-28  Christine Caulfield  <ccaulfie@redhat.com>
+
+	quorum: revert patch that adds qdevice (node 0) to quorum callback
+	Revert patch 9f54f0a1fad7dad42c55562a50dfb9d773e6a660 as it causes
+	more troubles than it solves. Code that uses the quorum nodelist
+	to get a list of actual nodes in the cluster for communication
+	break using this as well as the display from corosync-quorumtool
+
+2016-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	Qdevice-net: Make duplicate node id err non-fatal
+	It can happen because qnetd not yet handled disconnect of client.
+
+	Qnetd: ffsplit: Add no active clients heuristic
+	On 50:50 split, ffsplit algorithm now prefers partition with
+	higher number of active clients. Tie-breaker is used only if both
+	partitions have same number of active clients.
+
+	Qdevice: Allow master_wins
+
+	Qnetd: ffsplit: Enhance ffsplit
+	50:50 split algorithm now works in following way:
+	- On client configuration change, membership change or disconnect wait
+	  till membership is stable (= all client configuration node list are
+	  equal, and all partitions has equal information).
+	- Choose best partition >= 50%
+	  - If no such partition exists, send NACK to all clients
+	- Send NACK to all clients who should receive NACK
+	- After all clients who should receive NACK confirm vote reception, send
+	  ACK to all clients who should get ACK
+
+	This ensures that there are never two partitions with ACK and it has
+	much better behavior than previous version, because if tie-breaker
+	partition is not connected, other partition gets ACK.
+
+	Qdevice: Send ring id in more messages
+	To prevent receiving vote from old membership ring id is sent to server
+	during init and replied back to client in every node list,
+	ask for vote reply and vote info messages.
+
+	Qdevice: Remove unused variable
+
+	Qdevice: Wait for ring id before executing model
+
+	Qnetd: Make sure all header files are in final tar
+
+	Qdevice: Add initial version of ffsplit
+	For now it's doing same job as atb.
+
+	Qnetd: Return errors in test algorithm
+
+	Qnetd: Implement cluster algorithm data
+
+	Qdevice: Fix qdevice-net-certutil quickstart
+	Last part (import p12 files on other nodes) were not implemented.
+
+	Qnetd: Split cluster-list
+
+	Qnetd: Store result vote of ask_for_vote correctly
+	Previously unitialized vote was stored.
+
+	Qdevice: Correct API comments
+	Also after votequorum node list is received and qnetd is connected,
+	default vote is changed to WAIT_FOR_REPLY. This make much more sense
+	because it ensures qdevice doesn't vote with new ring id until qnetd
+	sends reply.
+
+	Qdevice: Add expected votes notify callback API
+
+	Qdevice: Do not call cmap_dispatch in sync
+	When corosync is during sync operation cmap_dispatch blocks.
+
+	Qdevice: Add advanced settings
+	All previously defined defaults are now configurable via -S option.
+
+	qnetd: Add warning to test algorithm
+
+	Qnetd: Add advanced settings
+	All previously defined defaults are now configurable via -S option.
+
+	qdevice: Ensure to exit if ipc socket is closed
+	When ipc socket was closed before poll and new connection got same fd as
+	original IPC socket, shutdown didn't work. Solution is to check if IPC
+	socket is active during poll array create.
+
+	Qdevice: Add IPC clients
+
+	qnetd: Add support for IPC list command
+
+	qdevice: Make sure qdevice exists on corosync exit
+
+	Add qdevice into spec file
+
+	Make sure all qdevice files are packaged
+
+	Split qnetd certutil to qnetd and qdevice-net part
+
+	Qnetd: Add local IPC
+	Basic commands shutdown and status are implemented.
+
+	Qdevice: Quote str func compatible with simple_lex
+
+	Qdevice: Improve simple lex and add unit test
+	Simple lex now support backslashes and quotes. Behavior is
+	similar to shell.
+
+	Qdevice: Support for IPC status cmd in net model
+
+	qdevice certutil: Increase default cert validity
+
+	Qnetd: Don't fall if TLS is disabled
+
+	Qnetd: Log client in IP address:port format
+
+	Qdevice: Don't abrt if IPC connect isn't accepted
+	Also sending buffer is increased from testing value 2 to 1024.
+
+	Qdevice: Implement status command
+
+	Qdevice: Allow compiler warn about unhandled case
+	Remove default case where switch selection is made on top of enum value.
+
+	Qdevice: Add format macro for nodeid, ring, ...
+
+	qdevice: Properly free IPC data on exit
+
+	qdevice: Implement shutdown command
+
+	qdevice: Add dynar prepend
+
+	qdevice: Sending error (output) in IPC
+
+	qnetd: Fix logging function va_arg handling
+
+	qdevice: Add vcatf to dynar-str
+
+	qdevice: Fix cluster-list test
+
+	qdevice: Add functions to manipulate dynar string
+
+	qdevice: Add public prealloc function to dynar
+
+	qdevice: Make simple-lex locale independent
+	Simple-lex is going to be used in protocol so it's not good idea to
+	depend on locale.
+
+2016-06-28  Christine Caulfield  <ccaulfie@redhat.com>
+
+	quorum: Return qdevice nodeid in the quorum callbacks (if active).
+
+2016-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	qdevice: Improve socket based IPC
+
+	qnetd: Factorize qnetd-poll-array to generic unit
+
+	qdevice: Add preliminary version of IPC
+
+	qdevice: Add qdevice service scripts
+	Also fix qnetd systemd service.
+
+	qdevice: Remove compiler warning
+
+	qdevice: Unregister votequorum tracking on exit
+
+	qdevice: Add support for daemonize
+	Also local unix socket is now created. In future this is going to be
+	used for qdevice-tool, for now it's used only for handling SIGINT and
+	SIGTERM.
+
+	qdevice-net: Add option to force ip version
+
+	qnetd: Add dead peer (client) detection
+
+	qdevice timer-list: Add reschedule operation
+
+	qdevice: Wait a while before reconnect
+	It's viable to give qnetd a little time before client tries reconnect.
+
+	qnetd: Replace err by qnetd_log on some places
+	err should be used only before qnetd log is fully initialized.
+
+	qnetd: Validate tie-breaker, algo and node dup
+	If new client request tie-breaker or algo which differes from rest of
+	cluster, error message is sent back. Also it's checked if node is not
+	duplicate by comparing node id.
+
+2016-06-28  Christine Caulfield  <ccaulfie@redhat.com>
+
+	qdevice-lms: improvements to LMS algorithm
+	Use the new timers to get better response from LMS when the network
+	splits, this also closes a race where the remote side could go inquorate
+	before we confirmed the vote.
+
+	Add client-side (qdevice-net) code to cope with a detached qnetd if we
+	are quorate and have wait_for_all enabled. THat situation will now
+	keep quorum.
+
+2016-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	qdevice: Allow delete timer withing it's callback
+
+	qdevice: Force send of heartbeat
+	Previously client was not force to use heartbeat. Because we have to be
+	able to detect dead client in qnetd, heartbeat setting is now forced.
+	Insted of set_option message, heartbeat is force to exists in init
+	message. This also means that
+	QDEVICE_NET_INSTANCE_STATE_WAITING_SET_OPTION_REPLY can be removed and
+	client is considered as connected after init_reply is received. So
+	currently, set_option is not used (but implementation of these two
+	messages still exists).
+
+	qdevice: Improve timer-list
+	Timer-list is now more efficient and as a side-effect it's possible to
+	add/delete timer in callback.
+
+	qnetd: Add support for qnetd algo timer
+	Algo timer is simplified timer designed for qnetd algorithm. Instead of
+	full timer only one can exists per client. Workflow is:
+	- In one of algorithm callbacks qnetd_client_algo_timer_schedule is
+	  called
+	- On timeout .timer_callback is called (for example
+	  qnetd_algo_test_timer_callback). It's possible to set send_vote and
+	  result_vote to send vote info to client
+	- It's possible to discard timer by calling
+	  qnetd_client_algo_timer_abort
+
+	Timer is automatically deleted on client disconnect.
+
+	To make all this possible, qnetd main loop now has support for
+	timer-list (main_timer_list). To be able to handle error and disconnect
+	client from timer callback, client has schedule_disconnect. If this is
+	set to 1, client is disconnected on current call of poll loop.
+
+	qdevice-net: Allow connect to choose lists to send
+	Also disconnect and connect can now affect vote timer.
+
+	qnetd-algo-utils: Remove goto
+
+	qdevice-net: Support tls required and fix leaks
+
+	qdevice tlv: Remove default/return code redundancy
+
+	qdevice-net: Free send buffer on error (leak)
+
+	qnetd: Return lock file fd
+
+	qdevice-net: Ensure to free non blocking client
+
+	Refactor qdevice-net
+	- corosync-device-net as binary is gone. Replacement is
+	  corosync-qdevice
+	- corosync-qdevice has support for multiple models (only net is
+	  currently implemented)
+	- Completelly redesign qdevice-net main loop.
+	  - Connect is non blocking
+	  - Cmap and Votequorum events are handled even before connect to
+	    qnetd. Algorithm gets send_node_list and vote set so it's not needed
+	    to check connection status and also vote_timer is running and voting
+	    until something changes (configuration or votequorum node list)
+	  - If connect fails, algorithm_disconnected with new reason
+	    CANT_CONNECT_TO_THE_SERVER is called
+	- Logging for qdevice is based on libqb logging functions. Also
+	  logging configuration from corosync.conf is now used and dynamic
+	  changes of configuration are handled.
+	- Added qdevice_net_algorithm_config_node_list_changed
+	- Changed qdevice_net_algorithm_votequorum_node_list_notify in respect
+	  of adding  send_node_list so it's similar to other functions.
+
+2016-06-28  Christine Caulfield  <ccaulfie@redhat.com>
+
+	votequorum: Allow wait_for_all with qdevice
+
+	qnetd: Use ring_id, not client->last_ring_id in algorithms
+	ring_id should only be copied into the client structure after the
+	algorithm has run (so the last one is also available), so fix the
+	algorithms to use the passed-in ring_id where available.
+
+	Also tidy some debug logging in algo-lms
+
+	qnetd-algo: Fix list traversal corruption when freeing partitions.
+	TAILQ_* doesn't have a safe iterator for use when freeing entries, so the
+	only safe way of doing it (without assuming implementation) is to
+	restart the iterator after freeing the structure.
+
+2016-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	Improve qdevice
+	- Add support for cmap node list configuration change
+	- Add client side algorithms
+	- Check if currently received ring id in membership message
+	  equals to last sent ring id
+	- Send config node list only if config node list really changes and not
+	  after every reload
+	- Add tlv_ring_id_eq (replacing qnetd_algo_rings_eq) so it's usable in
+	  client
+	- Move debug logs from algo-test into qnetd-log-debug.c and call them in
+	  proper places (= logs are now algorithm independent)
+	- Fix memory leak in msg
+
+2016-06-28  Christine Caulfield  <ccaulfie@redhat.com>
+
+	qnetd-algo: Refactor common routines
+	Move several commonly used routines into their own
+	qnetd-algo-utils.[ch] files and change over to using
+	the ring_id held in the client structure rather than
+	managint it ourself.
+
+	qnetd: Add ring_id to client structure
+
+	algo-lms: some tidying
+
+2016-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	qnetd: Make proper support for ipv4/6
+	- Add option for forcing ip version 4 or 6
+	- Choose new default port. It's now 5403. Exactly one less than used by
+	  corosync.
+	- Fix compiler warning
+
+	qnetd: Add init script
+
+	qnetd: Refactor
+
+	qnetd: Really daemonize
+
+2016-06-28  Christine Caulfield  <ccaulfie@redhat.com>
+
+	qdevice: qnetd_algo_lms: Fix nominated tie_breaker node
+
+	qnetd: lms: Add support for other tie_breaker options.
+
+	qnetd: Add tie_breaker options to 2nodelms
+
+2016-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	qdevice: Add tie_breaker option
+	Tie-breaker can be used in algorithm to decide if algorithm should
+	prefer highest, lowest or some concrete node id.
+
+	qnet: Add TLV_VOTE_NO_CHANGE
+	State used for informative only callbacks (quorum node list) and
+	possibly informative only callbacks (configuration node list). Client
+	doesn't change cast vote timer state.
+
+	qnet: Migrate to new votequorum API
+
+2016-06-28  Christine Caulfield  <ccaulfie@redhat.com>
+
+	qdevice: 2nodelms: don't split-brain when the primary node comes back.
+
+	qnetd: lms: Fix search for node/ring_id check
+	We were looking for us in other node lists, rather than
+	others in our nodelist.
+
+	Also, remove debug print in votequorum.c
+
+	votequorum: Fix up quorum/nodelist callbacks
+	This patch tidies the two state change callbacks and explains them
+	in the man page:
+
+	The difference between votequorum_nodelist_notification_t and
+	votequorum_quorum_notification_t is subtle but important.
+	The 'nodelist' callback is sent at the start of a cluster state
+	transition and contains the new ring_id and only the list of
+	nodes that are included in the sync state - ie only active nodes. No
+	quorum information is included this callback because it is not
+	available at that time.
+
+	The 'quorum' callback is sent after the cluster state transition has
+	completed and does contain quorum information.
+	In addition, the nodelist contains a list of all nodes known to
+	votequorum (whether up or down) and their state as well
+	as information about the quorum device attached (if any). quorum
+	callbacks will not be sent for qdevice up and down
+	events unless they affect quorum.
+
+2016-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	qnetd: Some small improvements
+
+	qnetd: Improve logging
+
+2016-06-28  Christine Caulfield  <ccaulfie@redhat.com>
+
+	votequorum: split callbacks into nodelist and quorum
+	This split is needed for qdevice, so that it gets the ring_id and
+	nodelist as part of the sync process and not afterwards - when quorum
+	has been calculated.
+
+	As this is and unsupported API I'm not too worried about breaking
+	existing code - all the clients I know of are using the quorum API
+	anyway as they should be.
+
+2016-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	qdevice-net: Copy correct ring id in votequorum cb
+
+2016-06-28  Christine Caulfield  <ccaulfie@redhat.com>
+
+	qnetd: Add LMS algorithm
+	Only lightly tested so far
+
+2016-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	Improve qdevice-net
+	- Add cast vote timer (qdevice-net now really votes)
+	- In sync phase it's impossible retreive cmap config version so it's no
+	  longer sent in membership node list
+	- Refactor qdevice-net
+
+2016-06-28  Christine Caulfield  <ccaulfie@redhat.com>
+
+	votequorum: make corosync_quorumtool show full ring_id
+	Add the ring leader node_id to corosync_quorumtool. This is
+	only shown when votequorum is active
+
+	qnetd: move 2nodelms algo files to the right directory
+	No, I don't know how that happened.
+
+	qdevice-net: add a 2node Last Man Standing algorithm Signed-off-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2016-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	qdevice-net: Implement missing messages handlers
+
+	qnetd-certutil: Fix master node variable
+
+	corosync-qnetd-certutil: Delete tabs
+
+	corosync-qnetd-certutil: Delete dev comment
+
+2016-06-28  Christine Caulfield  <ccaulfie@redhat.com>
+
+	qnetd: Move algorithms_register into qnetd-algorithms.c
+	and fix qnetd_algorithm_vote_info_reply_received
+
+2016-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	corosync-qnetd-certutl: Improvements
+	- Location of certificates is now correctly set depending on operation
+	  (qnetd/node)
+	- Added quick start mode
+
+2016-06-28  Christine Caulfield  <ccaulfie@redhat.com>
+
+	qnetd: Make it easier to add algorithms
+	Put the algorithms into an array of structure pointers
+	(a bit like corosync services) so we can easily add more
+	without having huge switch statements.
+
+	I haven't added any code to the client end that parses the
+	name into the enum. Yet.
+
+	Don't attempt to free a string we haven't been given.
+
+2016-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	qnetd: Improvements
+	- Move adding client to cluster to init phase instead of preinit
+	- Implement missing ask for vote and vote info messages
+	- Fix cluster name memory leak
+	- Refactor unexpected message handler to one generic function
+	- Move qnetd_client_send_err to new file
+	- Add qnetd_client_send_vote_info
+
+	qnetd: Add skel of ffsplit algo and cluster list
+
+	Qnetd improvements
+	- Complete config and membership node list callbacks
+	- Add client disconnect callback
+	- Always send msg_seq_num in node list
+	- Store config and last membership node list
+
+	Qnet improvements
+	- Support for membership node list
+	- Initial support for "pluggable" algorithms
+
+	Qdevices-net improvements
+	- Implement node list
+	- Implement send buffer list
+	- Add nodelist message type
+	- Add ring_id, config_version, data_center_id, node_state, node_info,
+	  node_list_type and vote msg options
+
+2016-06-28  Christine Caulfield  <ccaulfie@redhat.com>
+
+	votequorum: Make display of qdevice more intuitive.
+	corosync-quorumtool displays the votes of the qdevice whether
+	or not it is active. This is confusing because if it is not active
+	then the display looks like there is a vote being contributed to
+	quorum when there is not.
+
+	This patch displays 0 for qdevice votes if the device is present
+	(but inactive) and adds the votes after the name. If the device is
+	contributing votes then they are displayed as normal.
+
+2016-06-28  Jan Friesse  <jfriesse@redhat.com>
+
+	Improve qnet
+
+	Initial commit of qdevice net
+
+	config: get_cluster_mcast_addr error is not fatal
+
+2016-06-27  bliu  <bliu@suse.com>
+
+	low:typo fix in sam.h
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2016-06-22  Ferenc Wágner  <wferi@niif.hu>
+
+	Fix typo: Diabled -> disabled
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Fix typo: alocated -> allocated
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Fix typo: retrive -> retrieve
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Fix typo: aquire -> acquire
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Fix typo: Uknown -> Unknown
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Fix typo: interger -> integer
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Fix typo: funtion -> function
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	cmap_track_add.3.in: fix typo: bellow -> below
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
 2016-05-27  Christine Caulfield  <ccaulfie@redhat.com>
 
 	logconfig: Fix logging reload disabling logfiles

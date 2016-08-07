@@ -249,6 +249,7 @@ SOMINOR = @SOMINOR@
 SONAME = @SONAME@
 STRIP = @STRIP@
 SYSTEMDDIR = @SYSTEMDDIR@
+TMPFILESDIR = @TMPFILESDIR@
 UPSTARTDIR = @UPSTARTDIR@
 VERSCRIPT_LDFLAGS = @VERSCRIPT_LDFLAGS@
 VERSION = @VERSION@
@@ -341,7 +342,7 @@ corosysconf_DATA = corosync.conf.example \
 @INSTALL_MIB_TRUE@mib_DATA = COROSYNC-MIB.txt
 @INSTALL_DBUSCONF_TRUE@dbusdir = $(sysconfdir)/dbus-1/system.d
 @INSTALL_DBUSCONF_TRUE@dbus_DATA = corosync-signals.conf
-SUBDIRS = logrotate
+SUBDIRS = logrotate tmpfiles.d
 all: all-recursive
 
 .SUFFIXES:

@@ -69,6 +69,10 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@BUILD_QDEVICES_TRUE@am__append_1 = corosync-qdevice
+@BUILD_QDEVICES_TRUE@@INSTALL_SYSTEMD_TRUE@am__append_2 = corosync-qdevice.service
+@BUILD_QNETD_TRUE@am__append_3 = corosync-qnetd
+@BUILD_QNETD_TRUE@@INSTALL_SYSTEMD_TRUE@am__append_4 = corosync-qnetd.service
 subdir = init
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -209,6 +213,7 @@ SOMINOR = @SOMINOR@
 SONAME = @SONAME@
 STRIP = @STRIP@
 SYSTEMDDIR = @SYSTEMDDIR@
+TMPFILESDIR = @TMPFILESDIR@
 UPSTARTDIR = @UPSTARTDIR@
 VERSCRIPT_LDFLAGS = @VERSCRIPT_LDFLAGS@
 VERSION = @VERSION@
@@ -279,13 +284,20 @@ top_srcdir = @top_srcdir@
 MAINTAINERCLEANFILES = Makefile.in
 EXTRA_DIST = corosync.in corosync-notifyd.in corosync.service.in \
                           corosync-notifyd.service.in corosync.conf.in corosync-notifyd.conf.in \
-                          corosync.sysconfig.example
+                          corosync.sysconfig.example \
+                          corosync-qdevice.sysconfig.example corosync-qdevice.in \
+                          corosync-qdevice.service.in \
+                          corosync-qnetd.sysconfig.example corosync-qnetd.in \
+                          corosync-qnetd.service.in
 
 @INSTALL_SYSTEMD_TRUE@systemdconfdir = $(SYSTEMDDIR)
-@INSTALL_SYSTEMD_TRUE@systemdconf_DATA = corosync.service corosync-notifyd.service
+@INSTALL_SYSTEMD_TRUE@systemdconf_DATA = corosync.service \
+@INSTALL_SYSTEMD_TRUE@	corosync-notifyd.service $(am__append_2) \
+@INSTALL_SYSTEMD_TRUE@	$(am__append_4)
 @INSTALL_SYSTEMD_FALSE@initscriptdir = $(INITDDIR)
 @INSTALL_SYSTEMD_TRUE@initscriptdir = $(INITWRAPPERSDIR)
-initscript_SCRIPTS = corosync corosync-notifyd
+initscript_SCRIPTS = corosync corosync-notifyd $(am__append_1) \
+	$(am__append_3)
 @INSTALL_UPSTART_TRUE@upstartconfdir = $(UPSTARTDIR)
 @INSTALL_UPSTART_TRUE@upstartconf_DATA = corosync.conf corosync-notifyd.conf
 all: all-am
@@ -561,6 +573,7 @@ uninstall-am: uninstall-initscriptSCRIPTS uninstall-systemdconfDATA \
 	rm -f $@-t $@
 	cat $< | sed \
 		-e 's#@''SBINDIR@#$(sbindir)#g' \
+		-e 's#@''BINDIR@#$(bindir)#g' \
 		-e 's#@''SYSCONFDIR@#$(sysconfdir)#g' \
 		-e 's#@''INITDDIR@#$(INITDDIR)#g' \
 		-e 's#@''INITWRAPPERSDIR@#$(INITWRAPPERSDIR)#g' \

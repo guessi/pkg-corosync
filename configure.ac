@@ -204,7 +204,8 @@ AC_CONFIG_FILES([Makefile
 		 conf/Makefile
 		 qdevices/Makefile
 		 Doxyfile
-		 conf/logrotate/Makefile])
+		 conf/logrotate/Makefile
+		 conf/tmpfiles.d/Makefile])
 
 ### Local business
 
@@ -393,6 +394,11 @@ AC_ARG_WITH([logrotatedir],
 	[ LOGROTATEDIR="$withval" ],
 	[ LOGROTATEDIR="$sysconfdir/logrotate.d" ])
 
+AC_ARG_WITH([tmpfilesdir],
+	[  --with-tmpfilesdir=DIR   : path to tmpfiles.d configuration files directory. ],
+	[ TMPFILESDIR="$withval" ],
+	[ TMPFILESDIR="/lib/tmpfiles.d" ])
+
 AC_ARG_ENABLE([snmp],
 	[  --enable-snmp                   : SNMP protocol support ],
 	[ default="no" ])
@@ -406,6 +412,10 @@ AC_ARG_ENABLE([qdevices],
 	[  --enable-qdevices               : Quorum devices support ],,
 	[ enable_qdevices="no" ])
 AM_CONDITIONAL(BUILD_QDEVICES, test x$enable_qdevices = xyes)
+AC_ARG_ENABLE([qnetd],
+	[  --enable-qnetd                  : Quorum Net Daemon support ],,
+	[ enable_qnetd="no" ])
+AM_CONDITIONAL(BUILD_QNETD, test x$enable_qnetd = xyes)
 
 # *FLAGS handling goes here
 
@@ -486,6 +496,9 @@ if test "x${enable_xmlconf}" = xyes; then
 fi
 if test "x${enable_qdevices}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES qdevices"
+fi
+if test "x${enable_qnetd}" = xyes; then
+	PACKAGE_FEATURES="$PACKAGE_FEATURES qnetd"
 fi
 
 do_snmp=0
@@ -700,6 +713,7 @@ INITWRAPPERSDIR=$(eval echo ${INITWRAPPERSDIR})
 AC_SUBST([INITWRAPPERSDIR])
 AC_SUBST([LOGDIR])
 AC_SUBST([LOGROTATEDIR])
+AC_SUBST([TMPFILESDIR])
 
 AC_SUBST([SOMAJOR])
 AC_SUBST([SOMINOR])
@@ -742,6 +756,7 @@ AC_MSG_RESULT([  System init.d directory  = ${INITDDIR}])
 AC_MSG_RESULT([  System systemd directory = ${SYSTEMDDIR}])
 AC_MSG_RESULT([  System upstart directory = ${UPSTARTDIR}])
 AC_MSG_RESULT([  System init wraps dir    = ${INITWRAPPERSDIR}])
+AC_MSG_RESULT([  System tmpfiles.d        = ${TMPFILESDIR}])
 AC_MSG_RESULT([  Log directory            = ${LOGDIR}])
 AC_MSG_RESULT([  Log rotate directory     = ${LOGROTATEDIR}])
 AC_MSG_RESULT([  corosync config dir      = ${COROSYSCONFDIR}])

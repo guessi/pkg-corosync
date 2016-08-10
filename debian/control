@@ -68,6 +68,18 @@ Description: cluster engine quorum device daemon
  ${DESCRIPTION}
  This package contains the quorum device daemon and utilities.
 
+Package: corosync-qnetd
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ libnss3-tools,
+Description: cluster engine quorum device network daemon
+ ${DESCRIPTION}
+ This package contains the quorum device network daemon running outside
+ of clusters with the purpose of providing votes to the corosync-qdevice
+ model "net", and some utilities for it.
+
 Package: corosync-doc
 Section: doc
 Architecture: all

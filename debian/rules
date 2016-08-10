@@ -40,6 +40,7 @@ override_dh_autoreconf:
 override_dh_auto_configure:
 	dh_auto_configure -- \
 	    --with-logdir=/var/log/corosync \
+	    --with-tmpfilesdir=/usr/lib/tmpfiles.d \
 	    --enable-dbus \
 	    $(enable-rdma) \
 	    $(enable-monitoring) \
@@ -50,6 +51,7 @@ override_dh_auto_configure:
 	    $(enable-systemd) \
 	    --enable-upstart \
 	    --enable-qdevices \
+	    --enable-qnetd \
 	    --disable-static
 
 override_dh_auto_build-indep:
@@ -70,6 +72,7 @@ override_dh_auto_install-arch:
 	rm debian/tmp/$(initscript-dir)/corosync \
 	   debian/tmp/$(initscript-dir)/corosync-notifyd \
 	   debian/tmp/$(initscript-dir)/corosync-qdevice \
+	   debian/tmp/$(initscript-dir)/corosync-qnetd \
 	   debian/tmp/usr/share/doc/corosync/LICENSE
 
 override_dh_install:

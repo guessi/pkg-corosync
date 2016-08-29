@@ -69,6 +69,7 @@ override_dh_auto_install-arch:
 # we don't need the upstream SysV init scripts and license
 	rm debian/tmp/$(initscript-dir)/corosync \
 	   debian/tmp/$(initscript-dir)/corosync-notifyd \
+	   debian/tmp/$(initscript-dir)/corosync-qdevice \
 	   debian/tmp/usr/share/doc/corosync/LICENSE
 
 override_dh_install:

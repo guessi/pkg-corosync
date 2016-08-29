@@ -57,6 +57,17 @@ Description: cluster engine notification daemon
  ${DESCRIPTION}
  This package contains the DBus/SNMP notification daemon for Corosync events.
 
+Package: corosync-qdevice
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ corosync (= ${binary:Version}),
+ libnss3-tools,
+Description: cluster engine quorum device daemon
+ ${DESCRIPTION}
+ This package contains the quorum device daemon and utilities.
+
 Package: corosync-doc
 Section: doc
 Architecture: all

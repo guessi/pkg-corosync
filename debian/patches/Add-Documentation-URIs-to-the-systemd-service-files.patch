@@ -5,8 +5,10 @@ Subject: Add Documentation URIs to the systemd service files
 These are used by systemctl help.
 ---
  init/corosync-notifyd.service.in | 1 +
+ init/corosync-qdevice.service.in | 1 +
+ init/corosync-qnetd.service.in   | 1 +
  init/corosync.service.in         | 1 +
- 2 files changed, 2 insertions(+)
+ 4 files changed, 4 insertions(+)
 
 diff --git a/init/corosync-notifyd.service.in b/init/corosync-notifyd.service.in
 index 15d6da4..4284c19 100644
@@ -19,6 +21,28 @@ index 15d6da4..4284c19 100644
  Requires=corosync.service
  After=corosync.service
  
+diff --git a/init/corosync-qdevice.service.in b/init/corosync-qdevice.service.in
+index 54bec69..8de4e5b 100644
+--- a/init/corosync-qdevice.service.in
++++ b/init/corosync-qdevice.service.in
+@@ -1,5 +1,6 @@
+ [Unit]
+ Description=Corosync Qdevice daemon
++Documentation=man:corosync-qdevice
+ ConditionKernelCommandLine=!nocluster
+ Wants=corosync.service
+ After=corosync.service
+diff --git a/init/corosync-qnetd.service.in b/init/corosync-qnetd.service.in
+index 8374910..c6cf8c9 100644
+--- a/init/corosync-qnetd.service.in
++++ b/init/corosync-qnetd.service.in
+@@ -1,5 +1,6 @@
+ [Unit]
+ Description=Corosync Qdevice Network daemon
++Documentation=man:corosync-qnetd
+ ConditionKernelCommandLine=!nocluster
+ Requires=network-online.target
+ After=network-online.target
 diff --git a/init/corosync.service.in b/init/corosync.service.in
 index 4f63b41..aecfc43 100644
 --- a/init/corosync.service.in

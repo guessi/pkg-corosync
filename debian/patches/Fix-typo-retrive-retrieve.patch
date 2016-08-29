@@ -1,0 +1,21 @@
+From: =?utf-8?q?Ferenc_W=C3=A1gner?= <wferi@niif.hu>
+Date: Mon, 29 Aug 2016 21:27:30 +0200
+Subject: Fix typo: retrive -> retrieve
+
+---
+ qdevices/qdevice-instance.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/qdevices/qdevice-instance.c b/qdevices/qdevice-instance.c
+index 862e002..75bd537 100644
+--- a/qdevices/qdevice-instance.c
++++ b/qdevices/qdevice-instance.c
+@@ -81,7 +81,7 @@ qdevice_instance_configure_from_cmap(struct qdevice_instance *instance)
+ 
+ 	if (cmap_get_uint32(instance->cmap_handle, "runtime.votequorum.this_node_id",
+ 	    &instance->node_id) != CS_OK) {
+-		qdevice_log(LOG_ERR, "Unable to retrive this node nodeid.");
++		qdevice_log(LOG_ERR, "Unable to retrieve this node nodeid.");
+ 
+ 		return (-1);
+ 	}

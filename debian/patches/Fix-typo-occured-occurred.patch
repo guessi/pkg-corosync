@@ -1,0 +1,83 @@
+From: =?utf-8?q?Ferenc_W=C3=A1gner?= <wferi@niif.hu>
+Date: Mon, 29 Aug 2016 21:19:32 +0200
+Subject: Fix typo: occured -> occurred
+
+---
+ ChangeLog                           | 10 +++++-----
+ qdevices/qdevice-net-msg-received.c |  2 +-
+ qdevices/qnetd-log.c                |  2 +-
+ 3 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/ChangeLog b/ChangeLog
+index befc08d..5e476dd 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -5464,7 +5464,7 @@
+ 
+ 	Honor exec_init_fn call
+ 	exec_init_fn now either returns NULL (success) or a string which indicates
+-	the error that occured during service engine initialization.  If an error
++	the error that occurred during service engine initialization.  If an error
+ 	occurs, corosync will exit.  This patch adds ykd and makes other suggestions
+ 	from Fabio Di Nitto.
+ 
+@@ -6828,7 +6828,7 @@
+ 
+ 	start 5 nodes randomly at about same time, start 5 nodes randomly at about
+ 	same time, wait 10 seconds and attempt to send a message.  If message blocks
+-	on "TRY_AGAIN" likely a message loss has occured.  Wait a few minutes without
++	on "TRY_AGAIN" likely a message loss has occurred.  Wait a few minutes without
+ 	cyclng the nodes and see if the TRY_AGAIN state becomes unblocked.
+ 
+ 	If it doesn't the test case has failed
+@@ -15310,7 +15310,7 @@
+ 
+ 2006-11-10  Steven Dake  <sdake@redhat.com>
+ 
+-	Update checkpoint service from all qualifications that have occured in whitetank branch.
++	Update checkpoint service from all qualifications that have occurred in whitetank branch.
+ 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@1299 fd59a12c-fef9-0310-b244-a6a79926bd2f
+ 
+ 	Recovery algorithms described in this document.
+@@ -21484,13 +21484,13 @@
+ 
+ 2004-07-12  Steven Dake  <sdake@broked.org>
+ 
+-	Retransmit orf token if no multicast or token received within a timeout period.  This could mean that the token was lost, but no configuration change has really occured.  Rather then execute the heavyweight membership protocol, just retry the token and if it fails after the token timeout, execute a configuration change sequence.
++	Retransmit orf token if no multicast or token received within a timeout period.  This could mean that the token was lost, but no configuration change has really occurred.  Rather then execute the heavyweight membership protocol, just retry the token and if it fails after the token timeout, execute a configuration change sequence.
+ 	BKrev: 40f21082dvUxH0aOPvKmpqoqlkEgEA
+ 
+ 
+ 	git-svn-id: http://svn.fedorahosted.org/svn/corosync/trunk@99 fd59a12c-fef9-0310-b244-a6a79926bd2f
+ 
+-	Add retransmit of token if no multicast or token received within a timeout period (100 msec).  This helps avoid a reconfiguration when only the token is lost, but no real configuration changes have occured.
++	Add retransmit of token if no multicast or token received within a timeout period (100 msec).  This helps avoid a reconfiguration when only the token is lost, but no real configuration changes have occurred.
+ 	(Logical change 1.32)
+ 
+ 
+diff --git a/qdevices/qdevice-net-msg-received.c b/qdevices/qdevice-net-msg-received.c
+index b5c2f21..f914830 100644
+--- a/qdevices/qdevice-net-msg-received.c
++++ b/qdevices/qdevice-net-msg-received.c
+@@ -100,7 +100,7 @@ qdevice_net_msg_received_log_msg_decode_error(int ret)
+ 		qdevice_log(LOG_ERR, "Received message with option with invalid value");
+ 		break;
+ 	default:
+-		qdevice_log(LOG_ERR, "Unknown error occured when decoding message");
++		qdevice_log(LOG_ERR, "Unknown error occurred when decoding message");
+ 		break;
+ 	}
+ }
+diff --git a/qdevices/qnetd-log.c b/qdevices/qnetd-log.c
+index 1d04645..6f225ae 100644
+--- a/qdevices/qnetd-log.c
++++ b/qdevices/qnetd-log.c
+@@ -177,7 +177,7 @@ qnetd_log_msg_decode_error(int ret)
+ 		qnetd_log(LOG_WARNING, "Received message with option with invalid value");
+ 		break;
+ 	default:
+-		qnetd_log(LOG_ERR, "Unknown error occured when decoding message");
++		qnetd_log(LOG_ERR, "Unknown error occurred when decoding message");
+ 		break;
+ 	}
+ }

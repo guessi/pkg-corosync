@@ -1,0 +1,63 @@
+From: =?utf-8?q?Ferenc_W=C3=A1gner?= <wferi@niif.hu>
+Date: Mon, 29 Aug 2016 21:21:47 +0200
+Subject: Fix typo: configuraton -> configuration
+
+---
+ ChangeLog                      | 2 +-
+ man/quorum_initialize.3.in     | 2 +-
+ man/quorum_trackstart.3.in     | 2 +-
+ man/votequorum_trackstart.3.in | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/ChangeLog b/ChangeLog
+index 5e476dd..e1ac160 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -7219,7 +7219,7 @@
+ 	is these last messages should be delivered after a transitional
+ 	configuration to maintain SAFE agreement.  We don't have support for
+ 	SAFE atm, so it is probably safe just to throw these messages away.  Without
+-	this change, the new message queue on a new configuraton change is out of sync.
++	this change, the new message queue on a new configuration change is out of sync.
+ 
+ 	Tested-by: Tim Beale <tlbeale@gmail.com>
+ 	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+diff --git a/man/quorum_initialize.3.in b/man/quorum_initialize.3.in
+index e55c284..227c2c0 100644
+--- a/man/quorum_initialize.3.in
++++ b/man/quorum_initialize.3.in
+@@ -51,7 +51,7 @@ argument to uniquely identify the connection.  The
+ argument is then used in other function calls to identify the connection to be used
+ for communication with the quorum service.
+ .PP
+-Every time the voting configuraton changes (eg a node joins or leave the cluster) or the quorum status change,
++Every time the voting configuration changes (eg a node joins or leave the cluster) or the quorum status change,
+ the callback is called.
+ The callback function is described by the following type definitions:
+ 
+diff --git a/man/quorum_trackstart.3.in b/man/quorum_trackstart.3.in
+index 044a048..9e3ff3f 100644
+--- a/man/quorum_trackstart.3.in
++++ b/man/quorum_trackstart.3.in
+@@ -43,7 +43,7 @@ The
+ .B quorum_trackstart
+ function is used to enable callbacks notification from the quorum API.
+ .PP
+-Every time the voting configuraton changes (eg a node joins or leave the cluster)
++Every time the voting configuration changes (eg a node joins or leave the cluster)
+ or the quorum status change, the notification is queued.
+ .PP
+ The notification is dispatched via
+diff --git a/man/votequorum_trackstart.3.in b/man/votequorum_trackstart.3.in
+index b440713..af3310b 100644
+--- a/man/votequorum_trackstart.3.in
++++ b/man/votequorum_trackstart.3.in
+@@ -43,7 +43,7 @@ The
+ .B votequorum_trackstart
+ function is used to enable callbacks notification from the votequorum API.
+ .PP
+-Every time the voting configuraton changes (eg a node joins or leave the cluster)
++Every time the voting configuration changes (eg a node joins or leave the cluster)
+ or the quorum status change or the expected votes changes, the notification is queued.
+ .PP
+ The notification is dispatched via

@@ -9,3 +9,9 @@ Use-debian-changelog-timestamp-for-the-build-time-of.patch
 totemip.h-uses-list.h.patch
 configure.ac.patch
 Add-Documentation-URIs-to-the-systemd-service-files.patch
+Fix-typo-occured-occurred.patch
+Fix-typo-parantheses-parentheses.patch
+Fix-typo-configuraton-configuration.patch
+Fix-typo-aquire-acquire.patch
+Fix-typo-retrive-retrieve.patch
+Fix-typo-prefered-preferred.patch

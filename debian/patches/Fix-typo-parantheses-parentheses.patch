@@ -1,0 +1,21 @@
+From: =?utf-8?q?Ferenc_W=C3=A1gner?= <wferi@niif.hu>
+Date: Mon, 29 Aug 2016 21:20:28 +0200
+Subject: Fix typo: parantheses -> parentheses
+
+---
+ man/corosync-qnetd.8 | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/man/corosync-qnetd.8 b/man/corosync-qnetd.8
+index 856e6e1..fa58224 100644
+--- a/man/corosync-qnetd.8
++++ b/man/corosync-qnetd.8
+@@ -168,7 +168,7 @@ in the proper place.
+ .SH ADVANCED SETTINGS
+ Set by the
+ .B -S
+-option. The default value is shown in parantheses.
++option. The default value is shown in parentheses.
+ .TP
+ .B listen_backlog
+ Parameter passed to the listen syscall on the network socket. (10)

@@ -1,0 +1,93 @@
+From: =?utf-8?q?Ferenc_W=C3=A1gner?= <wferi@niif.hu>
+Date: Mon, 29 Aug 2016 21:26:38 +0200
+Subject: Fix typo: aquire -> acquire
+
+---
+ exec/main.c                 | 12 ++++++------
+ exec/util.h                 |  2 +-
+ qdevices/corosync-qdevice.c |  2 +-
+ 3 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/exec/main.c b/exec/main.c
+index 133be9c..aa4155b 100644
+--- a/exec/main.c
++++ b/exec/main.c
+@@ -1075,7 +1075,7 @@ static enum e_corosync_done corosync_flock (const char *lockfile, pid_t pid)
+ 	lf = open (lockfile, O_WRONLY | O_CREAT, 0640);
+ 	if (lf == -1) {
+ 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create lock file.");
+-		return (COROSYNC_DONE_AQUIRE_LOCK);
++		return (COROSYNC_DONE_ACQUIRE_LOCK);
+ 	}
+ 
+ retry_fcntl:
+@@ -1097,7 +1097,7 @@ retry_fcntl:
+ 		default:
+ 			log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't acquire lock. Error was %s",
+ 			    strerror(errno));
+-			err = COROSYNC_DONE_AQUIRE_LOCK;
++			err = COROSYNC_DONE_ACQUIRE_LOCK;
+ 			goto error_close;
+ 			break;
+ 		}
+@@ -1106,7 +1106,7 @@ retry_fcntl:
+ 	if (ftruncate (lf, 0) == -1) {
+ 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't truncate lock file. Error was %s",
+ 		    strerror (errno));
+-		err = COROSYNC_DONE_AQUIRE_LOCK;
++		err = COROSYNC_DONE_ACQUIRE_LOCK;
+ 		goto error_close_unlink;
+ 	}
+ 
+@@ -1120,7 +1120,7 @@ retry_write:
+ 		} else {
+ 			log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't write pid to lock file. "
+ 				"Error was %s", strerror (errno));
+-			err = COROSYNC_DONE_AQUIRE_LOCK;
++			err = COROSYNC_DONE_ACQUIRE_LOCK;
+ 			goto error_close_unlink;
+ 		}
+ 	}
+@@ -1128,14 +1128,14 @@ retry_write:
+ 	if ((fd_flag = fcntl (lf, F_GETFD, 0)) == -1) {
+ 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't get close-on-exec flag from lock file. "
+ 			"Error was %s", strerror (errno));
+-		err = COROSYNC_DONE_AQUIRE_LOCK;
++		err = COROSYNC_DONE_ACQUIRE_LOCK;
+ 		goto error_close_unlink;
+ 	}
+ 	fd_flag |= FD_CLOEXEC;
+ 	if (fcntl (lf, F_SETFD, fd_flag) == -1) {
+ 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't set close-on-exec flag to lock file. "
+ 			"Error was %s", strerror (errno));
+-		err = COROSYNC_DONE_AQUIRE_LOCK;
++		err = COROSYNC_DONE_ACQUIRE_LOCK;
+ 		goto error_close_unlink;
+ 	}
+ 
+diff --git a/exec/util.h b/exec/util.h
+index 9efd35e..df5eeb4 100644
+--- a/exec/util.h
++++ b/exec/util.h
+@@ -54,7 +54,7 @@ enum e_corosync_done {
+ 	COROSYNC_DONE_INIT_SERVICES = 13,
+ 	COROSYNC_DONE_FATAL_ERR = 15,
+ 	COROSYNC_DONE_DIR_NOT_PRESENT = 16,
+-	COROSYNC_DONE_AQUIRE_LOCK = 17,
++	COROSYNC_DONE_ACQUIRE_LOCK = 17,
+ 	COROSYNC_DONE_ALREADY_RUNNING = 18,
+ 	COROSYNC_DONE_STD_TO_NULL_REDIR = 19,
+ 	COROSYNC_DONE_SERVICE_ENGINE_INIT = 20,
+diff --git a/qdevices/corosync-qdevice.c b/qdevices/corosync-qdevice.c
+index fd932f1..9916c69 100644
+--- a/qdevices/corosync-qdevice.c
++++ b/qdevices/corosync-qdevice.c
+@@ -185,7 +185,7 @@ main(int argc, char * const argv[])
+ 		if (another_instance_running) {
+ 			qdevice_log(LOG_ERR, "Another instance is running");
+ 		} else {
+-			qdevice_log_err(LOG_ERR, "Can't aquire lock");
++			qdevice_log_err(LOG_ERR, "Can't acquire lock");
+ 		}
+ 
+ 		exit(1);

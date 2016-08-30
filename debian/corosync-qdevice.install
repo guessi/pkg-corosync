@@ -1,5 +1,6 @@
 #!/usr/bin/dh-exec
 
+init/corosync-qdevice.sysconfig.example => etc/default/corosync-qdevice
 lib/systemd/system/corosync-qdevice.service [linux-any]
 usr/sbin/corosync-qdevice
 usr/sbin/corosync-qdevice-net-certutil

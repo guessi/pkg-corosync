@@ -1,0 +1,27 @@
+#!/lib/init/init-d-script
+
+### BEGIN INIT INFO
+# Provides:		corosync-qdevice
+# Required-Start:	corosync
+# Required-Stop:	corosync
+# Default-Start:
+# Default-Stop:
+# Short-Description:	Corosync Qdevice daemon
+# Description:		Starts and stops Corosync Qdevice daemon.
+### END INIT INFO
+
+NAME="corosync-qdevice"
+DESC="Corosync Qdevice daemon"
+DAEMON="/usr/sbin/$NAME"
+
+CONFIG="/etc/default/$NAME"
+[ -f "$CONFIG" ] && . "$CONFIG"
+
+DAEMON_ARGS="$COROSYNC_QDEVICE_OPTIONS"
+
+do_start_prepare() {
+    if grep -q nocluster /proc/cmdline; then
+        log_failure_msg "not configured to run at boot"
+        exit 1
+    fi
+}

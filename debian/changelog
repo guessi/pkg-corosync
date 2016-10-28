@@ -1,3 +1,17 @@
+corosync (2.4.1-1) unstable; urgency=medium
+
+  * [ed34965] Use official distribution site in the watch file
+  * [d541754] New upstream release (2.4.1)
+  * [717a4f7] Delete upstreamed patches, refresh the rest
+  * [b6f41ad] New package: corosync-qdevice
+  * [1f7ee1d] New package: corosync-qnetd
+  * [c92036e] Add Documentation URIs to the new services as well
+  * [5a467de] New patches fixing typos
+  * [86efc5b] Add corosync-qdevice init script and default file
+  * [0b15d12] Migrate to my Debian address
+
+ -- Ferenc Wágner <wferi@debian.org>  Fri, 28 Oct 2016 11:03:06 +0200
+
 corosync (2.3.6-3) unstable; urgency=medium
 
   * [b6c5f14] New patch config-get_cluster_mcast_addr-error-is-not-fatal.patch.
